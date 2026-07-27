@@ -1,29 +1,21 @@
 <script lang="ts">
 	import type { ServiceLine, PricingMode, StructureProjet } from '$lib/types';
 	import { lineTotal, formatCad } from '$lib/pricing';
+	import { createEmptyLigne } from '$lib/mandat';
+	import type { ValidationError } from '$lib/validation';
+	import { fieldError } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 
 	let {
 		lignes = $bindable(),
-		structureProjet
-	}: { lignes: ServiceLine[]; structureProjet: StructureProjet } = $props();
-
-	function createEmptyLigne(): ServiceLine {
-		return {
-			id: crypto.randomUUID(),
-			nom: '',
-			description: '',
-			inclus: [''],
-			nonInclus: [],
-			pricingMode: 'forfaitaire',
-			montantForfaitaire: 0,
-			tauxHoraire: 0,
-			heuresEstimees: 0,
-			items: [],
-			delaiEstime: ''
-		};
-	}
+		structureProjet,
+		errors = []
+	}: {
+		lignes: ServiceLine[];
+		structureProjet: StructureProjet;
+		errors?: ValidationError[];
+	} = $props();
 
 	function addLigne() {
 		lignes.push(createEmptyLigne());
@@ -71,8 +63,7 @@
 			<div class="rounded-lg border border-border-subtle p-4">
 				<div class="flex items-start justify-between gap-3">
 					<div class="flex-1">
-						<label class="field-label" for="ligne-nom-{ligne.id}">{lineLabel} {i + 1} — nom</label
-						>
+						<label class="field-label" for="ligne-nom-{ligne.id}">{lineLabel} {i + 1} — nom</label>
 						<input
 							id="ligne-nom-{ligne.id}"
 							class="field-input"
@@ -80,6 +71,9 @@
 							bind:value={ligne.nom}
 							placeholder="Ex. Gestion documentaire"
 						/>
+						{#if fieldError(errors, `lignes.${i}.nom`)}
+							<p class="mt-1 text-xs text-warning">{fieldError(errors, `lignes.${i}.nom`)}</p>
+						{/if}
 					</div>
 					{#if lignes.length > 1}
 						<button
@@ -99,8 +93,7 @@
 						id="ligne-desc-{ligne.id}"
 						class="field-input"
 						rows="2"
-						bind:value={ligne.description}
-					></textarea>
+						bind:value={ligne.description}></textarea>
 				</div>
 
 				<div class="mt-3 grid gap-4 sm:grid-cols-2">
@@ -127,7 +120,7 @@
 							{/each}
 							<button
 								type="button"
-								class="text-sm font-medium text-accent-600 hover:text-accent-700"
+								class="hover:text-accent-700 text-sm font-medium text-accent-600"
 								onclick={() => addTexte(ligne, 'inclus')}
 							>
 								+ Ajouter un élément inclus
@@ -157,7 +150,7 @@
 							{/each}
 							<button
 								type="button"
-								class="text-sm font-medium text-accent-600 hover:text-accent-700"
+								class="hover:text-accent-700 text-sm font-medium text-accent-600"
 								onclick={() => addTexte(ligne, 'nonInclus')}
 							>
 								+ Ajouter une exclusion
@@ -224,7 +217,7 @@
 						<div class="mt-3 space-y-2">
 							{#each ligne.items as item (item.id)}
 								<div class="flex flex-wrap items-end gap-2">
-									<div class="min-w-[10rem] flex-1">
+									<div class="min-w-40 flex-1">
 										<label class="field-label" for="item-desc-{item.id}">Description</label>
 										<input
 											id="item-desc-{item.id}"
@@ -267,7 +260,7 @@
 							{/each}
 							<button
 								type="button"
-								class="text-sm font-medium text-accent-600 hover:text-accent-700"
+								class="hover:text-accent-700 text-sm font-medium text-accent-600"
 								onclick={() => addItem(ligne)}
 							>
 								+ Ajouter une ligne
@@ -278,6 +271,9 @@
 					<p class="mt-3 text-sm font-medium text-ink">
 						Sous-total de cette ligne : {formatCad(lineTotal(ligne))}
 					</p>
+					{#if fieldError(errors, `lignes.${i}.montant`)}
+						<p class="mt-1 text-xs text-warning">{fieldError(errors, `lignes.${i}.montant`)}</p>
+					{/if}
 				</div>
 
 				<div class="mt-3 max-w-xs">
@@ -300,6 +296,10 @@
 		onclick={addLigne}
 	>
 		<Icon name="plus" size={16} />
-		Ajouter {structureProjet === 'phases' ? 'une phase' : structureProjet === 'blocs' ? 'un bloc' : 'un service'}
+		Ajouter {structureProjet === 'phases'
+			? 'une phase'
+			: structureProjet === 'blocs'
+				? 'un bloc'
+				: 'un service'}
 	</button>
 </FormSection>

@@ -14,11 +14,24 @@
 		{ key: 'litiges', label: "Litiges — district d'Arthabaska, lois du Québec" },
 		{ key: 'signatureElectronique', label: 'Reconnaissance de la signature électronique' }
 	];
+
+	const clausesActives = $derived(
+		clauseOptions.filter((opt) => conditions.clauses[opt.key]).length
+	);
 </script>
+
+{#snippet summary()}
+	Garantie {conditions.dureeGarantieJours}&nbsp;j · Support {conditions.dureeSupportMois}&nbsp;mois
+	·
+	{clausesActives}/{clauseOptions.length} clauses actives
+{/snippet}
 
 <FormSection
 	title="Conditions"
 	description="Clauses standards et paramètres habituellement variables d'un contrat à l'autre."
+	collapsible
+	defaultOpen={false}
+	{summary}
 >
 	<div class="grid gap-5 sm:grid-cols-2">
 		<div>
@@ -94,13 +107,14 @@
 	</div>
 
 	<div>
-		<label class="field-label" for="notes-additionnelles">Conditions particulières additionnelles</label>
+		<label class="field-label" for="notes-additionnelles"
+			>Conditions particulières additionnelles</label
+		>
 		<textarea
 			id="notes-additionnelles"
 			class="field-input"
 			rows="3"
 			bind:value={conditions.notesAdditionnelles}
-			placeholder="Toute clause spécifique à ce mandat…"
-		></textarea>
+			placeholder="Toute clause spécifique à ce mandat…"></textarea>
 	</div>
 </FormSection>

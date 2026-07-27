@@ -11,10 +11,10 @@
 		<h2 class="text-lg font-semibold text-ink">Documents récents</h2>
 		{#if documents.length > 0}
 			<a
-				href="/documents"
+				href="/clients"
 				class="flex items-center gap-1 text-sm font-medium text-accent-500 hover:text-accent-600"
 			>
-				Voir tout
+				Clients
 				<Icon name="arrow-right" size={16} />
 			</a>
 		{/if}

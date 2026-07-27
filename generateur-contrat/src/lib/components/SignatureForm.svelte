@@ -12,9 +12,23 @@
 		representantIntebecNom: string;
 		representantIntebecTitre: string;
 	} = $props();
+
+	const dateFormatted = $derived(
+		dateSignature
+			? new Date(`${dateSignature}T00:00:00`).toLocaleDateString('fr-CA', {
+					day: 'numeric',
+					month: 'long',
+					year: 'numeric'
+				})
+			: '—'
+	);
 </script>
 
-<FormSection title="Signature">
+{#snippet summary()}
+	{lieuSignature || '—'} · {dateFormatted} · {representantIntebecNom || '—'}
+{/snippet}
+
+<FormSection title="Signature" collapsible defaultOpen={false} {summary}>
 	<div class="grid gap-5 sm:grid-cols-2">
 		<div>
 			<label class="field-label" for="lieu-signature">Lieu</label>

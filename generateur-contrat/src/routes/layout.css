@@ -65,4 +65,12 @@
 	.field-hint {
 		@apply mt-1 text-xs text-ink-muted;
 	}
+
+	.section-summary {
+		list-style: none;
+	}
+
+	.section-summary::-webkit-details-marker {
+		display: none;
+	}
 }

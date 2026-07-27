@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { DocumentType, StructureProjet } from '$lib/types';
+	import type { ValidationError } from '$lib/validation';
+	import { fieldError } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 
@@ -7,12 +9,14 @@
 		type = $bindable(),
 		titre = $bindable(),
 		structureProjet = $bindable(),
-		objet = $bindable()
+		objet = $bindable(),
+		errors = []
 	}: {
 		type: DocumentType;
 		titre: string;
 		structureProjet: StructureProjet;
 		objet: string;
+		errors?: ValidationError[];
 	} = $props();
 
 	const types: {
@@ -97,6 +101,9 @@
 			bind:value={titre}
 			placeholder="Ex. Transformation numérique"
 		/>
+		{#if fieldError(errors, 'titre')}
+			<p class="mt-1 text-xs text-warning">{fieldError(errors, 'titre')}</p>
+		{/if}
 	</div>
 
 	<div>
@@ -132,7 +139,9 @@
 			class="field-input"
 			rows="3"
 			bind:value={objet}
-			placeholder="Décrivez brièvement le mandat…"
-		></textarea>
+			placeholder="Décrivez brièvement le mandat…"></textarea>
+		{#if fieldError(errors, 'objet')}
+			<p class="mt-1 text-xs text-warning">{fieldError(errors, 'objet')}</p>
+		{/if}
 	</div>
 </FormSection>

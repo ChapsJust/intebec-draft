@@ -16,6 +16,13 @@
 
 		<nav class="flex items-center gap-1">
 			<a
+				href="/clients"
+				class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-surface-muted hover:text-ink"
+			>
+				<Icon name="user" size={18} />
+				<span class="hidden sm:inline">Clients</span>
+			</a>
+			<a
 				href="/aide"
 				class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 			>

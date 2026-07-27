@@ -99,3 +99,26 @@ export interface MandatDraft {
 	representantIntebecNom: string;
 	representantIntebecTitre: string;
 }
+
+/** Fiche client persistée — source de vérité pour un client réutilisable d'un mandat à l'autre. */
+export interface ClientRecord extends ClientInfo {
+	id: string;
+	notes: string;
+	archiveLe: string | null;
+	creeLe: string;
+	majLe: string;
+}
+
+/** Mandat persisté. `draft` est le snapshot figé au moment de l'enregistrement — voir clientId vs draft.client. */
+export interface MandatRecord {
+	id: string;
+	clientId: string | null;
+	type: DocumentType;
+	statut: DocumentStatus;
+	titre: string;
+	clientNom: string;
+	totalNet: number;
+	draft: MandatDraft;
+	creeLe: string;
+	majLe: string;
+}
