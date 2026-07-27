@@ -1,0 +1,18 @@
+# Image de développement : app SvelteKit + outils Drizzle.
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Évite le téléchargement des navigateurs Playwright pendant npm ci (inutile ici).
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+# Installe les dépendances en couche cachée (relancée seulement si package*.json change).
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Le reste du code est monté en volume par compose en dev (hot reload).
+COPY . .
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

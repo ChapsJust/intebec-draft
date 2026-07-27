@@ -1,0 +1,13 @@
+node_modules
+.svelte-kit
+build
+.git
+.vscode
+# Les variables sont fournies par compose.yaml, pas par le fichier .env
+.env
+.env.*
+!.env.example
+npm-debug.log*
+Dockerfile.dev
+compose.yaml
+README.md

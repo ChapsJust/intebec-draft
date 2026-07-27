@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: generateur-contrat-db
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: local
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U root -d local']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Applique les migrations Drizzle puis s'arrête
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: generateur-contrat-app
+    command: npm run db:migrate
+    environment:
+      DATABASE_URL: postgres://root:mysecretpassword@db:5432/local
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  # Serveur de développement SvelteKit
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: generateur-contrat-app
+    container_name: generateur-contrat-app
+    ports:
+      - 5173:5173
+    environment:
+      DATABASE_URL: postgres://root:mysecretpassword@db:5432/local
+      VITE_USE_POLLING: 'true'
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  node_modules:
