@@ -7,8 +7,19 @@ import { sveltekit } from '@sveltejs/kit/vite';
 export default defineConfig({
 	server: {
 		host: true,
-		// Le polling permet au hot reload de fonctionner à travers le bind mount Docker (Windows).
-		watch: process.env.VITE_USE_POLLING ? { usePolling: true } : undefined
+		// Le polling permet au hot reload de fonctionner à travers le bind mount Docker (Windows) :
+		// les événements inotify ne traversent pas la frontière entre l'hôte et le conteneur.
+		// Sans intervalle explicite, chokidar interroge le disque toutes les 100 ms, ce qui
+		// consommait 19 % de CPU en continu, machine au repos. À 800 ms le hot reload reste
+		// imperceptiblement plus lent et la charge devient négligeable.
+		watch: process.env.VITE_USE_POLLING
+			? {
+					usePolling: true,
+					interval: 800,
+					binaryInterval: 1500,
+					ignored: ['**/node_modules/**', '**/.svelte-kit/**', '**/build/**', '**/.git/**']
+				}
+			: undefined
 	},
 	plugins: [
 		tailwindcss(),

@@ -22,6 +22,20 @@ async function persist(
 	return saveMandat(draft, { id: mandatId, clientId: finalClientId, statut });
 }
 
+/** Lance la passe de rédaction et la persiste. Renvoie `false` plutôt que de propager lorsque
+ * l'IA locale est injoignable : la génération ne doit jamais échouer parce qu'Ollama est éteint,
+ * le document déterministe reste valable et la rédaction est rejouable depuis l'aperçu. */
+async function appliquerRedaction(id: string, draft: MandatDraft): Promise<boolean> {
+	try {
+		const redaction = await redigerDocument(draft);
+		await saveRedaction(id, redaction);
+		return true;
+	} catch (err) {
+		if (err instanceof OllamaIndisponibleError) return false;
+		throw err;
+	}
+}
+
 /** Actions de sauvegarde partagées entre /nouveau (création) et /mandats/[id] (édition) le seul
  * point de bascule entre les deux est `params.id`, absent sur la première et présent sur la seconde. */
 export const mandatActions: Actions = {
@@ -40,7 +54,12 @@ export const mandatActions: Actions = {
 			});
 		}
 		const record = await persist(draft, clientId, saveAsNewClient, 'genere', params.id);
-		throw redirect(303, `/mandats/${record.id}/apercu`);
+
+		// Générer, c'est rédiger : la passe IA adapte la prose au client dans la foulée, sans
+		// deuxième clic. Si l'IA est injoignable on livre quand même le document déterministe,
+		// signalé à l'aperçu, où la rédaction reste relançable.
+		const iaReussie = await appliquerRedaction(record.id, draft);
+		throw redirect(303, `/mandats/${record.id}/apercu${iaReussie ? '' : '?ia=indisponible'}`);
 	},
 
 	updateClient: async ({ request }) => {
@@ -79,8 +98,9 @@ export const mandatActions: Actions = {
 	}
 };
 
-/** Passe complète de rédaction sur un mandat déjà enregistré. La prose est stockée dans la
- * colonne `redaction`, à côté du draft : la saisie reste intacte et l'opération est rejouable. */
+/** Relance manuelle de la rédaction sur un mandat déjà enregistré, pour reprendre après une IA
+ * injoignable ou simplement retenter une autre formulation. La prose est stockée dans la colonne
+ * `redaction`, à côté du draft : la saisie reste intacte et l'opération est rejouable. */
 export const redigerDocumentAction: Action = async ({ params }) => {
 	const id = params.id;
 	if (!id) return fail(400, { ok: false, message: 'Identifiant manquant.' });

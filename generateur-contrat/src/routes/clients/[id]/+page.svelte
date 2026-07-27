@@ -82,6 +82,13 @@
 							<span class="block text-sm text-ink-muted">{formatCad(m.totalNet)}</span>
 						</a>
 						<StatusBadge status={m.statut} />
+						<a
+							href="/mandats/{m.id}/pdf"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-surface-muted"
+						>
+							<Icon name="download" size={14} />
+							PDF
+						</a>
 						<form method="POST" action="?/dupliquer" use:enhance>
 							<input type="hidden" name="id" value={m.id} />
 							<button

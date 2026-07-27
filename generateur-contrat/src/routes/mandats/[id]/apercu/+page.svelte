@@ -64,14 +64,6 @@
 				</form>
 			{/if}
 
-			<button
-				type="button"
-				onclick={() => window.print()}
-				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
-			>
-				Imprimer
-			</button>
-
 			<!-- Le PDF est produit côté serveur : c'est la seule voie qui permet une numérotation
 				« Page X sur Y », le nombre total de pages n'étant pas accessible au CSS. -->
 			<a
@@ -91,6 +83,18 @@
 				: 'border-warning/30 bg-warning/5 text-warning'}"
 		>
 			{form.message}
+		</div>
+	{/if}
+
+	{#if data.iaIndisponible && !redaction}
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"
+		>
+			<Icon name="sparkles" size={16} />
+			<span>
+				L’IA locale n’a pas pu être jointe : le document ci-dessous reprend votre saisie telle
+				quelle, sans adaptation. Démarrez Ollama, puis relancez la rédaction.
+			</span>
 		</div>
 	{/if}
 

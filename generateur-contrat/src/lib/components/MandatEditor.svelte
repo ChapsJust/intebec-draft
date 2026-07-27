@@ -27,6 +27,7 @@
 
 	let showPreview = $state(false);
 	let attemptedGenerate = $state(false);
+	let generationEnCours = $state(false);
 	let updatingClient = $state(false);
 	let clientUpdateMessage = $state<string | null>(null);
 
@@ -90,7 +91,20 @@
 	}
 </script>
 
-<form method="POST" action="?/enregistrer" use:enhance class="space-y-6">
+<form
+	method="POST"
+	action="?/enregistrer"
+	use:enhance={({ action }) => {
+		// La génération embarque la passe de rédaction IA : plusieurs dizaines de secondes pendant
+		// lesquelles rien ne bouge à l'écran si on ne le dit pas. L'enregistrement, lui, est immédiat.
+		generationEnCours = action.search === '?/generer';
+		return async ({ update }) => {
+			await update();
+			generationEnCours = false;
+		};
+	}}
+	class="space-y-6"
+>
 	<input type="hidden" name="payload" value={JSON.stringify(draft)} />
 	<input type="hidden" name="clientId" value={clientId ?? ''} />
 	<input type="hidden" name="saveAsNewClient" value={saveAsNewClient ? '1' : ''} />
@@ -175,7 +189,8 @@
 			<button
 				type="submit"
 				formaction="?/enregistrer"
-				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+				disabled={generationEnCours}
+				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-muted disabled:opacity-60"
 			>
 				Enregistrer le brouillon
 			</button>
@@ -183,9 +198,10 @@
 				type="submit"
 				formaction="?/generer"
 				onclick={handleGenerateClick}
-				class="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600"
+				disabled={generationEnCours}
+				class="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
 			>
-				Générer le document
+				{generationEnCours ? 'Rédaction par l’IA en cours…' : 'Générer le document'}
 			</button>
 		</div>
 	</div>
