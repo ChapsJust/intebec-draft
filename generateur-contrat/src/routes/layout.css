@@ -48,3 +48,21 @@
 		outline-offset: 2px;
 	}
 }
+
+@layer components {
+	.section-card {
+		@apply rounded-card border border-border-subtle bg-surface p-6 shadow-sm sm:p-8;
+	}
+
+	.field-label {
+		@apply mb-1 block text-sm font-medium text-ink;
+	}
+
+	.field-input {
+		@apply block w-full rounded-lg border-border-subtle text-sm text-ink shadow-sm focus:border-accent-500 focus:ring-accent-500;
+	}
+
+	.field-hint {
+		@apply mt-1 text-xs text-ink-muted;
+	}
+}

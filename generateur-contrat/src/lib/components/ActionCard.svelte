@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
 
-	type IconName = 'document' | 'contract';
+	type IconName = 'document' | 'contract' | 'sparkles';
 
 	let {
 		href,

@@ -1,5 +1,5 @@
 // Nom d'affichage de l'application.
-// Placeholder pour le projet école — à remplacer par le nom réel avant la mise en production.
+// Placeholder pour le projet école.
 export const APP_NAME = 'DocGen';
 
 // Baseline affichée sous le nom / dans le hero.
