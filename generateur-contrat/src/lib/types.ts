@@ -100,7 +100,7 @@ export interface MandatDraft {
 	representantIntebecTitre: string;
 }
 
-/** Fiche client persistée — source de vérité pour un client réutilisable d'un mandat à l'autre. */
+/** Fiche client persistée : source de vérité pour un client réutilisable d'un mandat à l'autre. */
 export interface ClientRecord extends ClientInfo {
 	id: string;
 	notes: string;
@@ -109,7 +109,20 @@ export interface ClientRecord extends ClientInfo {
 	majLe: string;
 }
 
-/** Mandat persisté. `draft` est le snapshot figé au moment de l'enregistrement — voir clientId vs draft.client. */
+/** Prose produite par l'IA locale, stockée **à côté** du draft et jamais à sa place.
+ * C'est ce qui rend la passe de rédaction rejouable : la saisie de l'utilisateur reste intacte,
+ * on peut relancer la génération, comparer, ou revenir en arrière en effaçant la rédaction.
+ * L'IA ne touche qu'à la prose : montants, dates et clauses restent calculés par le template. */
+export interface RedactionIA {
+	preambule: string;
+	objet: string;
+	/** Descriptions réécrites, indexées par `ServiceLine.id`. */
+	lignes: Record<string, string>;
+	genereLe: string;
+	modele: string;
+}
+
+/** Mandat persisté. `draft` est le snapshot figé au moment de l'enregistrement : voir clientId vs draft.client. */
 export interface MandatRecord {
 	id: string;
 	clientId: string | null;
@@ -119,6 +132,7 @@ export interface MandatRecord {
 	clientNom: string;
 	totalNet: number;
 	draft: MandatDraft;
+	redaction: RedactionIA | null;
 	creeLe: string;
 	majLe: string;
 }

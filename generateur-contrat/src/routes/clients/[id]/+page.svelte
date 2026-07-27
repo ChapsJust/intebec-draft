@@ -27,7 +27,7 @@
 				<dd class="text-ink">
 					{[data.client.representantNom, data.client.representantTitre]
 						.filter(Boolean)
-						.join(' · ') || '—'}
+						.join(' · ') || 'Non renseigné'}
 				</dd>
 			</div>
 			<div>
@@ -36,15 +36,15 @@
 			</div>
 			<div>
 				<dt class="text-ink-muted">Courriel</dt>
-				<dd class="text-ink">{data.client.courriel || '—'}</dd>
+				<dd class="text-ink">{data.client.courriel || 'Non renseigné'}</dd>
 			</div>
 			<div>
 				<dt class="text-ink-muted">Téléphone</dt>
-				<dd class="text-ink">{data.client.telephone || '—'}</dd>
+				<dd class="text-ink">{data.client.telephone || 'Non renseigné'}</dd>
 			</div>
 			<div class="sm:col-span-2">
 				<dt class="text-ink-muted">Adresse</dt>
-				<dd class="text-ink">{data.client.adresse || '—'}</dd>
+				<dd class="text-ink">{data.client.adresse || 'Non renseigné'}</dd>
 			</div>
 		</dl>
 		<form

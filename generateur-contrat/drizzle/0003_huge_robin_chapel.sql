@@ -1,0 +1,1 @@
+ALTER TABLE "mandat" ADD COLUMN "redaction" jsonb;

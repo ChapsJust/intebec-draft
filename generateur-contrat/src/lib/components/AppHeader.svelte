@@ -29,13 +29,6 @@
 				<Icon name="help" size={18} />
 				<span class="hidden sm:inline">Aide</span>
 			</a>
-			<button
-				type="button"
-				class="flex h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-ink-muted transition hover:text-ink"
-				aria-label="Compte utilisateur"
-			>
-				<Icon name="user" size={18} />
-			</button>
 		</nav>
 	</div>
 </header>

@@ -43,6 +43,18 @@
 		}
 	}
 
+	/** Appelle une form action sans quitter la page. L'en-tête `x-sveltekit-action` est
+	 * indispensable : sans lui SvelteKit traite la requête comme une soumission classique et
+	 * répond par une redirection HTML, que `deserialize()` ne sait pas lire. */
+	async function postAction(action: string, body: FormData) {
+		const response = await fetch(action, {
+			method: 'POST',
+			headers: { 'x-sveltekit-action': 'true' },
+			body
+		});
+		return deserialize(await response.text());
+	}
+
 	async function updateClientRecord() {
 		if (!clientId) return;
 		updatingClient = true;
@@ -50,14 +62,31 @@
 		const body = new FormData();
 		body.set('id', clientId);
 		body.set('payload', JSON.stringify(draft.client));
-		const response = await fetch('?/updateClient', { method: 'POST', body });
-		const result = deserialize(await response.text());
+		const result = await postAction('?/updateClient', body);
 		updatingClient = false;
 		if (result.type === 'success') {
 			clientUpdateMessage = 'Fiche client mise à jour.';
 			await invalidateAll();
 		}
 		await applyAction(result);
+	}
+
+	/** Demande une proposition de texte à l'IA locale pour un champ précis. Rien n'est persisté :
+	 * la proposition remonte au bouton, qui laisse l'utilisateur l'accepter ou l'ignorer. */
+	async function proposerTexte(champ: string): Promise<string> {
+		const body = new FormData();
+		body.set('payload', JSON.stringify(draft));
+		body.set('champ', champ);
+		const result = await postAction('?/redigerChamp', body);
+
+		if (result.type === 'success' && typeof result.data?.texte === 'string') {
+			return result.data.texte;
+		}
+		const message =
+			result.type === 'failure' && typeof result.data?.message === 'string'
+				? result.data.message
+				: "L'IA locale n'a pas répondu.";
+		throw new Error(message);
 	}
 </script>
 
@@ -78,6 +107,7 @@
 		bind:structureProjet={draft.structureProjet}
 		bind:objet={draft.objet}
 		errors={visibleErrors}
+		onRediger={proposerTexte}
 	/>
 
 	<ClientForm
@@ -96,6 +126,7 @@
 		bind:lignes={draft.lignes}
 		structureProjet={draft.structureProjet}
 		errors={visibleErrors}
+		onRediger={proposerTexte}
 	/>
 
 	<PricingTotals

@@ -1,9 +1,10 @@
 import { fail, redirect, type Action, type Actions } from '@sveltejs/kit';
 import { createClient, updateClient } from './db/clients';
-import { getMandat, saveMandat } from './db/mandats';
+import { getMandat, saveMandat, saveRedaction } from './db/mandats';
 import { validateDraft } from '$lib/validation';
 import { duplicateDraft } from '$lib/mandat';
 import { parseMandatSubmission } from './mandatForm';
+import { OllamaIndisponibleError, redigerChamp, redigerDocument, type CibleChamp } from './ollama';
 import type { DocumentStatus, MandatDraft } from '$lib/types';
 
 async function persist(
@@ -21,7 +22,7 @@ async function persist(
 	return saveMandat(draft, { id: mandatId, clientId: finalClientId, statut });
 }
 
-/** Actions de sauvegarde partagées entre /nouveau (création) et /mandats/[id] (édition) — le seul
+/** Actions de sauvegarde partagées entre /nouveau (création) et /mandats/[id] (édition) le seul
  * point de bascule entre les deux est `params.id`, absent sur la première et présent sur la seconde. */
 export const mandatActions: Actions = {
 	enregistrer: async ({ request, params }) => {
@@ -39,7 +40,7 @@ export const mandatActions: Actions = {
 			});
 		}
 		const record = await persist(draft, clientId, saveAsNewClient, 'genere', params.id);
-		throw redirect(303, `/mandats/${record.id}?genere=1`);
+		throw redirect(303, `/mandats/${record.id}/apercu`);
 	},
 
 	updateClient: async ({ request }) => {
@@ -51,10 +52,63 @@ export const mandatActions: Actions = {
 		}
 		await updateClient(id, JSON.parse(payload));
 		return { message: 'Fiche client mise à jour.' };
+	},
+
+	/** Aide ponctuelle pendant la saisie : renvoie une proposition pour un seul champ, sans rien
+	 * persister. C'est l'utilisateur qui décide de l'appliquer ou non. */
+	redigerChamp: async ({ request }) => {
+		const data = await request.formData();
+		const payload = data.get('payload');
+		const champ = data.get('champ');
+		if (typeof payload !== 'string' || typeof champ !== 'string') {
+			return fail(400, { ok: false, champ: '', message: 'Requête invalide.' });
+		}
+
+		const draft = JSON.parse(payload) as MandatDraft;
+		const cible: CibleChamp = champ === 'objet' ? { kind: 'objet' } : { kind: 'ligne', id: champ };
+
+		try {
+			const texte = await redigerChamp(draft, cible);
+			return { ok: true, champ, texte, message: '' };
+		} catch (err) {
+			if (err instanceof OllamaIndisponibleError) {
+				return fail(503, { ok: false, champ, message: err.message });
+			}
+			throw err;
+		}
 	}
 };
 
-/** Duplique un mandat existant vers un nouveau brouillon — le raccourci le plus rapide pour un client récurrent. */
+/** Passe complète de rédaction sur un mandat déjà enregistré. La prose est stockée dans la
+ * colonne `redaction`, à côté du draft : la saisie reste intacte et l'opération est rejouable. */
+export const redigerDocumentAction: Action = async ({ params }) => {
+	const id = params.id;
+	if (!id) return fail(400, { ok: false, message: 'Identifiant manquant.' });
+
+	const existing = await getMandat(id);
+	if (!existing) return fail(404, { ok: false, message: 'Mandat introuvable.' });
+
+	try {
+		const redaction = await redigerDocument(existing.draft);
+		await saveRedaction(id, redaction);
+		return { ok: true, message: 'Document rédigé par l’IA locale.' };
+	} catch (err) {
+		if (err instanceof OllamaIndisponibleError) {
+			return fail(503, { ok: false, message: err.message });
+		}
+		throw err;
+	}
+};
+
+/** Revient à la saisie brute en effaçant la prose générée. */
+export const effacerRedactionAction: Action = async ({ params }) => {
+	const id = params.id;
+	if (!id) return fail(400, { ok: false, message: 'Identifiant manquant.' });
+	await saveRedaction(id, null);
+	return { ok: true, message: 'Retour à votre saisie.' };
+};
+
+/** Duplique un mandat existant vers un nouveau brouillon le raccourci le plus rapide pour un client récurrent. */
 export const duplicateMandatAction: Action = async ({ request }) => {
 	const data = await request.formData();
 	const id = data.get('id');

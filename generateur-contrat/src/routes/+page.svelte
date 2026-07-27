@@ -9,7 +9,7 @@
 	const documents: DocumentSummary[] = data.mandats.map((m) => ({
 		id: m.id,
 		title: m.titre || 'Sans titre',
-		client: m.clientNom || '—',
+		client: m.clientNom || 'Client à définir',
 		type: m.type,
 		status: m.statut,
 		updatedAt: m.majLe

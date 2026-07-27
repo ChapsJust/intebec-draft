@@ -14,7 +14,7 @@
 			href="/nouveau"
 			icon="sparkles"
 			title="Nouveau document"
-			description="Soumission ou contrat — le type se précise dans le formulaire"
+			description="Soumission ou contrat : le type se précise dans le formulaire"
 		/>
 	</div>
 </section>

@@ -3,7 +3,7 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-/* Design tokens — direction "corporate sobre & pro" */
+/* Design tokens : direction "corporate sobre & pro" */
 @theme {
 	--font-sans:
 		'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -72,5 +72,37 @@
 
 	.section-summary::-webkit-details-marker {
 		display: none;
+	}
+}
+
+/* Impression : le seul chemin d'export PDF pour l'instant (Ctrl+P → Enregistrer en PDF).
+	Le chrome applicatif est retiré côté layout via `print:hidden` ; ici on neutralise ce qui
+	relève de l'écran (fonds, ombres, arrondis) pour ne laisser que le document. */
+@page {
+	size: letter;
+	margin: 18mm;
+}
+
+@media print {
+	body {
+		background: #fff;
+	}
+
+	/* Force l'impression des aplats de couleur (en-têtes de tableau, filets) que les
+		navigateurs suppriment par défaut pour économiser l'encre. */
+	* {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+	.section-card,
+	.rounded-card {
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+
+	a[href]::after {
+		content: '';
 	}
 }

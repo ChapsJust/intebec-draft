@@ -47,6 +47,13 @@ services:
     environment:
       DATABASE_URL: postgres://root:mysecretpassword@db:5432/local
       VITE_USE_POLLING: 'true'
+      # IA locale. `host.docker.internal` pointe vers la machine hôte : c'est elle qui porte
+      # la connexion Tailscale vers le Mac Studio. Remplacer par l'adresse Tailscale directe
+      # (http://<nom-machine>:11434) pour joindre le serveur sans passer par l'hôte.
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     volumes:
       - .:/app
       - node_modules:/app/node_modules

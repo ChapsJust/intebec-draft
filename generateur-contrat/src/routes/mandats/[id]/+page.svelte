@@ -11,25 +11,29 @@
 	let saveAsNewClient = $state(false);
 
 	const banner = $derived(
-		page.url.searchParams.get('genere') === '1'
-			? "Mandat enregistré avec le statut « Généré ». La génération automatique du document (PDF) n'est pas encore implémentée."
-			: page.url.searchParams.get('saved') === '1'
-				? 'Brouillon enregistré.'
-				: undefined
+		page.url.searchParams.get('saved') === '1' ? 'Brouillon enregistré.' : undefined
 	);
 </script>
 
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-semibold text-ink">
-			{draft.type === 'contrat' ? 'Contrat' : 'Soumission'} — {draft.titre || 'Sans titre'}
+			{draft.type === 'contrat' ? 'Contrat' : 'Soumission'} · {draft.titre || 'Sans titre'}
 		</h1>
-		<a
-			href="/"
-			class="inline-flex items-center rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
-		>
-			← Retour à l'accueil
-		</a>
+		<div class="flex gap-3">
+			<a
+				href="/"
+				class="inline-flex items-center rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
+			>
+				← Retour à l'accueil
+			</a>
+			<a
+				href="/mandats/{data.mandat.id}/apercu"
+				class="inline-flex items-center rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
+			>
+				Voir le document
+			</a>
+		</div>
 	</div>
 
 	<MandatEditor bind:draft bind:clientId bind:saveAsNewClient clients={data.clients} {banner} />

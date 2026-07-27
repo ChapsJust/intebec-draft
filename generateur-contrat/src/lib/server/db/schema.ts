@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, numeric, jsonb } from 'drizzle-orm/pg-core';
-import type { MandatDraft } from '$lib/types';
+import type { MandatDraft, RedactionIA } from '$lib/types';
 
 export const client = pgTable('client', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -27,6 +27,7 @@ export const mandat = pgTable('mandat', {
 	clientNom: text('client_nom').notNull().default(''),
 	totalNet: numeric('total_net', { precision: 12, scale: 2 }).notNull().default('0'),
 	draft: jsonb('draft').$type<MandatDraft>().notNull(),
+	redaction: jsonb('redaction').$type<RedactionIA>(),
 	creeLe: timestamp('cree_le', { withTimezone: true }).notNull().defaultNow(),
 	majLe: timestamp('maj_le', { withTimezone: true }).notNull().defaultNow()
 });

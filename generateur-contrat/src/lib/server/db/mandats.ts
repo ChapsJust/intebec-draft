@@ -1,7 +1,7 @@
 import { eq, desc } from 'drizzle-orm';
 import { db } from './index';
 import { mandat } from './schema';
-import type { MandatDraft, MandatRecord, DocumentStatus } from '$lib/types';
+import type { MandatDraft, MandatRecord, DocumentStatus, RedactionIA } from '$lib/types';
 import { totalNet } from '$lib/pricing';
 
 function toRecord(row: typeof mandat.$inferSelect): MandatRecord {
@@ -14,6 +14,7 @@ function toRecord(row: typeof mandat.$inferSelect): MandatRecord {
 		clientNom: row.clientNom,
 		totalNet: Number(row.totalNet),
 		draft: row.draft,
+		redaction: row.redaction ?? null,
 		creeLe: row.creeLe.toISOString(),
 		majLe: row.majLe.toISOString()
 	};
@@ -57,6 +58,21 @@ export async function saveMandat(
 
 	const [row] = await db.insert(mandat).values(values).returning();
 	return toRecord(row);
+}
+
+/** Enregistre (ou efface, avec `null`) la prose générée par l'IA. Volontairement séparé de
+ * `saveMandat` : sauvegarder le brouillon ne doit jamais toucher à la rédaction, et relancer la
+ * rédaction ne doit jamais toucher à la saisie. */
+export async function saveRedaction(
+	id: string,
+	redaction: RedactionIA | null
+): Promise<MandatRecord | null> {
+	const [row] = await db
+		.update(mandat)
+		.set({ redaction, majLe: new Date() })
+		.where(eq(mandat.id, id))
+		.returning();
+	return row ? toRecord(row) : null;
 }
 
 export async function deleteMandat(id: string): Promise<void> {

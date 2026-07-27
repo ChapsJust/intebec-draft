@@ -2,19 +2,23 @@
 	import type { ServiceLine, PricingMode, StructureProjet } from '$lib/types';
 	import { lineTotal, formatCad } from '$lib/pricing';
 	import { createEmptyLigne } from '$lib/mandat';
+	import { libelleLigne } from '$lib/document/format';
 	import type { ValidationError } from '$lib/validation';
 	import { fieldError } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
+	import AiAssistButton from './AiAssistButton.svelte';
 
 	let {
 		lignes = $bindable(),
 		structureProjet,
-		errors = []
+		errors = [],
+		onRediger
 	}: {
 		lignes: ServiceLine[];
 		structureProjet: StructureProjet;
 		errors?: ValidationError[];
+		onRediger?: (champ: string) => Promise<string>;
 	} = $props();
 
 	function addLigne() {
@@ -43,9 +47,9 @@
 		if (idx !== -1) ligne.items.splice(idx, 1);
 	}
 
-	const lineLabel = $derived(
-		structureProjet === 'phases' ? 'Phase' : structureProjet === 'blocs' ? 'Bloc' : 'Service'
-	);
+	// Même source que le document généré, pour que le vocabulaire ne diverge jamais entre la
+	// saisie et le contrat produit.
+	const lineLabel = $derived(libelleLigne(structureProjet));
 
 	const pricingModes: { value: PricingMode; label: string }[] = [
 		{ value: 'forfaitaire', label: 'Forfaitaire' },
@@ -63,7 +67,9 @@
 			<div class="rounded-lg border border-border-subtle p-4">
 				<div class="flex items-start justify-between gap-3">
 					<div class="flex-1">
-						<label class="field-label" for="ligne-nom-{ligne.id}">{lineLabel} {i + 1} — nom</label>
+						<label class="field-label" for="ligne-nom-{ligne.id}"
+							>Nom : {lineLabel.toLowerCase()} {i + 1}</label
+						>
 						<input
 							id="ligne-nom-{ligne.id}"
 							class="field-input"
@@ -94,6 +100,16 @@
 						class="field-input"
 						rows="2"
 						bind:value={ligne.description}></textarea>
+					{#if onRediger}
+						<div class="mt-2">
+							<AiAssistButton
+								champ={ligne.id}
+								rediger={onRediger}
+								appliquer={(texte) => (ligne.description = texte)}
+								label="Étoffer avec l’IA"
+							/>
+						</div>
+					{/if}
 				</div>
 
 				<div class="mt-3 grid gap-4 sm:grid-cols-2">

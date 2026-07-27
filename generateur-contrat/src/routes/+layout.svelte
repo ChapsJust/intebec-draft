@@ -9,10 +9,14 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
+<!-- Le chrome applicatif est masqué à l'impression : la page d'aperçu peut ainsi garder la
+	navigation à l'écran tout en ne sortant que le document sur papier. -->
 <div class="flex min-h-screen flex-col">
-	<AppHeader />
-	<main class="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+	<div class="print:hidden"><AppHeader /></div>
+	<main
+		class="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10 print:max-w-none print:p-0"
+	>
 		{@render children()}
 	</main>
-	<AppFooter />
+	<div class="print:hidden"><AppFooter /></div>
 </div>

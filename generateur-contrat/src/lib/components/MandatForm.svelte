@@ -4,19 +4,22 @@
 	import { fieldError } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
+	import AiAssistButton from './AiAssistButton.svelte';
 
 	let {
 		type = $bindable(),
 		titre = $bindable(),
 		structureProjet = $bindable(),
 		objet = $bindable(),
-		errors = []
+		errors = [],
+		onRediger
 	}: {
 		type: DocumentType;
 		titre: string;
 		structureProjet: StructureProjet;
 		objet: string;
 		errors?: ValidationError[];
+		onRediger?: (champ: string) => Promise<string>;
 	} = $props();
 
 	const types: {
@@ -142,6 +145,16 @@
 			placeholder="Décrivez brièvement le mandat…"></textarea>
 		{#if fieldError(errors, 'objet')}
 			<p class="mt-1 text-xs text-warning">{fieldError(errors, 'objet')}</p>
+		{/if}
+		{#if onRediger}
+			<div class="mt-2">
+				<AiAssistButton
+					champ="objet"
+					rediger={onRediger}
+					appliquer={(texte) => (objet = texte)}
+					label="Étoffer avec l’IA"
+				/>
+			</div>
 		{/if}
 	</div>
 </FormSection>

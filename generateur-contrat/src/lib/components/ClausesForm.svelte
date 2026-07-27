@@ -11,7 +11,7 @@
 		},
 		{ key: 'limitationResponsabilite', label: 'Limitation de responsabilité' },
 		{ key: 'propriete', label: 'Propriété des données et du travail livré' },
-		{ key: 'litiges', label: "Litiges — district d'Arthabaska, lois du Québec" },
+		{ key: 'litiges', label: "Litiges (district d'Arthabaska, lois du Québec)" },
 		{ key: 'signatureElectronique', label: 'Reconnaissance de la signature électronique' }
 	];
 

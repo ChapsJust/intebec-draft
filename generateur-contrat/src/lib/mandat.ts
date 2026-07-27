@@ -14,7 +14,7 @@ export function createEmptyClient(): ClientInfo {
 	};
 }
 
-/** Ne garde que les champs de contrat d'un client persisté — exclut id/notes/dates. */
+/** Ne garde que les champs de contrat d'un client persisté : exclut id/notes/dates. */
 export function clientRecordToInfo(record: ClientRecord): ClientInfo {
 	const {
 		nom,

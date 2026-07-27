@@ -20,12 +20,13 @@
 					month: 'long',
 					year: 'numeric'
 				})
-			: '—'
+			: 'Date à définir'
 	);
 </script>
 
 {#snippet summary()}
-	{lieuSignature || '—'} · {dateFormatted} · {representantIntebecNom || '—'}
+	{lieuSignature || 'Lieu à définir'} · {dateFormatted} · {representantIntebecNom ||
+		'Signataire à définir'}
 {/snippet}
 
 <FormSection title="Signature" collapsible defaultOpen={false} {summary}>

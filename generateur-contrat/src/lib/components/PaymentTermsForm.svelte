@@ -12,7 +12,7 @@
 		hasError?: boolean;
 	} = $props();
 
-	// Le solde complète toujours l'acompte à 100 % — un split incohérent ne doit pas être représentable.
+	// Le solde complète toujours l'acompte à 100 % : un split incohérent ne doit pas être représentable.
 	$effect(() => {
 		modalitesPaiement.soldePct = 100 - modalitesPaiement.acomptePct;
 	});
