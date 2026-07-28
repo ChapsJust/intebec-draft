@@ -7,8 +7,8 @@ saisit les informations du mandat (client, portée, tarifs, conditions), l'appli
 document professionnel formaté, prêt à imprimer ou à enregistrer en PDF.
 
 La rédaction peut être assistée par une intelligence artificielle locale (Ollama), hébergée sur
-l'infrastructure Intébec et jointe par Tailscale : aucune donnée client n'est envoyée à un service
-externe.
+l'infrastructure Intébec et jointe par Tailscale, derrière une passerelle authentifiée : aucune
+donnée client n'est envoyée à un service externe.
 
 ## Stack technique
 
@@ -38,13 +38,46 @@ npm run dev
 | Variable        | Requis | Rôle                                                               |
 | --------------- | ------ | ------------------------------------------------------------------ |
 | `DATABASE_URL`  | Oui    | Connexion PostgreSQL                                               |
-| `OLLAMA_URL`    | Non    | Instance Ollama (défaut `http://localhost:11434`)                  |
-| `OLLAMA_MODEL`  | Non    | Modèle utilisé pour la rédaction (défaut `llama3.1:8b`)            |
+| `AI_API_URL`    | Non    | Passerelle IA authentifiée (ex. `https://<machine>.ts.net`)        |
+| `AI_API_KEY`    | Non    | Clé envoyée en `X-API-Key` à la passerelle                         |
+| `AI_MODEL`      | Non    | Modèle demandé à la passerelle (défaut `gemma4:latest`)            |
+| `OLLAMA_URL`    | Non    | Instance Ollama en direct (défaut `http://localhost:11434`)        |
+| `OLLAMA_MODEL`  | Non    | Modèle utilisé en accès direct (défaut `llama3.1:8b`)              |
 | `CHROMIUM_PATH` | Non    | Chromium système pour le PDF. Requis en conteneur Alpine (musl)    |
 | `PDF_ORIGIN`    | Non    | Origine que Chromium visite pour imprimer (défaut : origine reçue) |
 
-Sans `OLLAMA_URL` joignable, toute l'application fonctionne normalement : seule la rédaction
-assistée est indisponible, et l'échec est signalé à l'écran sans bloquer la génération.
+Sans IA joignable, toute l'application fonctionne normalement : seule la rédaction assistée est
+indisponible, et l'échec est signalé à l'écran sans bloquer la génération.
+
+### IA : deux modes d'accès
+
+L'application choisit son transport toute seule, selon ce qui est configuré.
+
+**Passerelle authentifiée**, dès que `AI_API_URL` et `AI_API_KEY` sont fournies. C'est le mode de
+production : la passerelle tourne sur le Mac Studio devant Ollama et ajoute clé API, limite de débit
+et file d'attente bornée. Elle n'est joignable que par les membres du tailnet Tailscale. Les appels
+sont streamés en SSE, réassemblés côté serveur avant usage : la passerelle plafonne le mode
+non-streamé à 90 secondes, ce qu'une passe de rédaction complète dépasse dès que le modèle doit
+être rechargé en mémoire.
+
+**Ollama en direct**, sinon, sur `OLLAMA_URL`. Pas d'authentification, mode pratique en
+développement local. Ce chemin utilise le mode JSON natif d'Ollama ; la passerelle ne l'expose pas,
+la réponse y est donc extraite du texte reçu (`extraireJson`).
+
+Si le nom Tailscale de la passerelle ne se résout pas depuis le conteneur, mappez-le sur l'IP du
+tailnet plutôt que de mettre l'IP dans l'URL, sinon le certificat TLS ne correspond plus :
+
+```yaml
+extra_hosts:
+  - 'intebecs-mac-studio.tail7bd633.ts.net:100.119.112.106'
+```
+
+Vérifier la passerelle avant de l'utiliser depuis l'application :
+
+```bash
+curl -s $AI_API_URL/health                                  # {"status":"ok","queue":0}
+curl -s $AI_API_URL/v1/models -H "X-API-Key: $AI_API_KEY"   # le modèle voulu doit y être "available"
+```
 
 ## Structure du projet
 
@@ -63,7 +96,7 @@ src/
     document/                 # génération du document : clauses, sections, formatage
     server/db/                # schéma Drizzle et accès aux données
     server/pdf.ts             # impression Chromium et pied de page numéroté
-    server/ollama.ts          # client d'appel à l'IA locale
+    server/ollama.ts          # client d'appel à l'IA : passerelle ou Ollama direct
     server/mandatActions.ts   # form actions partagées création / édition
     pricing.ts                # calculs monétaires : source de vérité unique
     validation.ts             # validation partagée client et serveur
