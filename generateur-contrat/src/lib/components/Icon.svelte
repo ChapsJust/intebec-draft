@@ -14,7 +14,9 @@
 		| 'trash'
 		| 'close'
 		| 'chevron-down'
-		| 'copy';
+		| 'copy'
+		| 'archive'
+		| 'archive-restore';
 
 	let {
 		name,
@@ -36,7 +38,10 @@
 		trash: 'M4 7h16M9 7V4h6v3m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13M10 11v6m4-6v6',
 		close: 'M6 6l12 12M18 6 6 18',
 		'chevron-down': 'M6 9l6 6 6-6',
-		copy: 'M8 8h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm-3 8H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1'
+		copy: 'M8 8h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm-3 8H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1',
+		archive: 'M4 5h16v4H4zM6 9v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9M10 13h4',
+		'archive-restore':
+			'M4 5h16v4H4zM6 9v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9M12 18v-6m0 0-2.5 2.5M12 12l2.5 2.5'
 	};
 </script>
 

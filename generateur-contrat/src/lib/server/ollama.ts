@@ -1,6 +1,21 @@
 import { env } from '$env/dynamic/private';
-import type { MandatDraft, RedactionIA } from '$lib/types';
+import type {
+	AuditClauses,
+	ChampCondition,
+	ClausesStandards,
+	MandatDraft,
+	PropositionClause,
+	RedactionIA,
+	SuggestionClause,
+	SuggestionCondition
+} from '$lib/types';
 import { libelleLigne } from '$lib/document/format';
+import {
+	CLES_CLAUSES,
+	CLES_CONDITIONS,
+	LIBELLES_CLAUSES,
+	LIBELLES_CONDITIONS
+} from '$lib/document/catalogue';
 
 const URL_PAR_DEFAUT = 'http://localhost:11434';
 const MODELE_PAR_DEFAUT = 'llama3.1:8b';
@@ -35,7 +50,21 @@ interface ReponseOllama {
 	message?: { content?: string };
 }
 
-async function appeler(prompt: string): Promise<unknown> {
+/** L'audit est le seul mode où le modèle a le droit d'esquisser une clause, parce que ce texte
+ * n'atteint aucun document : il part en révision. Les consignes restent donc serrées sur ce qui
+ * trompe le plus, la référence légale inventée, qui a l'air d'autant plus crédible qu'elle est précise. */
+const CONSIGNES_AUDIT = `Tu es un conseiller qui relit des mandats de services numériques au Québec et signale ce qui manque.
+
+Règles strictes :
+- Écris en français québécois professionnel, sobre et factuel.
+- Ne cite JAMAIS un article de loi, un numéro d'article, une jurisprudence ni un délai légal. Tu n'as pas les moyens de les vérifier, et une référence fausse est pire qu'une clause absente. Décris l'intention de la clause, pas son fondement légal.
+- N'invente aucun montant, pourcentage, durée ni échéance.
+- Tes brouillons de clause sont des pistes de départ destinées à une révision humaine, jamais du texte contractuel définitif.
+- Ne signale que ce qui est réellement pertinent pour CE mandat. Mieux vaut ne rien proposer que de remplir pour remplir.
+- Réponds uniquement avec du JSON valide, sans texte autour.
+- Pas de tiret cadratin, pas de gras, pas d'émojis, pas de tournures d'assistant.`;
+
+async function appeler(prompt: string, consignes: string = CONSIGNES): Promise<unknown> {
 	const base = (env.OLLAMA_URL || URL_PAR_DEFAUT).replace(/\/$/, '');
 
 	let reponse: Response;
@@ -49,7 +78,7 @@ async function appeler(prompt: string): Promise<unknown> {
 				format: 'json',
 				options: { temperature: 0.3 },
 				messages: [
-					{ role: 'system', content: CONSIGNES },
+					{ role: 'system', content: consignes },
 					{ role: 'user', content: prompt }
 				]
 			}),
@@ -173,6 +202,98 @@ export function normaliser(brut: unknown, idsConnus: Set<string>): RedactionIA {
 		preambule: texte(source.preambule),
 		objet: texte(source.objet),
 		lignes,
+		genereLe: new Date().toISOString(),
+		modele: modeleActif()
+	};
+}
+
+/** État du volet contractuel : ce qui est déjà couvert, et ce qui ne l'est pas. Les valeurs
+ * chiffrées sont montrées telles quelles, ce sont des faits saisis, pas des chiffres à inventer. */
+function contexteClauses(draft: MandatDraft): string {
+	const actives = CLES_CLAUSES.filter((c) => draft.conditions.clauses[c]);
+	const inactives = CLES_CLAUSES.filter((c) => !draft.conditions.clauses[c]);
+	const zero = CLES_CONDITIONS.filter((c) => draft.conditions[c] <= 0);
+	const renseignees = CLES_CONDITIONS.filter((c) => draft.conditions[c] > 0);
+
+	const liste = <K extends string>(cles: K[], source: Record<K, string>) =>
+		cles.length ? cles.map((c) => `  - ${c} : ${source[c]}`).join('\n') : '  (aucune)';
+
+	return `Clauses déjà activées :
+${liste(actives, LIBELLES_CLAUSES)}
+
+Clauses du catalogue NON activées :
+${liste(inactives, LIBELLES_CLAUSES)}
+
+Conditions chiffrées renseignées :
+${renseignees.length ? renseignees.map((c) => `  - ${c} = ${draft.conditions[c]}`).join('\n') : '  (aucune)'}
+
+Conditions chiffrées laissées à zéro (l'article correspondant est absent du contrat) :
+${liste(zero, LIBELLES_CONDITIONS)}
+
+Notes additionnelles saisies : ${draft.conditions.notesAdditionnelles.trim() || '(vide)'}
+Abonnement récurrent : ${draft.abonnement.actif ? `oui, ${draft.abonnement.frequence}, couvre : ${draft.abonnement.couverture.trim() || '(non précisé)'}` : 'non'}`;
+}
+
+/** Relit le mandat et signale ce qui manque au volet contractuel. Ne modifie rien : l'utilisateur
+ * reste seul à décider d'activer une clause, et les brouillons partent en révision, pas au document. */
+export async function auditerClauses(draft: MandatDraft): Promise<AuditClauses> {
+	const prompt = `Voici un mandat à relire.
+
+${contexte(draft)}
+
+${contexteClauses(draft)}
+
+Relis ce mandat et signale ce qui manque au volet contractuel. Réponds par un objet JSON avec exactement ces clés :
+- "suggestions" : tableau des clauses NON activées qui devraient l'être compte tenu de la nature de ce mandat. Chaque entrée : {"cle": "<une clé exacte de la liste des clauses non activées>", "raison": "<une phrase expliquant pourquoi ce mandat l'appelle>"}. N'y mets aucune clause déjà activée.
+- "conditions" : tableau des conditions chiffrées à zéro qui devraient être renseignées. Chaque entrée : {"champ": "<une clé exacte de la liste des conditions à zéro>", "raison": "<une phrase>"}. Ne propose AUCUNE valeur chiffrée.
+- "propositions" : tableau des protections manquantes que le catalogue ci-dessus ne couvre pas du tout. Chaque entrée : {"titre": "<titre court de la clause>", "raison": "<pourquoi ce mandat en a besoin>", "brouillon": "<un ou deux paragraphes de départ, sans référence légale>"}. Laisse ce tableau vide si le catalogue suffit.
+
+Ne signale que ce qui est réellement justifié par ce mandat.`;
+
+	const brut = await appeler(prompt, CONSIGNES_AUDIT);
+	return normaliserAudit(brut, draft);
+}
+
+/** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un
+ * objet là où un tableau est attendu. On ne garde que ce qui désigne une case réellement
+ * décochée : une suggestion sans effet est du bruit qui décrédibilise l'audit entier. */
+export function normaliserAudit(brut: unknown, draft: MandatDraft): AuditClauses {
+	const source = (brut ?? {}) as Record<string, unknown>;
+	const tableau = (v: unknown): Record<string, unknown>[] =>
+		Array.isArray(v)
+			? v.filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
+			: [];
+
+	const suggestions: SuggestionClause[] = [];
+	for (const entree of tableau(source.suggestions)) {
+		const cle = entree.cle as keyof ClausesStandards;
+		if (!CLES_CLAUSES.includes(cle)) continue;
+		if (draft.conditions.clauses[cle]) continue;
+		if (suggestions.some((s) => s.cle === cle)) continue;
+		suggestions.push({ cle, raison: texte(entree.raison) });
+	}
+
+	const conditions: SuggestionCondition[] = [];
+	for (const entree of tableau(source.conditions)) {
+		const champ = entree.champ as ChampCondition;
+		if (!CLES_CONDITIONS.includes(champ)) continue;
+		if (draft.conditions[champ] > 0) continue;
+		if (conditions.some((c) => c.champ === champ)) continue;
+		conditions.push({ champ, raison: texte(entree.raison) });
+	}
+
+	const propositions: PropositionClause[] = [];
+	for (const entree of tableau(source.propositions)) {
+		const titre = texte(entree.titre);
+		const brouillon = texte(entree.brouillon);
+		if (!titre || !brouillon) continue;
+		propositions.push({ titre, raison: texte(entree.raison), brouillon });
+	}
+
+	return {
+		suggestions,
+		conditions,
+		propositions,
 		genereLe: new Date().toISOString(),
 		modele: modeleActif()
 	};

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance, applyAction, deserialize } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import type { ClientRecord, MandatDraft } from '$lib/types';
+	import type { AuditClauses, ClientRecord, MandatDraft } from '$lib/types';
 	import { validateDraft } from '$lib/validation';
 	import MandatForm from './MandatForm.svelte';
 	import ClientForm from './ClientForm.svelte';
@@ -70,6 +70,23 @@
 			await invalidateAll();
 		}
 		await applyAction(result);
+	}
+
+	/** Fait relire le volet contractuel par l'IA. Le résultat est purement consultatif : il remonte
+	 * au formulaire de conditions, qui laisse l'utilisateur activer ou ignorer chaque suggestion. */
+	async function auditerClauses(): Promise<AuditClauses> {
+		const body = new FormData();
+		body.set('payload', JSON.stringify(draft));
+		const result = await postAction('?/auditerClauses', body);
+
+		if (result.type === 'success' && result.data?.audit) {
+			return result.data.audit as AuditClauses;
+		}
+		throw new Error(
+			result.type === 'failure' && typeof result.data?.message === 'string'
+				? result.data.message
+				: "L'IA locale n'a pas répondu."
+		);
 	}
 
 	/** Demande une proposition de texte à l'IA locale pour un champ précis. Rien n'est persisté :
@@ -155,7 +172,7 @@
 		hasError={paymentHasError}
 	/>
 
-	<ClausesForm bind:conditions={draft.conditions} />
+	<ClausesForm bind:conditions={draft.conditions} onAuditer={auditerClauses} />
 
 	<SignatureForm
 		bind:dateSignature={draft.dateSignature}

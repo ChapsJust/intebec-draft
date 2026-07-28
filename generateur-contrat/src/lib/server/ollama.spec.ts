@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { normaliser, nettoyerProse } from './ollama';
+import { normaliser, nettoyerProse, normaliserAudit } from './ollama';
+import { createEmptyDraft } from '$lib/mandat';
+import type { MandatDraft } from '$lib/types';
 
 describe('nettoyerProse', () => {
 	it('remplace une incise entre tirets cadratins par des virgules', () => {
@@ -95,5 +97,141 @@ describe('normaliser', () => {
 
 		expect(r.genereLe).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 		expect(r.modele.length).toBeGreaterThan(0);
+	});
+});
+
+/** Mandat de référence pour l'audit : aucune clause cochée, aucune condition chiffrée, donc
+ * tout le catalogue est légitimement suggérable. Chaque test resserre ce qu'il lui faut. */
+function draftNu(): MandatDraft {
+	const draft = createEmptyDraft('contrat');
+	for (const cle of Object.keys(
+		draft.conditions.clauses
+	) as (keyof typeof draft.conditions.clauses)[]) {
+		draft.conditions.clauses[cle] = false;
+	}
+	draft.conditions.dureeGarantieJours = 0;
+	draft.conditions.dureeSupportMois = 0;
+	draft.conditions.heuresFormationIncluses = 0;
+	draft.conditions.tauxHoraireHorsPerimetre = 0;
+	draft.conditions.preavisResiliationJours = 0;
+	return draft;
+}
+
+describe('normaliserAudit', () => {
+	it('conserve une suggestion qui désigne une clause réellement décochée', () => {
+		const a = normaliserAudit(
+			{
+				suggestions: [{ cle: 'confidentialite', raison: 'Le mandat traite des données clients.' }]
+			},
+			draftNu()
+		);
+
+		expect(a.suggestions).toEqual([
+			{ cle: 'confidentialite', raison: 'Le mandat traite des données clients.' }
+		]);
+	});
+
+	it('rejette une clé de clause inventée par le modèle', () => {
+		const a = normaliserAudit(
+			{
+				suggestions: [
+					{ cle: 'penaliteRetard', raison: 'Inventée.' },
+					{ cle: 'litiges', raison: 'Vraie clé.' }
+				]
+			},
+			draftNu()
+		);
+
+		expect(a.suggestions.map((s) => s.cle)).toEqual(['litiges']);
+	});
+
+	it('écarte une clause déjà activée : une suggestion sans effet est du bruit', () => {
+		const draft = draftNu();
+		draft.conditions.clauses.propriete = true;
+
+		const a = normaliserAudit(
+			{ suggestions: [{ cle: 'propriete', raison: 'Déjà cochée.' }] },
+			draft
+		);
+
+		expect(a.suggestions).toEqual([]);
+	});
+
+	it('déduplique une clause suggérée deux fois', () => {
+		const a = normaliserAudit(
+			{
+				suggestions: [
+					{ cle: 'litiges', raison: 'Première.' },
+					{ cle: 'litiges', raison: 'Seconde.' }
+				]
+			},
+			draftNu()
+		);
+
+		expect(a.suggestions).toHaveLength(1);
+	});
+
+	it('ne retient un manque chiffré que si le champ est bien à zéro', () => {
+		const draft = draftNu();
+		draft.conditions.dureeGarantieJours = 90;
+
+		const a = normaliserAudit(
+			{
+				conditions: [
+					{ champ: 'dureeGarantieJours', raison: 'Déjà renseignée.' },
+					{ champ: 'preavisResiliationJours', raison: 'Mandat récurrent.' }
+				]
+			},
+			draft
+		);
+
+		expect(a.conditions.map((c) => c.champ)).toEqual(['preavisResiliationJours']);
+	});
+
+	it('rejette un champ de condition inconnu', () => {
+		const a = normaliserAudit(
+			{ conditions: [{ champ: 'penaliteJournaliere', raison: 'Inventé.' }] },
+			draftNu()
+		);
+
+		expect(a.conditions).toEqual([]);
+	});
+
+	it('exige un titre et un brouillon pour retenir une proposition', () => {
+		const a = normaliserAudit(
+			{
+				propositions: [
+					{ titre: 'Disponibilité du service', raison: 'Hébergement.', brouillon: 'Texte.' },
+					{ titre: 'Sans corps', raison: 'Vide.' },
+					{ raison: 'Sans titre.', brouillon: 'Texte.' }
+				]
+			},
+			draftNu()
+		);
+
+		expect(a.propositions).toHaveLength(1);
+		expect(a.propositions[0].titre).toBe('Disponibilité du service');
+	});
+
+	it('survit à un objet là où un tableau est attendu', () => {
+		const a = normaliserAudit({ suggestions: { cle: 'litiges' }, conditions: 'aucune' }, draftNu());
+
+		expect(a.suggestions).toEqual([]);
+		expect(a.conditions).toEqual([]);
+	});
+
+	it('survit à une réponse vide ou nulle', () => {
+		const a = normaliserAudit(null, draftNu());
+
+		expect(a.suggestions).toEqual([]);
+		expect(a.conditions).toEqual([]);
+		expect(a.propositions).toEqual([]);
+	});
+
+	it('horodate et enregistre le modèle utilisé', () => {
+		const a = normaliserAudit({}, draftNu());
+
+		expect(a.genereLe).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+		expect(a.modele.length).toBeGreaterThan(0);
 	});
 });

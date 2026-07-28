@@ -9,6 +9,7 @@ export interface DocumentSummary {
 	type: DocumentType;
 	status: DocumentStatus;
 	updatedAt: string; // ISO date
+	archived: boolean;
 }
 
 export type PricingMode = 'forfaitaire' | 'horaire' | 'quantite';
@@ -84,6 +85,48 @@ export interface ConditionsParticulieres {
 	notesAdditionnelles: string;
 }
 
+/** Champs chiffrés des conditions particulières qui font naître un article lorsqu'ils sont
+ * renseignés. Laissés à zéro, l'article correspondant disparaît du contrat : c'est exactement le
+ * genre d'oubli que l'audit doit rattraper. */
+export type ChampCondition =
+	| 'heuresFormationIncluses'
+	| 'dureeGarantieJours'
+	| 'dureeSupportMois'
+	| 'tauxHoraireHorsPerimetre'
+	| 'preavisResiliationJours';
+
+/** Clause du catalogue que l'IA recommande d'activer. Elle ne désigne qu'une case à cocher
+ * existante : le corps juridique reste celui, vérifié, de `clauses.ts`. */
+export interface SuggestionClause {
+	cle: keyof ClausesStandards;
+	raison: string;
+}
+
+/** Condition chiffrée laissée à zéro alors que le mandat semble l'appeler. L'IA signale le
+ * manque mais ne propose aucune valeur : les chiffres restent la décision de l'utilisateur. */
+export interface SuggestionCondition {
+	champ: ChampCondition;
+	raison: string;
+}
+
+/** Manque que le catalogue ne couvre pas. `brouillon` n'est **jamais** rendu dans un document :
+ * c'est une piste à réviser, puis à intégrer à `clauses.ts` si elle est retenue. Une clause revue
+ * une fois et versionnée vaut mieux qu'une clause regénérée à chaque contrat. */
+export interface PropositionClause {
+	titre: string;
+	raison: string;
+	brouillon: string;
+}
+
+/** Audit des clauses par l'IA. Purement consultatif : rien n'est activé ni écrit d'office. */
+export interface AuditClauses {
+	suggestions: SuggestionClause[];
+	conditions: SuggestionCondition[];
+	propositions: PropositionClause[];
+	genereLe: string;
+	modele: string;
+}
+
 export interface MandatDraft {
 	type: DocumentType;
 	titre: string;
@@ -107,6 +150,12 @@ export interface ClientRecord extends ClientInfo {
 	archiveLe: string | null;
 	creeLe: string;
 	majLe: string;
+}
+
+/** Fiche client accompagnée du nombre de mandats rattachés, pour annoncer les conséquences d'un
+ * archivage ou d'une suppression avant de les exécuter. */
+export interface ClientListItem extends ClientRecord {
+	nbMandats: number;
 }
 
 /** Prose produite par l'IA locale, stockée **à côté** du draft et jamais à sa place.
@@ -133,6 +182,8 @@ export interface MandatRecord {
 	totalNet: number;
 	draft: MandatDraft;
 	redaction: RedactionIA | null;
+	/** Non nul = mandat archivé : il disparaît des listes courantes sans être détruit. */
+	archiveLe: string | null;
 	creeLe: string;
 	majLe: string;
 }

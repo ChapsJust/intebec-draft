@@ -1,10 +1,23 @@
 import { fail, redirect, type Action, type Actions } from '@sveltejs/kit';
 import { createClient, updateClient } from './db/clients';
-import { getMandat, saveMandat, saveRedaction } from './db/mandats';
+import {
+	archiveMandat,
+	deleteMandat,
+	getMandat,
+	saveMandat,
+	saveRedaction,
+	unarchiveMandat
+} from './db/mandats';
 import { validateDraft } from '$lib/validation';
 import { duplicateDraft } from '$lib/mandat';
 import { parseMandatSubmission } from './mandatForm';
-import { OllamaIndisponibleError, redigerChamp, redigerDocument, type CibleChamp } from './ollama';
+import {
+	OllamaIndisponibleError,
+	auditerClauses,
+	redigerChamp,
+	redigerDocument,
+	type CibleChamp
+} from './ollama';
 import type { DocumentStatus, MandatDraft } from '$lib/types';
 
 async function persist(
@@ -71,6 +84,26 @@ export const mandatActions: Actions = {
 		}
 		await updateClient(id, JSON.parse(payload));
 		return { message: 'Fiche client mise à jour.' };
+	},
+
+	/** Relit le volet contractuel et renvoie ce qui semble manquer. Comme `redigerChamp`, ne
+	 * persiste rien : aucune clause n'est activée sans un geste de l'utilisateur. */
+	auditerClauses: async ({ request }) => {
+		const data = await request.formData();
+		const payload = data.get('payload');
+		if (typeof payload !== 'string') {
+			return fail(400, { ok: false, message: 'Requête invalide.' });
+		}
+
+		const draft = JSON.parse(payload) as MandatDraft;
+		try {
+			return { ok: true, audit: await auditerClauses(draft), message: '' };
+		} catch (err) {
+			if (err instanceof OllamaIndisponibleError) {
+				return fail(503, { ok: false, message: err.message });
+			}
+			throw err;
+		}
 	},
 
 	/** Aide ponctuelle pendant la saisie : renvoie une proposition pour un seul champ, sans rien
@@ -140,4 +173,35 @@ export const duplicateMandatAction: Action = async ({ request }) => {
 	const draft = duplicateDraft(existing.draft);
 	const record = await saveMandat(draft, { clientId: existing.clientId, statut: 'brouillon' });
 	throw redirect(303, `/mandats/${record.id}`);
+};
+
+/** Cible du geste, toujours postée explicitement : ces actions vivent aussi sur la fiche client,
+ * où `params.id` désigne le client et ferait donc une cible fausse. */
+async function cibleMandat(request: Request): Promise<string | null> {
+	const poste = (await request.formData()).get('id');
+	return typeof poste === 'string' && poste ? poste : null;
+}
+
+export const archiveMandatAction: Action = async ({ request }) => {
+	const id = await cibleMandat(request);
+	if (!id) return fail(400, { notice: 'Identifiant manquant.' });
+	await archiveMandat(id);
+	return { notice: 'Mandat archivé.' };
+};
+
+export const unarchiveMandatAction: Action = async ({ request }) => {
+	const id = await cibleMandat(request);
+	if (!id) return fail(400, { notice: 'Identifiant manquant.' });
+	await unarchiveMandat(id);
+	return { notice: 'Mandat désarchivé.' };
+};
+
+/** Suppression définitive d'un mandat. Si c'est celui qu'on est en train d'éditer, la page n'existe
+ * plus après coup : on renvoie à l'accueil plutôt que de laisser un 404. */
+export const deleteMandatAction: Action = async ({ request, params }) => {
+	const id = await cibleMandat(request);
+	if (!id) return fail(400, { notice: 'Identifiant manquant.' });
+	await deleteMandat(id);
+	if (params.id === id) throw redirect(303, '/');
+	return { notice: 'Mandat supprimé.' };
 };

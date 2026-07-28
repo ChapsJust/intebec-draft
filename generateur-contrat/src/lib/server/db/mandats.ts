@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, isNull, isNotNull, type SQL } from 'drizzle-orm';
 import { db } from './index';
 import { mandat } from './schema';
 import type { MandatDraft, MandatRecord, DocumentStatus, RedactionIA } from '$lib/types';
@@ -15,19 +15,28 @@ function toRecord(row: typeof mandat.$inferSelect): MandatRecord {
 		totalNet: Number(row.totalNet),
 		draft: row.draft,
 		redaction: row.redaction ?? null,
+		archiveLe: row.archiveLe ? row.archiveLe.toISOString() : null,
 		creeLe: row.creeLe.toISOString(),
 		majLe: row.majLe.toISOString()
 	};
 }
 
-export async function listMandats(options?: { clientId?: string }): Promise<MandatRecord[]> {
-	const rows = options?.clientId
-		? await db
-				.select()
-				.from(mandat)
-				.where(eq(mandat.clientId, options.clientId))
-				.orderBy(desc(mandat.majLe))
-		: await db.select().from(mandat).orderBy(desc(mandat.majLe));
+/** `archives` bascule la liste sur les mandats archivés ; par défaut on ne rend que les courants,
+ * pour qu'archiver suffise à sortir un mandat de l'accueil et des fiches client. */
+export async function listMandats(options?: {
+	clientId?: string;
+	archives?: boolean;
+}): Promise<MandatRecord[]> {
+	const filtres: SQL[] = [
+		options?.archives ? isNotNull(mandat.archiveLe) : isNull(mandat.archiveLe)
+	];
+	if (options?.clientId) filtres.push(eq(mandat.clientId, options.clientId));
+
+	const rows = await db
+		.select()
+		.from(mandat)
+		.where(and(...filtres))
+		.orderBy(desc(mandat.majLe));
 	return rows.map(toRecord);
 }
 
@@ -73,6 +82,17 @@ export async function saveRedaction(
 		.where(eq(mandat.id, id))
 		.returning();
 	return row ? toRecord(row) : null;
+}
+
+export async function archiveMandat(id: string): Promise<void> {
+	await db
+		.update(mandat)
+		.set({ archiveLe: new Date() })
+		.where(and(eq(mandat.id, id), isNull(mandat.archiveLe)));
+}
+
+export async function unarchiveMandat(id: string): Promise<void> {
+	await db.update(mandat).set({ archiveLe: null }).where(eq(mandat.id, id));
 }
 
 export async function deleteMandat(id: string): Promise<void> {

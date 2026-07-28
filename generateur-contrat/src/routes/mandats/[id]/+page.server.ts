@@ -1,8 +1,13 @@
 import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad, Actions } from './$types';
 import { listClients } from '$lib/server/db/clients';
 import { getMandat } from '$lib/server/db/mandats';
-import { mandatActions } from '$lib/server/mandatActions';
+import {
+	mandatActions,
+	archiveMandatAction,
+	unarchiveMandatAction,
+	deleteMandatAction
+} from '$lib/server/mandatActions';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [mandat, clients] = await Promise.all([getMandat(params.id), listClients()]);
@@ -10,4 +15,9 @@ export const load: PageServerLoad = async ({ params }) => {
 	return { mandat, clients };
 };
 
-export const actions = mandatActions;
+export const actions: Actions = {
+	...mandatActions,
+	archiver: archiveMandatAction,
+	desarchiver: unarchiveMandatAction,
+	supprimer: deleteMandatAction
+};

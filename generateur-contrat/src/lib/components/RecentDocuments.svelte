@@ -1,9 +1,11 @@
 <script lang="ts">
 	import DocumentRow from './DocumentRow.svelte';
+	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 	import type { DocumentSummary } from '$lib/types';
 
-	let { documents }: { documents: DocumentSummary[] } = $props();
+	let { documents, archives = [] }: { documents: DocumentSummary[]; archives?: DocumentSummary[] } =
+		$props();
 </script>
 
 <section class="mt-10">
@@ -52,4 +54,21 @@
 			</ul>
 		{/if}
 	</div>
+
+	{#if archives.length > 0}
+		<div class="mt-6">
+			<FormSection title="Documents archivés ({archives.length})" collapsible defaultOpen={false}>
+				<p class="text-sm text-ink-muted">
+					Retirés des documents récents, mais conservés. Désarchivez pour les y remettre.
+				</p>
+				<ul class="divide-y divide-border-subtle opacity-75">
+					{#each archives as doc (doc.id)}
+						<li>
+							<DocumentRow {doc} />
+						</li>
+					{/each}
+				</ul>
+			</FormSection>
+		</div>
+	{/if}
 </section>

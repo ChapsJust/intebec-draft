@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import ConfirmAction from './ConfirmAction.svelte';
 	import Icon from './Icon.svelte';
 	import StatusBadge from './StatusBadge.svelte';
 	import type { DocumentSummary } from '$lib/types';
@@ -42,4 +43,44 @@
 			<Icon name="copy" size={14} />
 		</button>
 	</form>
+
+	{#if doc.archived}
+		<ConfirmAction
+			action="?/desarchiver"
+			id={doc.id}
+			ton="neutre"
+			titre="Désarchiver ce document ?"
+			message="« {doc.title} » réapparaîtra dans les documents récents."
+			confirmLabel="Désarchiver"
+			ariaLabel="Désarchiver ce mandat"
+			class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface hover:text-ink"
+		>
+			<Icon name="archive-restore" size={14} />
+		</ConfirmAction>
+	{:else}
+		<ConfirmAction
+			action="?/archiver"
+			id={doc.id}
+			ton="neutre"
+			titre="Archiver ce document ?"
+			message="« {doc.title} » sortira des documents récents sans être supprimé. Vous le retrouverez dans les documents archivés, prêt à être désarchivé."
+			confirmLabel="Archiver"
+			ariaLabel="Archiver ce mandat"
+			class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface hover:text-ink"
+		>
+			<Icon name="archive" size={14} />
+		</ConfirmAction>
+	{/if}
+
+	<ConfirmAction
+		action="?/supprimer"
+		id={doc.id}
+		titre="Supprimer ce document ?"
+		message="« {doc.title} » ({doc.client}) sera supprimé définitivement, avec sa rédaction et son historique. Cette action est irréversible."
+		confirmLabel="Supprimer définitivement"
+		ariaLabel="Supprimer ce mandat"
+		class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
+	>
+		<Icon name="trash" size={14} />
+	</ConfirmAction>
 </div>
