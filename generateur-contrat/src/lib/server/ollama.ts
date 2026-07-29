@@ -12,6 +12,7 @@ import type {
 	SuggestionCondition
 } from '$lib/types';
 import { libelleLigne } from '$lib/document/format';
+import { empreinteProse } from '$lib/document/sections';
 import {
 	CLES_CLAUSES,
 	CLES_CONDITIONS,
@@ -310,7 +311,7 @@ Rédige la prose du document sous forme d'un objet JSON avec exactement ces clé
 - "lignes" : un objet dont les clés sont EXACTEMENT les identifiants "id" listés ci-dessus, et les valeurs un paragraphe décrivant les travaux de cette ligne. N'invente aucun identifiant.`;
 
 	const brut = await appeler(prompt);
-	return normaliser(brut, idsConnus);
+	return normaliser(brut, idsConnus, empreinteProse(brouillon));
 }
 
 /** Le tiret cadratin est la ponctuation qui trahit le plus vite un texte généré, et les modèles
@@ -341,7 +342,11 @@ function texte(valeur: unknown): string {
 
 /** Le modèle peut halluciner des clés ou des identifiants de lignes : on ne conserve que ce
  * qui correspond à la structure attendue et aux lignes réellement présentes dans le mandat. */
-export function normaliser(brut: unknown, idsConnus: Set<string>): RedactionIA {
+export function normaliser(
+	brut: unknown,
+	idsConnus: Set<string>,
+	empreinte = ''
+): RedactionIA {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const lignesBrutes = (source.lignes ?? {}) as Record<string, unknown>;
 
@@ -359,6 +364,7 @@ export function normaliser(brut: unknown, idsConnus: Set<string>): RedactionIA {
 		// Une nouvelle rédaction repart sans refus : les passages ne sont plus les mêmes, donc des
 		// index hérités de la précédente désigneraient un texte qui n'existe plus.
 		refuses: {},
+		empreinte,
 		genereLe: new Date().toISOString(),
 		modele: modeleActif()
 	};

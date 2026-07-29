@@ -11,6 +11,7 @@ import {
 	desarchiverMandat
 } from './db/mandats';
 import { verifierMandat } from '$lib/validation';
+import { empreinteProse } from '$lib/document/sections';
 import { dupliquerMandat } from '$lib/mandat';
 import { SoumissionInvalideError, lireMandat, lireSoumissionMandat } from './mandatForm';
 import { idPoste } from './formulaire';
@@ -99,6 +100,24 @@ export const mandatActions: Actions = {
 			params.id
 		);
 		if (!record) return fail(404, { message: INTROUVABLE });
+
+		// « Générer » veut dire « produis le document à partir de ma saisie actuelle ». Une rédaction
+		// dérivée d'une version antérieure est donc à jeter : sans cela, on modifiait le mandat, on
+		// relançait « Générer », et l'aperçu affichait imperturbablement la prose d'avant, puisque
+		// `redactionAFaire` se tait dès qu'une rédaction existe. La modification semblait perdue.
+		//
+		// On ne conserve la rédaction que si l'on peut **prouver** qu'elle correspond encore à la
+		// saisie. Une rédaction sans empreinte est antérieure à ce mécanisme : sa fraîcheur est
+		// indémontrable, et sur une demande explicite de génération, mieux vaut la refaire que
+		// réafficher une prose peut-être périmée. La bannière de l'aperçu, elle, se tait dans ce cas :
+		// alarmer sur tous les documents déjà générés n'aiderait personne.
+		//
+		// Régénérer un mandat inchangé conserve donc la rédaction et les passages déjà arbitrés, au
+		// lieu de les redemander à l'IA. Pour seulement relire le document, il y a « Voir le document ».
+		const redactionAJour = record.redaction?.empreinte === empreinteProse(record.brouillon);
+		if (record.redaction && !redactionAJour) {
+			await enregistrerRedaction(record.id, null);
+		}
 
 		// La passe de rédaction n'est plus faite ici. Elle prend jusqu'à quatre minutes quand le
 		// modèle doit être rechargé, et l'enregistrement se retrouvait suspendu à sa durée : un

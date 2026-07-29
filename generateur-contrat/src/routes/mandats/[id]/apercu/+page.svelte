@@ -147,7 +147,21 @@
 		</div>
 	{/if}
 
-	{#if redaction}
+	<!-- Une rédaction caduque décrit une version antérieure du mandat : le dire est plus utile que
+		d'afficher un diff calculé entre la saisie d'aujourd'hui et la prose d'hier, qui se lirait
+		comme une série de modifications que l'IA n'a jamais faites. -->
+	{#if data.redactionCaduque}
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"
+		>
+			<Icon name="sparkles" size={16} />
+			<span>
+				Votre saisie a changé depuis cette rédaction : la prose affichée décrit la version
+				précédente du mandat. Relancez la rédaction pour la mettre à jour, ou revenez à votre
+				saisie.
+			</span>
+		</div>
+	{:else if redaction}
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-card border border-accent-400/30 bg-accent-500/5 p-3 text-sm text-ink-muted print:hidden"
 		>

@@ -218,6 +218,16 @@ export interface RedactionIA {
 	 * passage par passage n'ont pas la clé, et la colonne `jsonb` ne les a pas migrées. Le type dit
 	 * donc la vérité de ce qui sort de la base, ce qui force le `??` là où on le lit. */
 	refuses?: Record<string, number[]>;
+	/** Empreinte de la saisie dont cette prose est dérivée, via `empreinteProse`.
+	 *
+	 * Sans elle, une rédaction survivait à la saisie qui l'a produite sans que rien ne le signale :
+	 * on modifiait le mandat, on relançait « Générer », et le document continuait d'afficher la prose
+	 * de la version précédente. Les refus enregistrés étaient caducs eux aussi, leurs index ayant
+	 * glissé sous le nouveau découpage.
+	 *
+	 * Optionnelle, comme `refuses` : les rédactions antérieures n'en ont pas, et on ne peut alors rien
+	 * affirmer sur leur fraîcheur. */
+	empreinte?: string;
 	genereLe: string;
 	modele: string;
 }

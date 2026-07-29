@@ -173,6 +173,17 @@ describe('normaliser', () => {
 
 		expect(r.refuses).toEqual({});
 	});
+
+	it('retient l’empreinte de la saisie qui a produit la prose', () => {
+		// C'est elle qui permet plus tard de savoir que la saisie a changé, et donc que cette prose
+		// décrit une version antérieure du mandat.
+		expect(normaliser({ objet: 'Refonte.' }, ids, 'abc123').empreinte).toBe('abc123');
+	});
+
+	it('n’invente pas d’empreinte quand aucune n’est fournie', () => {
+		// Une empreinte vide se comporte comme une absence : `redactionCaduque` se tait.
+		expect(normaliser({ objet: 'Refonte.' }, ids).empreinte).toBe('');
+	});
 });
 
 /** Mandat de référence pour l'audit : aucune clause cochée, aucune condition chiffrée, donc
