@@ -33,18 +33,15 @@
 				<span class="hidden sm:inline">Aide</span>
 			</a>
 
+			<!-- Nom fourni par Tailscale, pas par une session : il n'y a donc rien dont se déconnecter,
+				et le nom disparaît simplement quand l'application tourne sans le proxy devant (dev local). -->
 			{#if utilisateur}
-				<!-- La déconnexion est une action, donc un POST : un simple lien serait déclenché par
-					n'importe quelle préconnexion du navigateur. -->
-				<form method="POST" action="/connexion?/deconnexion" class="ml-2 flex items-center gap-2">
-					<span class="hidden text-sm text-ink-muted sm:inline">{utilisateur.nom}</span>
-					<button
-						type="submit"
-						class="rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-surface-muted hover:text-ink"
-					>
-						Déconnexion
-					</button>
-				</form>
+				<span
+					class="ml-2 hidden border-l border-border-subtle pl-3 text-sm text-ink-muted sm:inline"
+					title="Identifié par Tailscale"
+				>
+					{utilisateur.nom}
+				</span>
 			{/if}
 		</nav>
 	</div>

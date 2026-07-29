@@ -6,7 +6,15 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	server: {
-		host: true,
+		// Pas de `host: true` ici : le conteneur reçoit déjà `--host 0.0.0.0` dans le CMD de
+		// Dockerfile.dev, où c'est indispensable pour que l'hôte joigne le serveur. En dehors du
+		// conteneur, l'écoute reste sur la boucle locale — un `npm run dev` lancé directement sur
+		// le Mac ne s'expose donc pas au réseau local.
+		//
+		// Noms d'hôtes acceptés. Vite refuse par défaut les `Host` qu'il ne connaît pas ; derrière
+		// `tailscale serve`, l'en-tête porte le nom `.ts.net` de la machine et la réponse serait
+		// « Blocked request. This host is not allowed. » plutôt que l'application.
+		allowedHosts: ['.ts.net'],
 		// Le polling permet au hot reload de fonctionner à travers le bind mount Docker (Windows) :
 		// les événements inotify ne traversent pas la frontière entre l'hôte et le conteneur.
 		// Sans intervalle explicite, chokidar interroge le disque toutes les 100 ms, ce qui

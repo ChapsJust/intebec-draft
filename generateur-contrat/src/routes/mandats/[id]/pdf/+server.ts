@@ -4,7 +4,7 @@ import { genererPdf, nomFichier, origineInterne } from '$lib/server/pdf';
 import { PRESTATAIRE } from '$lib/config';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ params, url, request, fetch: _fetch }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
 	const mandat = await obtenirMandat(params.id);
 	if (!mandat) error(404, 'Mandat introuvable');
 
@@ -16,8 +16,7 @@ export const GET: RequestHandler = async ({ params, url, request, fetch: _fetch 
 	try {
 		pdf = await genererPdf({
 			url: `${origine}/mandats/${mandat.id}/apercu`,
-			mention,
-			cookie: request.headers.get('cookie') ?? undefined
+			mention
 		});
 	} catch (cause) {
 		console.error('Génération PDF échouée', cause);

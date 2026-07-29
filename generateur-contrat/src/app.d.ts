@@ -1,13 +1,15 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import type { Utilisateur } from '$lib/server/auth';
+import type { Utilisateur } from '$lib/types';
 
 declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			/** Session vérifiée par `hooks.server.ts`. `null` seulement sur les routes publiques :
-			 * partout ailleurs, le garde a déjà redirigé vers l'écran de connexion. */
+			/** Personne identifiée par les en-têtes de `tailscale serve`, lus dans `hooks.server.ts`.
+			 * Sert à afficher un nom, jamais à autoriser quoi que ce soit : l'accès est gardé par le
+			 * réseau. `null` est un état normal — développement local sans Tailscale devant, ou
+			 * requête interne de Chromium pour le PDF — et non un refus. */
 			utilisateur: Utilisateur | null;
 		}
 		// interface PageData {}

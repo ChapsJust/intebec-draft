@@ -57,12 +57,15 @@
 		try {
 			return deserialize(texte);
 		} catch {
-			// Arrive quand la réponse n'est pas un résultat d'action : session expirée renvoyant la
-			// page de connexion, ou erreur d'infrastructure en HTML. Le message brut ne veut rien
-			// dire pour l'utilisateur, on le remplace par la cause la plus probable.
+			// Arrive quand la réponse n'est pas un résultat d'action, donc une erreur d'infrastructure
+			// renvoyée en HTML. Le message brut ne veut rien dire pour l'utilisateur.
+			//
+			// Le 403 mérite son propre message : c'est le refus d'origine croisée de SvelteKit, et il
+			// signale presque toujours un `ORIGIN` qui ne correspond pas à l'adresse publique du
+			// proxy. Voir la section « Accès » du README.
 			throw new Error(
-				response.status === 401 || response.status === 403
-					? 'Votre session a expiré. Rechargez la page pour vous reconnecter.'
+				response.status === 403
+					? "Le serveur a refusé l'enregistrement (origine non reconnue). Prévenez l'administrateur : la variable ORIGIN est probablement mal réglée."
 					: 'Le serveur a renvoyé une réponse inattendue. Réessayez.'
 			);
 		}

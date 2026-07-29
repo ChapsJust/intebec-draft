@@ -57,14 +57,11 @@ export interface OptionsPdf {
 	url: string;
 	/** Mention portée à gauche du pied de page. */
 	mention: string;
-	/** Cookies de la requête entrante, à retransmettre si la page devient protégée. */
-	cookie?: string;
 }
 
-export async function genererPdf({ url, mention, cookie }: OptionsPdf): Promise<Uint8Array> {
+export async function genererPdf({ url, mention }: OptionsPdf): Promise<Uint8Array> {
 	const page = await (await obtenirNavigateur()).newPage();
 	try {
-		if (cookie) await page.setExtraHTTPHeaders({ cookie });
 		await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
 
 		return await page.pdf({
@@ -82,7 +79,11 @@ export async function genererPdf({ url, mention, cookie }: OptionsPdf): Promise<
 }
 
 /** Origine à utiliser pour la navigation interne de Chromium. En conteneur, `localhost` désigne
- * le conteneur lui-même, ce qui est correct ici puisque l'app et Chromium y cohabitent. */
+ * le conteneur lui-même, ce qui est correct ici puisque l'app et Chromium y cohabitent.
+ *
+ * `PDF_ORIGIN` cesse d'être facultative dès qu'un proxy est devant l'application : l'origine de la
+ * requête entrante serait alors le nom public `.ts.net`, que Chromium devrait résoudre depuis Docker
+ * avant de ressortir par le proxy pour revenir au même conteneur. `compose.yaml` la renseigne. */
 export function origineInterne(fallback: string): string {
 	return env.PDF_ORIGIN || fallback;
 }

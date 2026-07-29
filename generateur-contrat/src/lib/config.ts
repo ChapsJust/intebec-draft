@@ -8,16 +8,14 @@ export const APP_TAGLINE = 'Soumissions et contrats générés par IA locale';
 /** Coordonnées du prestataire, reprises telles quelles en en-tête et dans le bloc « Parties »
  * du document généré. Le représentant signataire, lui, reste saisi par mandat (SignatureForm).
  *
- * `numeroEntreprise` est vide : le vrai NEQ reste à renseigner. Tant qu'il l'est, `identiteComplete`
- * est faux et l'aperçu affiche un rappel, parce qu'un contrat qui identifie une seule des deux
- * parties par son numéro d'entreprise a l'air négligé, et que le manque est invisible autrement. */
+ */
 export const PRESTATAIRE = {
-	nom: 'Intébec',
+	nom: 'Intébec Inc.',
 	adresse: 'Victoriaville (Québec), Canada',
-	courriel: 'info@intebec.com',
-	telephone: '',
-	siteWeb: 'intebec.com',
-	numeroEntreprise: ''
+	courriel: 'info@intebec.ca',
+	telephone: '(819) 960-9831',
+	siteWeb: 'intebec.ca',
+	numeroEntreprise: '1181530875'
 } as const;
 
 /** Ce qui manque encore à l'identité du prestataire avant un envoi réel. Liste vide = tout est
