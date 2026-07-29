@@ -4,6 +4,7 @@ import { mandat } from './schema';
 import type { BrouillonMandat, MandatEnregistre, StatutDocument, RedactionIA } from '$lib/types';
 import { totalNet } from '$lib/montants';
 import { estUuid } from '../formulaire';
+import { normaliserMandat } from '../mandatForm';
 
 function versEnregistrement(row: typeof mandat.$inferSelect): MandatEnregistre {
 	return {
@@ -14,7 +15,15 @@ function versEnregistrement(row: typeof mandat.$inferSelect): MandatEnregistre {
 		titre: row.titre,
 		clientNom: row.clientNom,
 		totalNet: Number(row.totalNet),
-		brouillon: row.brouillon,
+		// Normalisé à la lecture, et pas seulement à l'écriture : la colonne est un `jsonb` que rien ne
+		// contraint, donc une ligne enregistrée avant l'ajout d'un champ ne l'a pas. Sans ce passage,
+		// `conditions.clausesRetenues` arrivait à `undefined` sur tous les mandats existants et la page
+		// d'édition tombait en 500 : le brouillon était intact, mais devenu illisible.
+		//
+		// Idempotent pour tout ce que l'application a écrit, puisque `enregistrerMandat` applique déjà
+		// la même normalisation. Le faire ici évite d'avoir à protéger chaque lecture une par une, et
+		// couvre d'avance le prochain champ ajouté au brouillon.
+		brouillon: normaliserMandat(row.brouillon),
 		redaction: row.redaction ?? null,
 		archiveLe: row.archiveLe ? row.archiveLe.toISOString() : null,
 		creeLe: row.creeLe.toISOString(),

@@ -177,6 +177,51 @@ describe('normaliserMandat : clauses retenues', () => {
 	});
 });
 
+/** Un brouillon enregistré avant l'ajout d'un champ n'a pas ce champ : la colonne est un `jsonb` que
+ * rien ne migre. C'est exactement ce qui a mis toutes les pages d'édition en 500 quand
+ * `clausesRetenues` est apparu, alors que les brouillons en base étaient intacts. `obtenirMandat`
+ * normalise donc à la lecture, et ces tests décrivent ce que cette lecture doit garantir. */
+describe('normaliserMandat : brouillon enregistré avant l’ajout d’un champ', () => {
+	/** Brouillon tel qu'il existait en base avant cette fonctionnalité : conditions complètes, mais
+	 * sans `clausesRetenues`. */
+	function brouillonAncien(): Record<string, unknown> {
+		const complet = structuredClone(nouveauMandat('contrat')) as unknown as Record<string, unknown>;
+		const conditions = complet.conditions as Record<string, unknown>;
+		delete conditions.clausesRetenues;
+		return complet;
+	}
+
+	it('rétablit clausesRetenues plutôt que de laisser undefined', () => {
+		const brouillon = normaliserMandat(brouillonAncien());
+
+		expect(brouillon.conditions.clausesRetenues).toEqual([]);
+	});
+
+	it('rend le brouillon utilisable sans lever, jusqu’aux champs qui n’existaient pas', () => {
+		// Le symptôme réel était un `Cannot read properties of undefined (reading 'length')` au rendu.
+		const brouillon = normaliserMandat(brouillonAncien());
+
+		expect(() => brouillon.conditions.clausesRetenues.length).not.toThrow();
+	});
+
+	it('ne perd rien de ce qui était déjà enregistré', () => {
+		const ancien = brouillonAncien();
+		ancien.titre = 'Refonte application';
+		(ancien.conditions as Record<string, unknown>).dureeGarantieJours = 90;
+
+		const brouillon = normaliserMandat(ancien);
+
+		expect(brouillon.titre).toBe('Refonte application');
+		expect(brouillon.conditions.dureeGarantieJours).toBe(90);
+	});
+
+	it('est idempotent : renormaliser ne change plus rien', () => {
+		// C'est la propriété qui autorise à normaliser à la lecture comme à l'écriture sans dériver.
+		const une = normaliserMandat(brouillonAncien());
+		expect(normaliserMandat(une)).toEqual(une);
+	});
+});
+
 describe('lireMandat', () => {
 	it('lit une charge JSON valide', () => {
 		const brouillon = lireMandat(JSON.stringify({ titre: 'Refonte' }));
