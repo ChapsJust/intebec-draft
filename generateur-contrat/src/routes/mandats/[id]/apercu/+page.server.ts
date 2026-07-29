@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { obtenirMandat } from '$lib/server/db/mandats';
 import {
+	basculerPassageAction,
 	changerStatutAction,
 	effacerRedactionAction,
 	redigerDocumentAction
@@ -23,5 +24,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 export const actions: Actions = {
 	rediger: redigerDocumentAction,
 	effacerRedaction: effacerRedactionAction,
+	basculerPassage: basculerPassageAction,
 	changerStatut: changerStatutAction
 };

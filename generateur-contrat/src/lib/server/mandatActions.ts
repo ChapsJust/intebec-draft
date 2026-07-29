@@ -1,5 +1,6 @@
 import { fail, redirect, type Action, type Actions } from '@sveltejs/kit';
 import { creerClient, modifierClient } from './db/clients';
+import { creerClauseBibliotheque, listerClausesBibliotheque } from './db/clauses';
 import {
 	archiverMandat,
 	supprimerMandat,
@@ -25,6 +26,9 @@ import type { StatutDocument, BrouillonMandat, MandatEnregistre } from '$lib/typ
 /** Statuts qu'une requête a le droit de poser. `brouillon` n'y figure pas : on ne revient pas en
  * arrière sur un document déjà sorti. */
 const STATUTS_POSABLES: StatutDocument[] = ['genere', 'envoye'];
+
+/** Même plafond que celui appliqué au brouillon : le titre d'une clause devient un titre d'article. */
+const MAX_TITRE_CLAUSE = 200;
 
 async function persist(
 	brouillon: BrouillonMandat,
@@ -125,7 +129,10 @@ export const mandatActions: Actions = {
 	},
 
 	/** Relit le volet contractuel et renvoie ce qui semble manquer. Ne persiste rien : aucune
-	 * clause n'est activée sans un geste de l'utilisateur. */
+	 * clause n'est activée sans un geste de l'utilisateur.
+	 *
+	 * La bibliothèque est transmise au modèle pour qu'il propose d'y puiser plutôt que de rédiger une
+	 * variante de plus d'une protection déjà retenue ailleurs. */
 	auditerClauses: async ({ request }) => {
 		const data = await request.formData();
 
@@ -140,13 +147,37 @@ export const mandatActions: Actions = {
 		}
 
 		try {
-			return { ok: true, audit: await auditerClauses(brouillon), message: '' };
+			const bibliotheque = await listerClausesBibliotheque();
+			return { ok: true, audit: await auditerClauses(brouillon, bibliotheque), message: '' };
 		} catch (err) {
 			if (err instanceof OllamaIndisponibleError) {
 				return fail(503, { ok: false, message: err.message });
 			}
 			throw err;
 		}
+	},
+
+	/** Retient une clause proposée par une relecture : elle entre dans la bibliothèque, et l'éditeur
+	 * en pousse ensuite une copie figée dans le mandat. Aucun appel à l'IA ici, donc pas de 503 : le
+	 * texte a déjà été rédigé, il ne s'agit que de le conserver. */
+	retenirProposition: async ({ request }) => {
+		const data = await request.formData();
+		const titre = data.get('titre');
+		const corps = data.get('corps');
+
+		if (typeof titre !== 'string' || typeof corps !== 'string') {
+			return fail(400, { ok: false, message: 'Requête invalide.' });
+		}
+		if (!titre.trim() || !corps.trim()) {
+			return fail(400, { ok: false, message: 'Une clause a besoin d’un titre et d’un texte.' });
+		}
+
+		const clause = await creerClauseBibliotheque({
+			titre: titre.trim().slice(0, MAX_TITRE_CLAUSE),
+			corps: corps.trim(),
+			origine: 'ia'
+		});
+		return { ok: true, clause, message: 'Clause ajoutée à votre bibliothèque.' };
 	},
 
 	/** Aide ponctuelle pendant la saisie : renvoie une proposition pour un seul champ, sans rien
@@ -204,6 +235,54 @@ export const redigerDocumentAction: Action = async ({ params }) => {
 		}
 		throw err;
 	}
+};
+
+/** Garde ou rejette un passage réécrit par l'IA.
+ *
+ * On enregistre la décision, pas son résultat : le texte affiché est recomposé à la lecture par
+ * `texteEffectif`, donc la saisie et la prose du modèle restent l'une et l'autre intactes, et un
+ * refus se défait. C'est aussi ce qui fait suivre le PDF sans qu'il ait à connaître les refus, la
+ * génération passant par le même `construireDocument`. */
+export const basculerPassageAction: Action = async ({ request, params }) => {
+	const id = params.id;
+	if (!id) return fail(400, { ok: false, message: 'Identifiant manquant.' });
+
+	const data = await request.formData();
+	const champ = data.get('champ');
+	const index = Number(data.get('index'));
+	const refuse = data.get('refuse') === '1';
+
+	if (typeof champ !== 'string' || !champ) {
+		return fail(400, { ok: false, message: 'Requête invalide.' });
+	}
+	if (!Number.isInteger(index) || index < 0) {
+		return fail(400, { ok: false, message: 'Passage inconnu.' });
+	}
+
+	const existing = await obtenirMandat(id);
+	if (!existing) return fail(404, { ok: false, message: INTROUVABLE });
+	if (!existing.redaction) {
+		return fail(409, { ok: false, message: 'Ce document n’a pas de rédaction à réviser.' });
+	}
+
+	const refuses = { ...(existing.redaction.refuses ?? {}) };
+	const actuels = new Set(refuses[champ] ?? []);
+	if (refuse) actuels.add(index);
+	else actuels.delete(index);
+
+	// Un champ sans refus perd sa clé plutôt que de garder un tableau vide : `refuses` reste ainsi la
+	// liste de ce qui a été écarté, lisible telle quelle en base.
+	if (actuels.size > 0) refuses[champ] = [...actuels].sort((a, b) => a - b);
+	else delete refuses[champ];
+
+	const redaction = { ...existing.redaction, refuses };
+	if (!(await enregistrerRedaction(id, redaction))) {
+		return fail(404, { ok: false, message: INTROUVABLE });
+	}
+	return {
+		ok: true,
+		message: refuse ? 'Passage revenu à votre saisie.' : 'Passage de l’IA conservé.'
+	};
 };
 
 /** Revient à la saisie brute en effaçant la prose générée. */

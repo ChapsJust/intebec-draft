@@ -98,6 +98,7 @@
 		bind:clientId
 		bind:enregistrerNouveauClient
 		clients={data.clients}
+		clausesBibliotheque={data.clausesBibliotheque}
 		{banner}
 	/>
 </div>

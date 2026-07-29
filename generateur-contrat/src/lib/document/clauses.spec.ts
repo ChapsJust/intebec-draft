@@ -125,3 +125,68 @@ describe('clausesActives', () => {
 		expect(titres(brouillon())).toEqual(titres(brouillon()));
 	});
 });
+
+describe('clausesActives et les clauses retenues hors catalogue', () => {
+	const avecClause = (titre: string, corps: string) =>
+		brouillon((x) => {
+			x.conditions.clausesRetenues = [{ idBibliotheque: '', titre, corps }];
+		});
+
+	it('rend une clause retenue comme un article à part entière', () => {
+		const d = avecClause('Cession de contrat', 'Le contrat ne peut être cédé sans accord écrit.');
+
+		expect(titres(d)).toContain('Cession de contrat');
+		expect(texte(article(d, (a) => a.titre === 'Cession de contrat'))).toContain(
+			'ne peut être cédé sans accord écrit'
+		);
+	});
+
+	it('découpe le texte en un paragraphe par bloc séparé d’une ligne vide', () => {
+		const d = avecClause('Cession de contrat', 'Premier paragraphe.\n\nSecond paragraphe.');
+		const corps = article(d, (a) => a.titre === 'Cession de contrat')?.corps ?? [];
+
+		expect(corps).toHaveLength(2);
+		expect(corps.every((b) => b.kind === 'p')).toBe(true);
+	});
+
+	it('ne produit aucun article pour une clause au corps vide', () => {
+		// Un titre seul donnerait un article numéroté sans contenu, ce qui se lit comme un bug du
+		// document plutôt que comme une clause à compléter.
+		expect(titres(avecClause('Titre orphelin', '   '))).not.toContain('Titre orphelin');
+	});
+
+	it('ne produit aucun article pour une clause sans titre', () => {
+		const d = avecClause('  ', 'Du texte sans intitulé.');
+		expect(titres(d).some((t) => t.trim() === '')).toBe(false);
+	});
+
+	it('place les clauses retenues avant les articles de clôture', () => {
+		// Voir « Litiges » ou « Signature électronique » précéder une clause de fond se lirait comme un
+		// oubli de rédaction : ces deux articles ferment le contrat.
+		const d = avecClause('Cession de contrat', 'Texte.');
+		const ordre = titres(d);
+
+		expect(ordre.indexOf('Cession de contrat')).toBeLessThan(
+			ordre.indexOf('Droit applicable et règlement des différends')
+		);
+		expect(ordre.indexOf('Cession de contrat')).toBeLessThan(
+			ordre.indexOf('Signature électronique')
+		);
+	});
+
+	it('n’ajoute rien quand aucune clause n’est retenue', () => {
+		expect(titres(brouillon())).toEqual(titres(avecClause('Vide', '')));
+	});
+
+	it('conserve l’ordre de saisie de plusieurs clauses retenues', () => {
+		const d = brouillon((x) => {
+			x.conditions.clausesRetenues = [
+				{ idBibliotheque: '', titre: 'Première clause', corps: 'Texte un.' },
+				{ idBibliotheque: '', titre: 'Seconde clause', corps: 'Texte deux.' }
+			];
+		});
+		const ordre = titres(d);
+
+		expect(ordre.indexOf('Première clause')).toBeLessThan(ordre.indexOf('Seconde clause'));
+	});
+});

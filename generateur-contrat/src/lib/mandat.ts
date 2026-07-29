@@ -93,6 +93,7 @@ export function nouveauMandat(type: TypeDocument = 'soumission'): BrouillonManda
 				litiges: true,
 				signatureElectronique: true
 			},
+			clausesRetenues: [],
 			notesAdditionnelles: ''
 		},
 		dateSignature: new Date().toISOString().slice(0, 10),

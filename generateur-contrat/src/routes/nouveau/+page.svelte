@@ -26,5 +26,11 @@
 		</a>
 	</div>
 
-	<MandatEditor bind:brouillon bind:clientId bind:enregistrerNouveauClient clients={data.clients} />
+	<MandatEditor
+		bind:brouillon
+		bind:clientId
+		bind:enregistrerNouveauClient
+		clients={data.clients}
+		clausesBibliotheque={data.clausesBibliotheque}
+	/>
 </div>

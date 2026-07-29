@@ -236,8 +236,35 @@ function conditionsParticulieres(brouillon: BrouillonMandat): Article[] {
 	return articles;
 }
 
-/** Articles du contrat : clauses standards cochées, engagements réciproques, puis conditions
- * particulières chiffrées. L'ordre est stable, il détermine la numérotation dans le document. */
+/** Une clause de la bibliothèque n'est que de la prose : contrairement aux clauses du catalogue, elle
+ * ne consomme aucune valeur du mandat. Les paragraphes deviennent des blocs `p`, ce qui suffit à la
+ * rendre comme un article ordinaire. Les puces éventuelles sont laissées telles quelles dans le
+ * paragraphe : décider qu'un tiret en début de ligne fait une énumération opposable serait deviner. */
+export function blocsDepuisTexte(corps: string): BlocArticle[] {
+	return corps
+		.split(/\n{2,}/)
+		.map((paragraphe) => paragraphe.trim())
+		.filter(Boolean)
+		.map(p);
+}
+
+/** Clauses hors catalogue retenues pour ce mandat, dans l'ordre de saisie. Une clause au corps vide
+ * ne produit pas d'article : un titre seul donnerait un article numéroté sans contenu. */
+function clausesRetenues(brouillon: BrouillonMandat): Article[] {
+	return brouillon.conditions.clausesRetenues
+		.map((clause) => ({
+			titre: clause.titre.trim(),
+			corps: blocsDepuisTexte(clause.corps)
+		}))
+		.filter((article) => article.titre && article.corps.length > 0);
+}
+
+/** Articles du contrat : clauses standards cochées, engagements réciproques, conditions particulières
+ * chiffrées, puis clauses retenues hors catalogue. L'ordre est stable, il détermine la numérotation
+ * dans le document.
+ *
+ * Les clauses retenues se placent avant les litiges et la signature électronique : ces deux-là sont
+ * les articles de clôture d'usage, et les voir précéder une clause de fond se lirait comme un oubli. */
 export function clausesActives(brouillon: BrouillonMandat): Article[] {
 	const { clauses } = brouillon.conditions;
 	const articles: Article[] = [];
@@ -248,6 +275,7 @@ export function clausesActives(brouillon: BrouillonMandat): Article[] {
 	if (clauses.limitationResponsabilite) articles.push(limitationResponsabilite(brouillon));
 
 	articles.push(...conditionsParticulieres(brouillon));
+	articles.push(...clausesRetenues(brouillon));
 
 	if (clauses.litiges) articles.push(litiges(brouillon));
 	if (clauses.signatureElectronique) articles.push(signatureElectronique());

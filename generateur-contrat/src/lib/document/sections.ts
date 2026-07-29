@@ -3,6 +3,7 @@ import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$lib/
 import { PRESTATAIRE } from '$lib/config';
 import type { BlocArticle } from './clauses';
 import { clausesActives } from './clauses';
+import { texteEffectif } from './diff';
 import {
 	designationClient,
 	formatDateLongue,
@@ -129,7 +130,11 @@ function construirePortee(
 	return brouillon.lignes.map((ligne, i) => ({
 		label: `${label} ${i + 1}`,
 		nom: ligne.nom.trim() || 'Sans titre',
-		description: redaction?.lignes[ligne.id]?.trim() || ligne.description.trim(),
+		description: texteEffectif(
+			ligne.description,
+			redaction?.lignes[ligne.id],
+			refusesDuChamp(redaction, ligne.id)
+		),
 		inclus: nettoyerListe(ligne.inclus),
 		nonInclus: nettoyerListe(ligne.nonInclus),
 		delai: ligne.delaiEstime.trim(),
@@ -270,22 +275,38 @@ function construireParties(brouillon: BrouillonMandat): Partie[] {
 	];
 }
 
+/** Phrase liminaire produite par le gabarit, sans l'IA. Exportée parce qu'elle est le côté « avant »
+ * du diff : le panneau de revue doit pouvoir la comparer à ce que le modèle a écrit, et elle
+ * n'existait nulle part ailleurs qu'au fond d'une branche `else`. */
+export function preambuleParDefaut(brouillon: BrouillonMandat): string {
+	const designation = designationClient(brouillon.client.typeClient);
+	const nomClient = brouillon.client.nom.trim() || 'le Client';
+	return brouillon.type === 'contrat'
+		? `Le présent contrat établit les modalités selon lesquelles ${PRESTATAIRE.nom} réalise, pour ${designation} ${nomClient}, le mandat décrit aux présentes.`
+		: `La présente soumission présente à ${designation} ${nomClient} la portée, les honoraires et les conditions proposés par ${PRESTATAIRE.nom} pour la réalisation du mandat décrit aux présentes.`;
+}
+
+/** Passages refusés pour un champ. Tolère l'absence de `refuses` : les rédactions enregistrées avant
+ * l'arrivée de la revue passage par passage n'ont pas la clé. */
+function refusesDuChamp(redaction: RedactionIA | null | undefined, champ: string): number[] {
+	return redaction?.refuses?.[champ] ?? [];
+}
+
 function construirePreambule(brouillon: BrouillonMandat, redaction?: RedactionIA | null): string[] {
 	const textes: string[] = [];
-	const prealable = redaction?.preambule?.trim();
-	if (prealable) {
-		textes.push(prealable);
-	} else {
-		const designation = designationClient(brouillon.client.typeClient);
-		const nomClient = brouillon.client.nom.trim() || 'le Client';
-		textes.push(
-			brouillon.type === 'contrat'
-				? `Le présent contrat établit les modalités selon lesquelles ${PRESTATAIRE.nom} réalise, pour ${designation} ${nomClient}, le mandat décrit aux présentes.`
-				: `La présente soumission présente à ${designation} ${nomClient} la portée, les honoraires et les conditions proposés par ${PRESTATAIRE.nom} pour la réalisation du mandat décrit aux présentes.`
-		);
-	}
 
-	const objet = redaction?.objet?.trim() || brouillon.objet.trim();
+	const preambule = texteEffectif(
+		preambuleParDefaut(brouillon),
+		redaction?.preambule,
+		refusesDuChamp(redaction, 'preambule')
+	);
+	if (preambule) textes.push(preambule);
+
+	const objet = texteEffectif(
+		brouillon.objet,
+		redaction?.objet,
+		refusesDuChamp(redaction, 'objet')
+	);
 	if (objet) textes.push(objet);
 
 	return textes;

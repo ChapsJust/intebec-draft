@@ -18,6 +18,22 @@ export const client = pgTable('client', {
 	majLe: timestamp('maj_le', { withTimezone: true }).notNull().defaultNow()
 });
 
+/** Clauses rédigées hors catalogue, réutilisables d'un mandat à l'autre.
+ *
+ * Séparée de `mandat` parce qu'une clause survit au document qui l'a fait naître : elle est proposée
+ * par une relecture, retenue une première fois, puis reproposée sur les mandats suivants au lieu
+ * d'être réécrite en autant de variantes approximatives. Le texte retenu dans un mandat en est une
+ * copie figée (`ClauseRetenue`), donc modifier une clause ici ne réécrit aucun contrat déjà rédigé. */
+export const clauseBibliotheque = pgTable('clause_bibliotheque', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	titre: text('titre').notNull(),
+	corps: text('corps').notNull(),
+	origine: text('origine').notNull().default('ia'),
+	archiveLe: timestamp('archive_le', { withTimezone: true }),
+	creeLe: timestamp('cree_le', { withTimezone: true }).notNull().defaultNow(),
+	majLe: timestamp('maj_le', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const mandat = pgTable('mandat', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	clientId: uuid('client_id').references(() => client.id, { onDelete: 'set null' }),

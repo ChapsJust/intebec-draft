@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { construireDocument } from './sections';
+import { construireDocument, preambuleParDefaut } from './sections';
 import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
 import { formatCad, totalNet } from '$lib/montants';
 import type { BrouillonMandat, RedactionIA, LigneService } from '$lib/types';
@@ -307,5 +307,113 @@ describe('construireDocument : rédaction IA', () => {
 			throw new Error('section honoraires absente');
 		}
 		expect(avecIA.total).toBe(sansIA.total);
+	});
+});
+
+describe('construireDocument : passages refusés', () => {
+	const redaction = (partiel: Partial<RedactionIA>): RedactionIA => ({
+		preambule: '',
+		objet: '',
+		lignes: {},
+		genereLe: '2026-07-27T10:00:00.000Z',
+		modele: 'llama3.1:8b',
+		...partiel
+	});
+
+	/** Prose de l'objet en deux phrases, dont une seule est réécrite : c'est le cas qui distingue un
+	 * refus par passage d'un refus par champ. */
+	const objetSaisi = 'Le mandat porte sur le site. La mise en ligne est incluse.';
+	const objetIA = 'Le mandat porte sur la refonte du site. La mise en ligne est incluse.';
+
+	const textesObjet = (d: ReturnType<typeof brouillon>, r: RedactionIA) => {
+		const contenu = construireDocument(d, r).sections[0].contenu;
+		if (contenu.kind !== 'paragraphes') throw new Error('section objet absente');
+		return contenu.textes.join(' ');
+	};
+
+	it('rend la saisie pour le passage refusé', () => {
+		const d = brouillon((x) => (x.objet = objetSaisi));
+		const texte = textesObjet(d, redaction({ objet: objetIA, refuses: { objet: [0] } }));
+
+		expect(texte).toContain('Le mandat porte sur le site.');
+		expect(texte).not.toContain('la refonte du site');
+	});
+
+	it('conserve la prose de l’IA pour les passages non refusés du même champ', () => {
+		const d = brouillon((x) => (x.objet = objetSaisi));
+		const texte = textesObjet(d, redaction({ objet: objetIA, refuses: { objet: [] } }));
+
+		expect(texte).toContain('la refonte du site');
+	});
+
+	it('ne touche pas aux autres champs quand un champ est refusé', () => {
+		const d = brouillon((x) => (x.objet = objetSaisi));
+		const texte = textesObjet(
+			d,
+			redaction({
+				preambule: 'Préambule réécrit par l’IA.',
+				objet: objetIA,
+				refuses: { objet: [0] }
+			})
+		);
+
+		expect(texte).toContain('Préambule réécrit par l’IA.');
+		expect(texte).toContain('Le mandat porte sur le site.');
+	});
+
+	it('rend la description saisie d’une ligne dont le passage est refusé', () => {
+		const l = ligne({ nom: 'Site', montantForfaitaire: 5000 });
+		l.description = 'Conception de la vitrine.';
+		const d = brouillon((x) => (x.lignes = [l]));
+
+		const contenu = construireDocument(
+			d,
+			redaction({
+				lignes: { [l.id]: 'Conception complète de la vitrine.' },
+				refuses: { [l.id]: [0] }
+			})
+		).sections.find((s) => s.titre === 'Portée des travaux')?.contenu;
+
+		if (contenu?.kind !== 'portee') throw new Error('section portée absente');
+		expect(contenu.entrees[0].description).toBe('Conception de la vitrine.');
+	});
+
+	it('tolère une rédaction enregistrée avant l’arrivée des refus', () => {
+		// Les lignes déjà en base n'ont pas la clé `refuses` : la colonne jsonb ne les a pas migrées.
+		const d = brouillon((x) => (x.objet = objetSaisi));
+		expect(textesObjet(d, redaction({ objet: objetIA }))).toContain('la refonte du site');
+	});
+
+	it('ne laisse pas un refus modifier les montants', () => {
+		const d = brouillon((x) => (x.lignes = [ligne({ nom: 'A', montantForfaitaire: 7500 })]));
+		const sansIA = section(d, 'Honoraires')?.contenu;
+		const avecRefus = construireDocument(
+			d,
+			redaction({ objet: objetIA, refuses: { objet: [0] } })
+		).sections.find((s) => s.titre === 'Honoraires')?.contenu;
+
+		if (sansIA?.kind !== 'honoraires' || avecRefus?.kind !== 'honoraires') {
+			throw new Error('section honoraires absente');
+		}
+		expect(avecRefus.total).toBe(sansIA.total);
+	});
+});
+
+describe('preambuleParDefaut', () => {
+	it('ne dépend pas de la rédaction : c’est le côté « avant » du diff', () => {
+		const d = brouillon((x) => (x.client.nom = 'Boulangerie Dupont'));
+		expect(preambuleParDefaut(d)).toContain('Boulangerie Dupont');
+	});
+
+	it('distingue le contrat de la soumission', () => {
+		const contrat = preambuleParDefaut(brouillon((x) => (x.type = 'contrat')));
+		const soumission = preambuleParDefaut(brouillon((x) => (x.type = 'soumission')));
+
+		expect(contrat).toContain('présent contrat');
+		expect(soumission).toContain('présente soumission');
+	});
+
+	it('nomme le client « le Client » à défaut de raison sociale saisie', () => {
+		expect(preambuleParDefaut(brouillon((x) => (x.client.nom = '  ')))).toContain('le Client');
 	});
 });

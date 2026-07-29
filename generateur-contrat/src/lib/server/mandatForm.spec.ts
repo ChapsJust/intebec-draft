@@ -120,6 +120,63 @@ describe('normaliserMandat', () => {
 	});
 });
 
+describe('normaliserMandat : clauses retenues', () => {
+	const retenues = (valeur: unknown) =>
+		normaliserMandat({ conditions: { clausesRetenues: valeur } }).conditions.clausesRetenues;
+
+	const uuid = '11111111-1111-4111-8111-111111111111';
+
+	it('conserve une clause complète', () => {
+		expect(retenues([{ idBibliotheque: uuid, titre: 'Cession', corps: 'Texte.' }])).toEqual([
+			{ idBibliotheque: uuid, titre: 'Cession', corps: 'Texte.' }
+		]);
+	});
+
+	it('écarte une clause sans titre ou sans corps', () => {
+		// Ni l'une ni l'autre ne peut produire d'article : les garder ferait réapparaître une ligne
+		// fantôme dans l'éditeur à chaque rechargement.
+		expect(
+			retenues([
+				{ idBibliotheque: uuid, titre: '   ', corps: 'Texte.' },
+				{ idBibliotheque: uuid, titre: 'Cession', corps: '  ' }
+			])
+		).toEqual([]);
+	});
+
+	it('vide un identifiant qui n’est pas un UUID plutôt que de le recopier', () => {
+		// Un identifiant bricolé irait ensuite se comparer aux ids réels de la bibliothèque.
+		expect(
+			retenues([{ idBibliotheque: '../../admin', titre: 'Cession', corps: 'Texte.' }])[0]
+				.idBibliotheque
+		).toBe('');
+	});
+
+	it('borne le nombre de clauses et la longueur du titre', () => {
+		const nombreuses = retenues(
+			Array.from({ length: 200 }, () => ({ titre: 'x'.repeat(500), corps: 'Texte.' }))
+		);
+		expect(nombreuses.length).toBeLessThanOrEqual(20);
+		expect(nombreuses[0].titre.length).toBeLessThanOrEqual(200);
+	});
+
+	it('ne laisse passer aucun champ étranger sur une clause', () => {
+		const clause = retenues([
+			{ idBibliotheque: uuid, titre: 'Cession', corps: 'Texte.', origine: 'manuelle', admin: true }
+		])[0];
+		expect(Object.keys(clause)).toEqual(['idBibliotheque', 'titre', 'corps']);
+	});
+
+	it('retombe sur une liste vide pour tout ce qui n’est pas un tableau', () => {
+		for (const mauvais of [undefined, null, 'clause', 42, { titre: 'x' }]) {
+			expect(retenues(mauvais)).toEqual([]);
+		}
+	});
+
+	it('ignore une entrée qui n’est pas un objet', () => {
+		expect(retenues(['texte', null, 42])).toEqual([]);
+	});
+});
+
 describe('lireMandat', () => {
 	it('lit une charge JSON valide', () => {
 		const brouillon = lireMandat(JSON.stringify({ titre: 'Refonte' }));

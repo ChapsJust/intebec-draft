@@ -4,10 +4,11 @@ import {
 	extraireJson,
 	normaliser,
 	nettoyerProse,
-	normaliserAudit
+	normaliserAudit,
+	titreNormalise
 } from './ollama';
 import { nouveauMandat } from '$lib/mandat';
-import type { BrouillonMandat } from '$lib/types';
+import type { BrouillonMandat, ClauseBibliotheque } from '$lib/types';
 
 describe('extraireJson', () => {
 	it('lit un objet JSON nu', () => {
@@ -166,6 +167,12 @@ describe('normaliser', () => {
 		expect(r.genereLe).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 		expect(r.modele.length).toBeGreaterThan(0);
 	});
+
+	it('repart sans passage refusé : les index de la rédaction précédente ne désignent plus rien', () => {
+		const r = normaliser({ objet: 'Refonte.', refuses: { objet: [0, 1] } }, new Set());
+
+		expect(r.refuses).toEqual({});
+	});
 });
 
 /** Mandat de référence pour l'audit : aucune clause cochée, aucune condition chiffrée, donc
@@ -301,5 +308,164 @@ describe('normaliserAudit', () => {
 
 		expect(a.genereLe).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 		expect(a.modele.length).toBeGreaterThan(0);
+	});
+});
+
+/** Clause de bibliothèque de référence. L'identifiant est un UUID parce que c'est ce que la base
+ * produit, et que `normaliserAudit` compare des identifiants réels. */
+function clauseBiblio(over: Partial<ClauseBibliotheque> = {}): ClauseBibliotheque {
+	return {
+		id: '11111111-1111-4111-8111-111111111111',
+		titre: 'Disponibilité du service',
+		corps: 'Le prestataire vise une disponibilité raisonnable du service.',
+		origine: 'ia',
+		archiveLe: null,
+		creeLe: '2026-01-01T00:00:00.000Z',
+		majLe: '2026-01-01T00:00:00.000Z',
+		...over
+	};
+}
+
+describe('normaliserAudit et la bibliothèque de clauses', () => {
+	it('retient une clause de la bibliothèque réellement disponible', () => {
+		const clause = clauseBiblio();
+		const a = normaliserAudit(
+			{ bibliotheque: [{ id: clause.id, raison: 'Le mandat inclut de l’hébergement.' }] },
+			draftNu(),
+			[clause]
+		);
+
+		expect(a.bibliotheque).toEqual([
+			{ id: clause.id, raison: 'Le mandat inclut de l’hébergement.' }
+		]);
+	});
+
+	it('rejette un identifiant de clause que la bibliothèque ne contient pas', () => {
+		const a = normaliserAudit(
+			{ bibliotheque: [{ id: '22222222-2222-4222-8222-222222222222', raison: 'Inventé.' }] },
+			draftNu(),
+			[clauseBiblio()]
+		);
+
+		expect(a.bibliotheque).toEqual([]);
+	});
+
+	it('rejette une clause archivée : elle a été retirée de la bibliothèque exprès', () => {
+		const clause = clauseBiblio({ archiveLe: '2026-06-01T00:00:00.000Z' });
+		const a = normaliserAudit(
+			{ bibliotheque: [{ id: clause.id, raison: 'Archivée.' }] },
+			draftNu(),
+			[clause]
+		);
+
+		expect(a.bibliotheque).toEqual([]);
+	});
+
+	it('écarte une clause déjà retenue pour ce mandat', () => {
+		const clause = clauseBiblio();
+		const brouillon = draftNu();
+		brouillon.conditions.clausesRetenues = [
+			{ idBibliotheque: clause.id, titre: clause.titre, corps: clause.corps }
+		];
+
+		const a = normaliserAudit(
+			{ bibliotheque: [{ id: clause.id, raison: 'Déjà là.' }] },
+			brouillon,
+			[clause]
+		);
+
+		expect(a.bibliotheque).toEqual([]);
+	});
+
+	it('déduplique une clause de bibliothèque désignée deux fois', () => {
+		const clause = clauseBiblio();
+		const a = normaliserAudit(
+			{
+				bibliotheque: [
+					{ id: clause.id, raison: 'Première.' },
+					{ id: clause.id, raison: 'Seconde.' }
+				]
+			},
+			draftNu(),
+			[clause]
+		);
+
+		expect(a.bibliotheque).toHaveLength(1);
+	});
+
+	it('écarte une proposition qui redit une clause déjà en bibliothèque, accents et casse confondus', () => {
+		// C'est le « sinon recrée » : la consigne du prompt demande de désigner l'existant plutôt que
+		// de le réécrire, mais elle ne se fait pas obéir. Sans ce filtre, la bibliothèque se remplissait
+		// de doublons typographiques à chaque relecture.
+		const a = normaliserAudit(
+			{
+				propositions: [
+					{ titre: 'DISPONIBILITE DU SERVICE', raison: 'Doublon.', brouillon: 'Autre texte.' },
+					{ titre: 'Cession de contrat', raison: 'Vraiment neuve.', brouillon: 'Texte.' }
+				]
+			},
+			draftNu(),
+			[clauseBiblio()]
+		);
+
+		expect(a.propositions.map((p) => p.titre)).toEqual(['Cession de contrat']);
+	});
+
+	it('écarte une proposition qui redit une clause déjà retenue pour ce mandat', () => {
+		const brouillon = draftNu();
+		brouillon.conditions.clausesRetenues = [
+			{ idBibliotheque: '', titre: 'Pénalité de retard', corps: 'Texte retenu.' }
+		];
+
+		const a = normaliserAudit(
+			{
+				propositions: [
+					{ titre: 'pénalité de retard', raison: 'Doublon.', brouillon: 'Réécriture.' }
+				]
+			},
+			brouillon,
+			[]
+		);
+
+		expect(a.propositions).toEqual([]);
+	});
+
+	it('déduplique deux propositions au même titre dans une seule réponse', () => {
+		const a = normaliserAudit(
+			{
+				propositions: [
+					{ titre: 'Cession de contrat', raison: 'Première.', brouillon: 'Texte un.' },
+					{ titre: 'Cession de contrat', raison: 'Seconde.', brouillon: 'Texte deux.' }
+				]
+			},
+			draftNu(),
+			[]
+		);
+
+		expect(a.propositions).toHaveLength(1);
+	});
+
+	it('accepte une proposition quand la bibliothèque ne couvre pas le sujet', () => {
+		const a = normaliserAudit(
+			{ propositions: [{ titre: 'Cession de contrat', raison: 'Neuve.', brouillon: 'Texte.' }] },
+			draftNu(),
+			[clauseBiblio()]
+		);
+
+		expect(a.propositions).toHaveLength(1);
+	});
+
+	it('renvoie une bibliothèque vide quand le modèle n’en parle pas', () => {
+		expect(normaliserAudit({}, draftNu(), [clauseBiblio()]).bibliotheque).toEqual([]);
+	});
+});
+
+describe('titreNormalise', () => {
+	it('ignore la casse, les accents et les espaces superflus', () => {
+		expect(titreNormalise('  Disponibilité   DU Service ')).toBe('disponibilite du service');
+	});
+
+	it('rend identiques deux écritures du même titre', () => {
+		expect(titreNormalise('Pénalité de retard')).toBe(titreNormalise('PENALITE DE RETARD'));
 	});
 });

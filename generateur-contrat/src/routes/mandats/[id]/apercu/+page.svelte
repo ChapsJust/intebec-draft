@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 	import DocumentView from '$lib/components/DocumentView.svelte';
+	import DiffRedaction from '$lib/components/DiffRedaction.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { formatDateLongue } from '$lib/document/format';
@@ -154,9 +155,11 @@
 			<span>
 				La prose affichée a été rédigée par l’IA locale ({redaction.modele}) le
 				{formatDateLongue(redaction.genereLe)}. Les montants, dates et clauses restent ceux de votre
-				saisie.
+				saisie. Le détail de ce qui a changé est juste en dessous.
 			</span>
 		</div>
+
+		<DiffRedaction brouillon={mandat.brouillon} {redaction} />
 	{/if}
 
 	<div

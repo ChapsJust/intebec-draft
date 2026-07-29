@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { enhance, applyAction, deserialize } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import type { AuditClauses, FicheClient, BrouillonMandat } from '$lib/types';
+	import type {
+		AuditClauses,
+		ClauseBibliotheque,
+		FicheClient,
+		BrouillonMandat,
+		PropositionClause
+	} from '$lib/types';
 	import { verifierMandat } from '$lib/validation';
 	import MandatForm from './MandatForm.svelte';
 	import ClientForm from './ClientForm.svelte';
@@ -16,12 +22,14 @@
 		clientId = $bindable(),
 		enregistrerNouveauClient = $bindable(),
 		clients,
+		clausesBibliotheque = [],
 		banner
 	}: {
 		brouillon: BrouillonMandat;
 		clientId: string | null;
 		enregistrerNouveauClient: boolean;
 		clients: FicheClient[];
+		clausesBibliotheque?: ClauseBibliotheque[];
 		banner?: string;
 	} = $props();
 
@@ -112,6 +120,28 @@
 		);
 	}
 
+	/** Ajoute à la bibliothèque une clause proposée par la relecture, et renvoie la fiche créée pour
+	 * que le formulaire en pousse une copie figée dans le mandat. La bibliothèque locale est complétée
+	 * au passage : sans cela, la clause n'apparaîtrait dans « Ajouter depuis la bibliothèque » qu'après
+	 * un rechargement, et paraîtrait n'avoir été enregistrée nulle part. */
+	async function retenirProposition(proposition: PropositionClause): Promise<ClauseBibliotheque> {
+		const body = new FormData();
+		body.set('titre', proposition.titre);
+		body.set('corps', proposition.brouillon);
+		const result = await posterAction('?/retenirProposition', body);
+
+		if (result.type === 'success' && result.data?.clause) {
+			const clause = result.data.clause as ClauseBibliotheque;
+			clausesBibliotheque = [...clausesBibliotheque, clause];
+			return clause;
+		}
+		throw new Error(
+			result.type === 'failure' && typeof result.data?.message === 'string'
+				? result.data.message
+				: 'La clause n’a pas pu être enregistrée.'
+		);
+	}
+
 	/** Demande une proposition de texte à l'IA locale pour un champ précis. Rien n'est persisté :
 	 * la proposition remonte au bouton, qui laisse l'utilisateur l'accepter ou l'ignorer. */
 	async function proposerTexte(champ: string): Promise<string> {
@@ -199,7 +229,12 @@
 		enErreur={erreurPaiement}
 	/>
 
-	<ClausesForm bind:conditions={brouillon.conditions} onAuditer={auditerClauses} />
+	<ClausesForm
+		bind:conditions={brouillon.conditions}
+		{clausesBibliotheque}
+		onAuditer={auditerClauses}
+		onRetenirProposition={retenirProposition}
+	/>
 
 	<SignatureForm
 		bind:dateSignature={brouillon.dateSignature}

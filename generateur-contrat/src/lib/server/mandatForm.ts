@@ -1,5 +1,6 @@
 import type {
 	AbonnementRecurrent,
+	ClauseRetenue,
 	CoordonneesClient,
 	ConditionsParticulieres,
 	BrouillonMandat,
@@ -8,6 +9,7 @@ import type {
 	LigneService
 } from '$lib/types';
 import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
+import { estUuid } from './formulaire';
 
 export interface SoumissionMandat {
 	brouillon: BrouillonMandat;
@@ -27,6 +29,10 @@ const MAX_LIGNES = 60;
 const MAX_ITEMS = 60;
 const MAX_PUCES = 40;
 const MAX_TEXTE = 20_000;
+const MAX_CLAUSES = 20;
+/** Le titre d'une clause devient un titre d'article : au-delà, il déborde la mise en page du
+ * document au lieu de la renseigner. */
+const MAX_TITRE = 200;
 
 function texte(valeur: unknown, defaut = ''): string {
 	if (typeof valeur !== 'string') return defaut;
@@ -139,6 +145,30 @@ function normaliserAbonnement(brut: unknown, defaut: AbonnementRecurrent): Abonn
 	};
 }
 
+/** Clauses hors catalogue retenues pour le mandat. À la différence des puces, les entrées vides sont
+ * écartées : un titre sans corps, ou l'inverse, ne peut produire aucun article, et le garder ferait
+ * réapparaître une ligne fantôme dans l'éditeur à chaque rechargement. */
+function normaliserClausesRetenues(brut: unknown): ClauseRetenue[] {
+	if (!Array.isArray(brut)) return [];
+
+	const retenues: ClauseRetenue[] = [];
+	for (const entree of brut.slice(0, MAX_CLAUSES)) {
+		const source = (entree ?? {}) as Record<string, unknown>;
+		const titre = texte(source.titre).slice(0, MAX_TITRE).trim();
+		const corps = texte(source.corps).trim();
+		if (!titre || !corps) continue;
+		// L'identifiant ne sert qu'à la traçabilité : une valeur qui n'est pas un UUID est ramenée à
+		// vide plutôt que recopiée, sans quoi elle irait ensuite se comparer aux ids de la bibliothèque.
+		const idBibliotheque = texte(source.idBibliotheque);
+		retenues.push({
+			idBibliotheque: estUuid(idBibliotheque) ? idBibliotheque : '',
+			titre,
+			corps
+		});
+	}
+	return retenues;
+}
+
 function normaliserConditions(
 	brut: unknown,
 	defaut: ConditionsParticulieres
@@ -169,6 +199,7 @@ function normaliserConditions(
 				defaut.clauses.signatureElectronique
 			)
 		},
+		clausesRetenues: normaliserClausesRetenues(source.clausesRetenues),
 		notesAdditionnelles: texte(source.notesAdditionnelles)
 	};
 }

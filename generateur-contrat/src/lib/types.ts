@@ -89,6 +89,8 @@ export interface ConditionsParticulieres {
 	rabaisPct: number;
 	rabaisMotif: string;
 	clauses: ClausesStandards;
+	/** Clauses hors catalogue retenues pour ce mandat, dans l'ordre où elles paraissent au contrat. */
+	clausesRetenues: ClauseRetenue[];
 	notesAdditionnelles: string;
 }
 
@@ -121,13 +123,49 @@ export interface PropositionClause {
 	brouillon: string;
 }
 
+/** Clause déjà présente en bibliothèque que l'IA propose de retenir pour ce mandat, plutôt que d'en
+ * rédiger une variante. Sans ce registre, chaque relecture réécrivait sa propre version d'une
+ * protection déjà retenue ailleurs, et la bibliothèque se peuplait de doublons approximatifs. */
+export interface SuggestionBibliotheque {
+	id: string;
+	raison: string;
+}
+
 /** Audit des clauses par l'IA. Sert à identifier les éléments à revoir dans le contrat. */
 export interface AuditClauses {
 	suggestions: SuggestionClause[];
 	conditions: SuggestionCondition[];
+	bibliotheque: SuggestionBibliotheque[];
 	propositions: PropositionClause[];
 	genereLe: string;
 	modele: string;
+}
+
+/** Clause rédigée hors catalogue, réutilisable d'un mandat à l'autre. Le catalogue des cinq clauses
+ * standards est du code : il porte du texte qui consomme les valeurs du mandat. La bibliothèque, à
+ * l'inverse, ne porte que de la prose figée, ce qui est exactement ce qu'une relecture produit. */
+export interface ClauseBibliotheque {
+	id: string;
+	titre: string;
+	corps: string;
+	/** `ia` = proposée par une relecture puis retenue, `manuelle` = saisie à la main. */
+	origine: 'ia' | 'manuelle';
+	/** Non nul = clause archivée : elle disparaît des listes sans casser les mandats qui la citent. */
+	archiveLe: string | null;
+	creeLe: string;
+	majLe: string;
+}
+
+/** Clause retenue pour CE mandat, texte figé au moment où elle a été retenue.
+ *
+ * Même raison que `clientId` vs `brouillon.client` : la bibliothèque évolue, un contrat déjà rédigé
+ * ne doit pas changer dans son dos. L'identifiant ne sert donc qu'à la traçabilité et au
+ * dédoublonnage de la relecture, jamais à retrouver le texte à afficher. */
+export interface ClauseRetenue {
+	/** Origine dans la bibliothèque. Vide si la clause y a été supprimée depuis. */
+	idBibliotheque: string;
+	titre: string;
+	corps: string;
 }
 
 /** Brouillon de mandat, tel que saisi par l'utilisateur. Il est stocké tel quel dans la colonne `brouillon` de la table `mandat`. */
@@ -168,6 +206,18 @@ export interface RedactionIA {
 	objet: string;
 	/** Descriptions réécrites, indexées par `LigneService.id`. */
 	lignes: Record<string, string>;
+	/** Passages rejetés par l'utilisateur, par champ (`preambule`, `objet`, ou un `LigneService.id`) :
+	 * les index des passages du diff qu'il a refusés.
+	 *
+	 * On stocke la décision, pas son résultat : le texte affiché est recomposé à la lecture par
+	 * `texteEffectif`. Fusionner en dur aurait obligé à écraser soit la saisie, soit la prose de
+	 * l'IA, et un refus serait devenu irréversible. Le PDF passant par le même `construireDocument`,
+	 * il suit les refus sans avoir à les connaître.
+	 *
+	 * Optionnel, et pas par commodité : les rédactions enregistrées avant l'arrivée de la revue
+	 * passage par passage n'ont pas la clé, et la colonne `jsonb` ne les a pas migrées. Le type dit
+	 * donc la vérité de ce qui sort de la base, ce qui force le `??` là où on le lit. */
+	refuses?: Record<string, number[]>;
 	genereLe: string;
 	modele: string;
 }

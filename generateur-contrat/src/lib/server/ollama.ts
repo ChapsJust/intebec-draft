@@ -2,10 +2,12 @@ import { env } from '$env/dynamic/private';
 import type {
 	AuditClauses,
 	ChampCondition,
+	ClauseBibliotheque,
 	ClausesStandards,
 	BrouillonMandat,
 	PropositionClause,
 	RedactionIA,
+	SuggestionBibliotheque,
 	SuggestionClause,
 	SuggestionCondition
 } from '$lib/types';
@@ -354,14 +356,28 @@ export function normaliser(brut: unknown, idsConnus: Set<string>): RedactionIA {
 		preambule: texte(source.preambule),
 		objet: texte(source.objet),
 		lignes,
+		// Une nouvelle rédaction repart sans refus : les passages ne sont plus les mêmes, donc des
+		// index hérités de la précédente désigneraient un texte qui n'existe plus.
+		refuses: {},
 		genereLe: new Date().toISOString(),
 		modele: modeleActif()
 	};
 }
 
+/** Compare deux titres de clause sans se laisser arrêter par la casse ni les accents. Le modèle
+ * réécrit « Cession de créance » en « cession de creance » d'une relecture à l'autre : sans cette
+ * normalisation, la bibliothèque se serait remplie de doublons typographiques. */
+export function titreNormalise(titre: string): string {
+	return titre.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 /** État du volet contractuel : ce qui est déjà couvert, et ce qui ne l'est pas. Les valeurs
- * chiffrées sont montrées telles quelles, ce sont des faits saisis, pas des chiffres à inventer. */
-function contexteClauses(brouillon: BrouillonMandat): string {
+ * chiffrées sont montrées telles quelles, ce sont des faits saisis, pas des chiffres à inventer.
+ *
+ * La bibliothèque y figure avec ses identifiants parce que c'est ce que le modèle doit renvoyer pour
+ * désigner une clause existante : sans elle, il rédigeait une variante de plus à chaque relecture
+ * d'une protection déjà retenue sur un autre mandat. */
+function contexteClauses(brouillon: BrouillonMandat, bibliotheque: ClauseBibliotheque[]): string {
 	const actives = CLES_CLAUSES.filter((c) => brouillon.conditions.clauses[c]);
 	const inactives = CLES_CLAUSES.filter((c) => !brouillon.conditions.clauses[c]);
 	const zero = CLES_CONDITIONS.filter((c) => brouillon.conditions[c] <= 0);
@@ -369,6 +385,10 @@ function contexteClauses(brouillon: BrouillonMandat): string {
 
 	const liste = <K extends string>(cles: K[], source: Record<K, string>) =>
 		cles.length ? cles.map((c) => `  - ${c} : ${source[c]}`).join('\n') : '  (aucune)';
+
+	const retenues = brouillon.conditions.clausesRetenues;
+	const titresRetenus = new Set(retenues.map((c) => titreNormalise(c.titre)));
+	const disponibles = bibliotheque.filter((c) => !titresRetenus.has(titreNormalise(c.titre)));
 
 	return `Clauses déjà activées :
 ${liste(actives, LIBELLES_CLAUSES)}
@@ -382,39 +402,57 @@ ${renseignees.length ? renseignees.map((c) => `  - ${c} = ${brouillon.conditions
 Conditions chiffrées laissées à zéro (l'article correspondant est absent du contrat) :
 ${liste(zero, LIBELLES_CONDITIONS)}
 
+Clauses hors catalogue déjà retenues pour CE mandat :
+${retenues.length ? retenues.map((c) => `  - ${c.titre}`).join('\n') : '  (aucune)'}
+
+Clauses de la bibliothèque non retenues pour ce mandat (utilise l'id pour en désigner une) :
+${disponibles.length ? disponibles.map((c) => `  - id: ${c.id} : ${c.titre}`).join('\n') : '  (aucune)'}
+
 Notes additionnelles saisies : ${brouillon.conditions.notesAdditionnelles.trim() || '(vide)'}
 Abonnement récurrent : ${brouillon.abonnement.actif ? `oui, ${brouillon.abonnement.frequence}, couvre : ${brouillon.abonnement.couverture.trim() || '(non précisé)'}` : 'non'}`;
 }
 
 /** Relit le mandat et signale ce qui manque au volet contractuel. Ne modifie rien : l'utilisateur
  * reste seul à décider d'activer une clause, et les brouillons partent en révision, pas au document. */
-export async function auditerClauses(brouillon: BrouillonMandat): Promise<AuditClauses> {
+export async function auditerClauses(
+	brouillon: BrouillonMandat,
+	bibliotheque: ClauseBibliotheque[] = []
+): Promise<AuditClauses> {
 	const prompt = `Voici un mandat à relire.
 
 ${contexte(brouillon)}
 
-${contexteClauses(brouillon)}
+${contexteClauses(brouillon, bibliotheque)}
 
 Relis ce mandat et signale ce qui manque au volet contractuel. Réponds par un objet JSON avec exactement ces clés :
 - "suggestions" : tableau des clauses NON activées qui devraient l'être compte tenu de la nature de ce mandat. Chaque entrée : {"cle": "<une clé exacte de la liste des clauses non activées>", "raison": "<une phrase expliquant pourquoi ce mandat l'appelle>"}. N'y mets aucune clause déjà activée.
 - "conditions" : tableau des conditions chiffrées à zéro qui devraient être renseignées. Chaque entrée : {"champ": "<une clé exacte de la liste des conditions à zéro>", "raison": "<une phrase>"}. Ne propose AUCUNE valeur chiffrée.
-- "propositions" : tableau des protections manquantes que le catalogue ci-dessus ne couvre pas du tout. Chaque entrée : {"titre": "<titre court de la clause>", "raison": "<pourquoi ce mandat en a besoin>", "brouillon": "<un ou deux paragraphes de départ, sans référence légale>"}. Laisse ce tableau vide si le catalogue suffit.
+- "bibliotheque" : tableau des clauses de la bibliothèque ci-dessus qui devraient être retenues pour ce mandat. Chaque entrée : {"id": "<un id exact de la liste des clauses de la bibliothèque>", "raison": "<une phrase>"}. N'invente aucun id.
+- "propositions" : tableau des protections manquantes que RIEN ne couvre : ni le catalogue, ni les clauses déjà retenues, ni la bibliothèque. Chaque entrée : {"titre": "<titre court de la clause>", "raison": "<pourquoi ce mandat en a besoin>", "brouillon": "<un ou deux paragraphes de départ, sans référence légale>"}. Si la protection existe déjà dans la bibliothèque, ne la réécris PAS ici : désigne-la par son id dans "bibliotheque". Laisse ce tableau vide si tout est déjà couvert.
 
 Ne signale que ce qui est réellement justifié par ce mandat.`;
 
 	const brut = await appeler(prompt, CONSIGNES_AUDIT);
-	return normaliserAudit(brut, brouillon);
+	return normaliserAudit(brut, brouillon, bibliotheque);
 }
 
 /** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un
  * objet là où un tableau est attendu. On ne garde que ce qui désigne une case réellement
  * décochée : une suggestion sans effet est du bruit qui décrédibilise l'audit entier. */
-export function normaliserAudit(brut: unknown, brouillon: BrouillonMandat): AuditClauses {
+export function normaliserAudit(
+	brut: unknown,
+	brouillon: BrouillonMandat,
+	bibliotheque: ClauseBibliotheque[] = []
+): AuditClauses {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const tableau = (v: unknown): Record<string, unknown>[] =>
 		Array.isArray(v)
 			? v.filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
 			: [];
+
+	const retenues = brouillon.conditions.clausesRetenues;
+	const titresRetenus = new Set(retenues.map((c) => titreNormalise(c.titre)));
+	const idsRetenus = new Set(retenues.map((c) => c.idBibliotheque).filter(Boolean));
 
 	const suggestions: SuggestionClause[] = [];
 	for (const entree of tableau(source.suggestions)) {
@@ -434,17 +472,41 @@ export function normaliserAudit(brut: unknown, brouillon: BrouillonMandat): Audi
 		conditions.push({ champ, raison: texte(entree.raison) });
 	}
 
+	// Une clause de la bibliothèque n'est proposée que si elle existe vraiment, n'est pas archivée, et
+	// n'est pas déjà retenue ici. Le modèle désigne volontiers un id qu'il a lu ailleurs dans le
+	// prompt, ou recommande de retenir ce qui l'est déjà.
+	const suggestionsBibliotheque: SuggestionBibliotheque[] = [];
+	for (const entree of tableau(source.bibliotheque)) {
+		const id = texte(entree.id);
+		const clause = bibliotheque.find((c) => c.id === id && !c.archiveLe);
+		if (!clause) continue;
+		if (idsRetenus.has(id) || titresRetenus.has(titreNormalise(clause.titre))) continue;
+		if (suggestionsBibliotheque.some((s) => s.id === id)) continue;
+		suggestionsBibliotheque.push({ id, raison: texte(entree.raison) });
+	}
+
+	// C'est ici que se joue le « sinon recrée » : la consigne du prompt ne se fait pas obéir, et une
+	// proposition qui redit une clause déjà en bibliothèque la ferait entrer une seconde fois, sous un
+	// titre à peine différent. Les titres déjà connus sont donc écartés d'office.
+	const titresConnus = new Set([
+		...titresRetenus,
+		...bibliotheque.filter((c) => !c.archiveLe).map((c) => titreNormalise(c.titre))
+	]);
+
 	const propositions: PropositionClause[] = [];
 	for (const entree of tableau(source.propositions)) {
 		const titre = texte(entree.titre);
-		const brouillon = texte(entree.brouillon);
-		if (!titre || !brouillon) continue;
-		propositions.push({ titre, raison: texte(entree.raison), brouillon });
+		const corps = texte(entree.brouillon);
+		if (!titre || !corps) continue;
+		if (titresConnus.has(titreNormalise(titre))) continue;
+		if (propositions.some((p) => titreNormalise(p.titre) === titreNormalise(titre))) continue;
+		propositions.push({ titre, raison: texte(entree.raison), brouillon: corps });
 	}
 
 	return {
 		suggestions,
 		conditions,
+		bibliotheque: suggestionsBibliotheque,
 		propositions,
 		genereLe: new Date().toISOString(),
 		modele: modeleActif()
