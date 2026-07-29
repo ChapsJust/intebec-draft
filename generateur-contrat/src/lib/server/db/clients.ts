@@ -1,7 +1,7 @@
 import { eq, and, isNull, isNotNull, asc, count } from 'drizzle-orm';
 import { db } from './index';
 import { client, mandat } from './schema';
-import type { ClientInfo, ClientRecord, ClientListItem } from '$lib/types';
+import type { CoordonneesClient, FicheClient, FicheClientListee } from '$lib/types';
 import { estUuid } from '../formulaire';
 
 /** Champs qu'une requête entrante a le droit d'écrire sur une fiche client.
@@ -36,11 +36,11 @@ function champsAutorises(data: unknown): Partial<Record<ChampModifiable, string>
 	return retenus;
 }
 
-function toRecord(row: typeof client.$inferSelect): ClientRecord {
+function versEnregistrement(row: typeof client.$inferSelect): FicheClient {
 	return {
 		id: row.id,
 		nom: row.nom,
-		typeClient: row.typeClient as ClientRecord['typeClient'],
+		typeClient: row.typeClient as FicheClient['typeClient'],
 		adresse: row.adresse,
 		representantNom: row.representantNom,
 		representantTitre: row.representantTitre,
@@ -57,7 +57,9 @@ function toRecord(row: typeof client.$inferSelect): ClientRecord {
 
 /** `archives` bascule la liste sur les clients archivés. Le décompte des mandats accompagne chaque
  * fiche : c'est ce qui permet d'annoncer les conséquences exactes avant d'archiver ou de supprimer. */
-export async function listClients(options?: { archives?: boolean }): Promise<ClientListItem[]> {
+export async function listerClients(options?: {
+	archives?: boolean;
+}): Promise<FicheClientListee[]> {
 	const rows = await db
 		.select({ fiche: client, nbMandats: count(mandat.id) })
 		.from(client)
@@ -65,16 +67,18 @@ export async function listClients(options?: { archives?: boolean }): Promise<Cli
 		.where(options?.archives ? isNotNull(client.archiveLe) : isNull(client.archiveLe))
 		.groupBy(client.id)
 		.orderBy(asc(client.nom));
-	return rows.map((row) => ({ ...toRecord(row.fiche), nbMandats: row.nbMandats }));
+	return rows.map((row) => ({ ...versEnregistrement(row.fiche), nbMandats: row.nbMandats }));
 }
 
-export async function getClient(id: string): Promise<ClientRecord | null> {
+export async function obtenirClient(id: string): Promise<FicheClient | null> {
 	if (!estUuid(id)) return null;
 	const [row] = await db.select().from(client).where(eq(client.id, id));
-	return row ? toRecord(row) : null;
+	return row ? versEnregistrement(row) : null;
 }
 
-export async function createClient(data: ClientInfo & { notes?: string }): Promise<ClientRecord> {
+export async function creerClient(
+	data: CoordonneesClient & { notes?: string }
+): Promise<FicheClient> {
 	const [row] = await db
 		.insert(client)
 		.values({
@@ -90,16 +94,16 @@ export async function createClient(data: ClientInfo & { notes?: string }): Promi
 			notes: data.notes ?? ''
 		})
 		.returning();
-	return toRecord(row);
+	return versEnregistrement(row);
 }
 
 /** Met à jour une fiche client. Renvoie `null` si la fiche n'existe plus, ou si la requête ne
  * portait aucun champ modifiable — dans ce dernier cas il n'y a rien à écrire, et toucher quand
  * même `majLe` ferait passer pour modifiée une fiche restée identique. */
-export async function updateClient(
+export async function modifierClient(
 	id: string,
-	data: Partial<ClientInfo> & { notes?: string }
-): Promise<ClientRecord | null> {
+	data: Partial<CoordonneesClient> & { notes?: string }
+): Promise<FicheClient | null> {
 	if (!estUuid(id)) return null;
 
 	const champs = champsAutorises(data);
@@ -110,12 +114,12 @@ export async function updateClient(
 		.set({ ...champs, majLe: new Date() })
 		.where(eq(client.id, id))
 		.returning();
-	return row ? toRecord(row) : null;
+	return row ? versEnregistrement(row) : null;
 }
 
 /** Archive le client **et** ses mandats encore actifs, avec le même horodatage de part et d'autre.
- * Cet horodatage partagé est la trace qui rend l'opération réversible : voir `unarchiveClient`. */
-export async function archiveClient(id: string): Promise<boolean> {
+ * Cet horodatage partagé est la trace qui rend l'opération réversible : voir `desarchiverClient`. */
+export async function archiverClient(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	const archiveLe = new Date();
 	return db.transaction(async (tx) => {
@@ -135,7 +139,7 @@ export async function archiveClient(id: string): Promise<boolean> {
 
 /** Sort le client de l'archive et ne relève que les mandats tombés avec lui, reconnus à leur
  * horodatage identique au sien. Un mandat archivé séparément avant, ou après, reste archivé. */
-export async function unarchiveClient(id: string): Promise<boolean> {
+export async function desarchiverClient(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	return db.transaction(async (tx) => {
 		const [fiche] = await tx.select().from(client).where(eq(client.id, id));
@@ -153,7 +157,7 @@ export async function unarchiveClient(id: string): Promise<boolean> {
 
 /** Suppression définitive : la fiche et tous ses mandats, brouillons comme documents générés.
  * Irréversible, d'où la confirmation par saisie du nom côté interface. */
-export async function deleteClient(id: string): Promise<boolean> {
+export async function supprimerClient(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	return db.transaction(async (tx) => {
 		await tx.delete(mandat).where(eq(mandat.clientId, id));

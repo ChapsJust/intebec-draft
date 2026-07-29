@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, numeric, jsonb } from 'drizzle-orm/pg-core';
-import type { MandatDraft, RedactionIA } from '$lib/types';
+import type { BrouillonMandat, RedactionIA } from '$lib/types';
 
 export const client = pgTable('client', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -26,7 +26,9 @@ export const mandat = pgTable('mandat', {
 	titre: text('titre').notNull().default(''),
 	clientNom: text('client_nom').notNull().default(''),
 	totalNet: numeric('total_net', { precision: 12, scale: 2 }).notNull().default('0'),
-	draft: jsonb('draft').$type<MandatDraft>().notNull(),
+	// La colonne s'appelle toujours `draft` en base : seule la clé JavaScript est passée au français.
+	// Drizzle dissocie les deux, ce qui évite une migration pour un simple renommage de vocabulaire.
+	brouillon: jsonb('draft').$type<BrouillonMandat>().notNull(),
 	redaction: jsonb('redaction').$type<RedactionIA>(),
 	archiveLe: timestamp('archive_le', { withTimezone: true }),
 	creeLe: timestamp('cree_le', { withTimezone: true }).notNull().defaultNow(),

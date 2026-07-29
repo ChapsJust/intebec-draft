@@ -6,8 +6,8 @@ import {
 	nettoyerProse,
 	normaliserAudit
 } from './ollama';
-import { createEmptyDraft } from '$lib/mandat';
-import type { MandatDraft } from '$lib/types';
+import { nouveauMandat } from '$lib/mandat';
+import type { BrouillonMandat } from '$lib/types';
 
 describe('extraireJson', () => {
 	it('lit un objet JSON nu', () => {
@@ -170,19 +170,19 @@ describe('normaliser', () => {
 
 /** Mandat de référence pour l'audit : aucune clause cochée, aucune condition chiffrée, donc
  * tout le catalogue est légitimement suggérable. Chaque test resserre ce qu'il lui faut. */
-function draftNu(): MandatDraft {
-	const draft = createEmptyDraft('contrat');
+function draftNu(): BrouillonMandat {
+	const brouillon = nouveauMandat('contrat');
 	for (const cle of Object.keys(
-		draft.conditions.clauses
-	) as (keyof typeof draft.conditions.clauses)[]) {
-		draft.conditions.clauses[cle] = false;
+		brouillon.conditions.clauses
+	) as (keyof typeof brouillon.conditions.clauses)[]) {
+		brouillon.conditions.clauses[cle] = false;
 	}
-	draft.conditions.dureeGarantieJours = 0;
-	draft.conditions.dureeSupportMois = 0;
-	draft.conditions.heuresFormationIncluses = 0;
-	draft.conditions.tauxHoraireHorsPerimetre = 0;
-	draft.conditions.preavisResiliationJours = 0;
-	return draft;
+	brouillon.conditions.dureeGarantieJours = 0;
+	brouillon.conditions.dureeSupportMois = 0;
+	brouillon.conditions.heuresFormationIncluses = 0;
+	brouillon.conditions.tauxHoraireHorsPerimetre = 0;
+	brouillon.conditions.preavisResiliationJours = 0;
+	return brouillon;
 }
 
 describe('normaliserAudit', () => {
@@ -214,12 +214,12 @@ describe('normaliserAudit', () => {
 	});
 
 	it('écarte une clause déjà activée : une suggestion sans effet est du bruit', () => {
-		const draft = draftNu();
-		draft.conditions.clauses.propriete = true;
+		const brouillon = draftNu();
+		brouillon.conditions.clauses.propriete = true;
 
 		const a = normaliserAudit(
 			{ suggestions: [{ cle: 'propriete', raison: 'Déjà cochée.' }] },
-			draft
+			brouillon
 		);
 
 		expect(a.suggestions).toEqual([]);
@@ -240,8 +240,8 @@ describe('normaliserAudit', () => {
 	});
 
 	it('ne retient un manque chiffré que si le champ est bien à zéro', () => {
-		const draft = draftNu();
-		draft.conditions.dureeGarantieJours = 90;
+		const brouillon = draftNu();
+		brouillon.conditions.dureeGarantieJours = 90;
 
 		const a = normaliserAudit(
 			{
@@ -250,7 +250,7 @@ describe('normaliserAudit', () => {
 					{ champ: 'preavisResiliationJours', raison: 'Mandat récurrent.' }
 				]
 			},
-			draft
+			brouillon
 		);
 
 		expect(a.conditions.map((c) => c.champ)).toEqual(['preavisResiliationJours']);

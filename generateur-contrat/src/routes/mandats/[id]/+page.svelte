@@ -4,13 +4,18 @@
 	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import MandatEditor from '$lib/components/MandatEditor.svelte';
-	import type { MandatDraft } from '$lib/types';
+	import type { BrouillonMandat } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
 
-	let draft = $state<MandatDraft>(structuredClone(data.mandat.draft));
+	// Instantané volontaire, pris une seule fois au montage : l'éditeur travaille sur sa propre
+	// copie du brouillon. Un `$derived` la remplacerait à chaque rechargement des données et
+	// effacerait la saisie en cours, ce qui est exactement l'inverse du but.
+	// svelte-ignore state_referenced_locally
+	let brouillon = $state<BrouillonMandat>(structuredClone(data.mandat.brouillon));
+	// svelte-ignore state_referenced_locally
 	let clientId = $state<string | null>(data.mandat.clientId);
-	let saveAsNewClient = $state(false);
+	let enregistrerNouveauClient = $state(false);
 
 	const banner = $derived(
 		page.url.searchParams.get('saved') === '1' ? 'Brouillon enregistré.' : undefined
@@ -20,7 +25,7 @@
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-semibold text-ink">
-			{draft.type === 'contrat' ? 'Contrat' : 'Soumission'} · {draft.titre || 'Sans titre'}
+			{brouillon.type === 'contrat' ? 'Contrat' : 'Soumission'} · {brouillon.titre || 'Sans titre'}
 		</h1>
 		<div class="flex gap-3">
 			<a
@@ -41,7 +46,7 @@
 					id={data.mandat.id}
 					ton="neutre"
 					titre="Archiver ce mandat ?"
-					message="« {draft.titre ||
+					message="« {brouillon.titre ||
 						'Sans titre'} » sortira des listes courantes sans être supprimé. Vous le retrouverez dans les mandats archivés de la fiche client, prêt à être désarchivé."
 					confirmLabel="Archiver"
 					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
@@ -54,7 +59,7 @@
 				action="?/supprimer"
 				id={data.mandat.id}
 				titre="Supprimer ce mandat ?"
-				message="« {draft.titre ||
+				message="« {brouillon.titre ||
 					'Sans titre'} » sera supprimé définitivement, avec sa rédaction. Cette action est irréversible : pour le mettre simplement de côté, archivez-le depuis la fiche client."
 				confirmLabel="Supprimer définitivement"
 				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
@@ -78,7 +83,7 @@
 				id={data.mandat.id}
 				ton="neutre"
 				titre="Désarchiver ce mandat ?"
-				message="« {draft.titre || 'Sans titre'} » réapparaîtra dans les listes courantes."
+				message="« {brouillon.titre || 'Sans titre'} » réapparaîtra dans les listes courantes."
 				confirmLabel="Désarchiver"
 				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-surface-muted"
 			>
@@ -88,5 +93,11 @@
 		</div>
 	{/if}
 
-	<MandatEditor bind:draft bind:clientId bind:saveAsNewClient clients={data.clients} {banner} />
+	<MandatEditor
+		bind:brouillon
+		bind:clientId
+		bind:enregistrerNouveauClient
+		clients={data.clients}
+		{banner}
+	/>
 </div>

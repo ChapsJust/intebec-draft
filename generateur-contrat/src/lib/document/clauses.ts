@@ -1,5 +1,5 @@
-import type { MandatDraft } from '$lib/types';
-import { totalNet, formatCad } from '$lib/pricing';
+import type { BrouillonMandat } from '$lib/types';
+import { totalNet, formatCad } from '$lib/montants';
 import { PRESTATAIRE } from '$lib/config';
 import { elider, nombreContractuel } from './format';
 
@@ -21,7 +21,7 @@ const liste = (intro: string, items: string[]): BlocArticle => ({ kind: 'liste',
  * leur corps juridique. Chaque clause consomme les valeurs saisies dans le mandat plutôt que du
  * texte figé, pour que le document reflète réellement les conditions convenues. */
 
-function confidentialite(draft: MandatDraft): Article {
+function confidentialite(brouillon: BrouillonMandat): Article {
 	const corps: BlocArticle[] = [
 		p(
 			`Chaque partie s'engage à traiter comme confidentiel tout renseignement, document ou donnée obtenu de l'autre partie dans le cadre du présent mandat, et à ne l'utiliser qu'aux fins de son exécution.`
@@ -34,7 +34,7 @@ function confidentialite(draft: MandatDraft): Article {
 		)
 	];
 
-	if (draft.client.typeClient !== 'particulier') {
+	if (brouillon.client.typeClient !== 'particulier') {
 		corps.push(
 			p(
 				`Les parties conviennent de se notifier sans délai tout incident de confidentialité susceptible de porter atteinte aux renseignements visés par la présente clause.`
@@ -45,8 +45,8 @@ function confidentialite(draft: MandatDraft): Article {
 	return { titre: 'Confidentialité et protection des renseignements personnels', corps };
 }
 
-function limitationResponsabilite(draft: MandatDraft): Article {
-	const plafond = totalNet(draft.lignes, draft.conditions.rabaisPct);
+function limitationResponsabilite(brouillon: BrouillonMandat): Article {
+	const plafond = totalNet(brouillon.lignes, brouillon.conditions.rabaisPct);
 	const corps: BlocArticle[] = [
 		p(
 			`La responsabilité totale ${elider('de', PRESTATAIRE.nom)} découlant du présent mandat, toutes causes confondues, est limitée au montant effectivement versé par le Client en vertu de celui-ci, soit un maximum de ${formatCad(plafond)}.`
@@ -64,7 +64,7 @@ function limitationResponsabilite(draft: MandatDraft): Article {
 		)
 	];
 
-	if (draft.client.typeClient === 'particulier') {
+	if (brouillon.client.typeClient === 'particulier') {
 		corps.push(
 			p(
 				`La présente clause ne saurait déroger aux droits que la Loi sur la protection du consommateur confère au Client.`
@@ -75,7 +75,7 @@ function limitationResponsabilite(draft: MandatDraft): Article {
 	return { titre: 'Limitation de responsabilité', corps };
 }
 
-function propriete(draft: MandatDraft): Article {
+function propriete(brouillon: BrouillonMandat): Article {
 	const corps: BlocArticle[] = [
 		p(
 			`Les droits de propriété sur les livrables réalisés spécifiquement pour le Client lui sont cédés au moment du paiement intégral des sommes dues en vertu du présent mandat. Le Client demeure en tout temps propriétaire de ses données.`
@@ -88,7 +88,7 @@ function propriete(draft: MandatDraft): Article {
 		)
 	];
 
-	if (draft.client.typeClient !== 'particulier') {
+	if (brouillon.client.typeClient !== 'particulier') {
 		corps.push(
 			p(
 				`${PRESTATAIRE.nom} se réserve le droit de mentionner le mandat et d'en présenter des extraits visuels à titre de référence, sauf avis écrit contraire du Client.`
@@ -101,14 +101,14 @@ function propriete(draft: MandatDraft): Article {
 
 /** Engagements réciproques. Systématiquement présent : c'est l'article qui rend le mandat
  * exécutoire de part et d'autre, et sa forme énumérée est celle des contrats Intébec existants. */
-function engagements(draft: MandatDraft): Article {
+function engagements(brouillon: BrouillonMandat): Article {
 	const engagementsClient = [
 		`fournir les informations, contenus et accès nécessaires dans des délais raisonnables`,
 		`désigner une personne responsable du projet`,
 		`effectuer les paiements selon les modalités prévues aux présentes`
 	];
 
-	if (draft.conditions.heuresFormationIncluses > 0) {
+	if (brouillon.conditions.heuresFormationIncluses > 0) {
 		engagementsClient.push(`rendre disponibles les personnes visées par la formation incluse`);
 	}
 
@@ -125,8 +125,8 @@ function engagements(draft: MandatDraft): Article {
 	};
 }
 
-function litiges(draft: MandatDraft): Article {
-	const lieu = draft.lieuSignature.trim() || 'Victoriaville';
+function litiges(brouillon: BrouillonMandat): Article {
+	const lieu = brouillon.lieuSignature.trim() || 'Victoriaville';
 	return {
 		titre: 'Droit applicable et règlement des différends',
 		corps: [
@@ -157,8 +157,8 @@ function signatureElectronique(): Article {
 
 /** Les conditions particulières chiffrées deviennent des articles à part entière, mais
  * uniquement lorsqu'une valeur a réellement été saisie : un « 0 » ne produit pas d'article vide. */
-function conditionsParticulieres(draft: MandatDraft): Article[] {
-	const { conditions } = draft;
+function conditionsParticulieres(brouillon: BrouillonMandat): Article[] {
+	const { conditions } = brouillon;
 	const articles: Article[] = [];
 
 	if (conditions.dureeGarantieJours > 0) {
@@ -238,18 +238,18 @@ function conditionsParticulieres(draft: MandatDraft): Article[] {
 
 /** Articles du contrat : clauses standards cochées, engagements réciproques, puis conditions
  * particulières chiffrées. L'ordre est stable, il détermine la numérotation dans le document. */
-export function clausesActives(draft: MandatDraft): Article[] {
-	const { clauses } = draft.conditions;
+export function clausesActives(brouillon: BrouillonMandat): Article[] {
+	const { clauses } = brouillon.conditions;
 	const articles: Article[] = [];
 
-	articles.push(engagements(draft));
-	if (clauses.propriete) articles.push(propriete(draft));
-	if (clauses.confidentialite) articles.push(confidentialite(draft));
-	if (clauses.limitationResponsabilite) articles.push(limitationResponsabilite(draft));
+	articles.push(engagements(brouillon));
+	if (clauses.propriete) articles.push(propriete(brouillon));
+	if (clauses.confidentialite) articles.push(confidentialite(brouillon));
+	if (clauses.limitationResponsabilite) articles.push(limitationResponsabilite(brouillon));
 
-	articles.push(...conditionsParticulieres(draft));
+	articles.push(...conditionsParticulieres(brouillon));
 
-	if (clauses.litiges) articles.push(litiges(draft));
+	if (clauses.litiges) articles.push(litiges(brouillon));
 	if (clauses.signatureElectronique) articles.push(signatureElectronique());
 
 	return articles;

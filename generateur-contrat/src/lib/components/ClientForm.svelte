@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { ClientInfo, ClientRecord } from '$lib/types';
-	import { createEmptyClient, clientRecordToInfo } from '$lib/mandat';
-	import type { ValidationError } from '$lib/validation';
-	import { fieldError } from '$lib/validation';
+	import type { CoordonneesClient, FicheClient } from '$lib/types';
+	import { nouveauClient, coordonneesDuClient } from '$lib/mandat';
+	import type { ErreurValidation } from '$lib/validation';
+	import { erreurDuChamp } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import ClientPicker from './ClientPicker.svelte';
 
@@ -10,15 +10,15 @@
 		client = $bindable(),
 		clientId = $bindable(),
 		clients,
-		saveAsNewClient = $bindable(),
-		errors = [],
+		enregistrerNouveauClient = $bindable(),
+		erreurs = [],
 		onUpdateClientRecord
 	}: {
-		client: ClientInfo;
+		client: CoordonneesClient;
 		clientId: string | null;
-		clients: ClientRecord[];
-		saveAsNewClient: boolean;
-		errors?: ValidationError[];
+		clients: FicheClient[];
+		enregistrerNouveauClient: boolean;
+		erreurs?: ErreurValidation[];
 		onUpdateClientRecord?: () => void;
 	} = $props();
 
@@ -33,15 +33,15 @@
 		const found = clients.find((c) => c.id === id);
 		if (!found) return;
 		clientId = found.id;
-		Object.assign(client, clientRecordToInfo(found));
+		Object.assign(client, coordonneesDuClient(found));
 		forceNew = false;
 		forceEdit = false;
 	}
 
 	function startNewClient() {
 		clientId = null;
-		Object.assign(client, createEmptyClient());
-		saveAsNewClient = true;
+		Object.assign(client, nouveauClient());
+		enregistrerNouveauClient = true;
 		forceNew = true;
 		forceEdit = false;
 	}
@@ -123,8 +123,8 @@
 					bind:value={client.nom}
 					placeholder="Ex. Constructions Rivard"
 				/>
-				{#if fieldError(errors, 'client.nom')}
-					<p class="mt-1 text-xs text-warning">{fieldError(errors, 'client.nom')}</p>
+				{#if erreurDuChamp(erreurs, 'client.nom')}
+					<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, 'client.nom')}</p>
 				{/if}
 			</div>
 			<div>
@@ -171,8 +171,8 @@
 			<div>
 				<label class="field-label" for="client-courriel">Courriel</label>
 				<input id="client-courriel" class="field-input" type="email" bind:value={client.courriel} />
-				{#if fieldError(errors, 'client.courriel')}
-					<p class="mt-1 text-xs text-warning">{fieldError(errors, 'client.courriel')}</p>
+				{#if erreurDuChamp(erreurs, 'client.courriel')}
+					<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, 'client.courriel')}</p>
 				{/if}
 			</div>
 			<div>
@@ -196,7 +196,7 @@
 				<label class="flex items-center gap-2 text-sm text-ink">
 					<input
 						type="checkbox"
-						bind:checked={saveAsNewClient}
+						bind:checked={enregistrerNouveauClient}
 						class="rounded text-accent-500 focus:ring-accent-500"
 					/>
 					Enregistrer dans mes clients

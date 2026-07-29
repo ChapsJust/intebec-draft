@@ -1,0 +1,139 @@
+import { describe, expect, it } from 'vitest';
+import { SoumissionInvalideError, lireMandat, normaliserMandat } from './mandatForm';
+import { nouveauMandat } from '$lib/mandat';
+import { totalNet } from '$lib/montants';
+
+/** Ces tests portent sur le point d'entrée des données : tout ce qui est enregistré passe par là.
+ * Le brouillon part dans une colonne `jsonb` que rien ne contraint, donc un objet mal formé accepté
+ * ici devient un mandat impossible à réafficher, et le dégât est définitif. */
+describe('normaliserMandat', () => {
+	it('reconstruit un brouillon vide à partir de rien', () => {
+		for (const entree of [null, undefined, {}, 42, 'texte', []]) {
+			const brouillon = normaliserMandat(entree);
+			expect(brouillon.lignes.length).toBe(1);
+			expect(brouillon.titre).toBe('');
+			expect(brouillon.modalitesPaiement.acomptePct + brouillon.modalitesPaiement.soldePct).toBe(
+				100
+			);
+		}
+	});
+
+	it('conserve une saisie valide', () => {
+		const source = nouveauMandat('contrat');
+		source.titre = 'Refonte du site';
+		source.objet = 'Modernisation.';
+		source.client.nom = 'Constructions Rivard';
+		source.lignes[0].nom = 'Développement';
+		source.lignes[0].montantForfaitaire = 5000;
+
+		const brouillon = normaliserMandat(JSON.parse(JSON.stringify(source)));
+		expect(brouillon.type).toBe('contrat');
+		expect(brouillon.titre).toBe('Refonte du site');
+		expect(brouillon.client.nom).toBe('Constructions Rivard');
+		expect(brouillon.lignes[0].montantForfaitaire).toBe(5000);
+	});
+
+	it('remplace des lignes qui ne sont pas un tableau par la ligne vide', () => {
+		// Le cas qui rendait un mandat inéditable : `brouillon.lignes.map` échouait à chaque affichage.
+		for (const lignes of ['oups', 42, null, {}]) {
+			const brouillon = normaliserMandat({ lignes });
+			expect(Array.isArray(brouillon.lignes)).toBe(true);
+			expect(brouillon.lignes.length).toBe(1);
+		}
+	});
+
+	it('ignore une ligne de service qui n’est pas un objet', () => {
+		const brouillon = normaliserMandat({ lignes: [null, 'texte'] });
+		expect(brouillon.lignes.length).toBe(2);
+		expect(brouillon.lignes[0].nom).toBe('');
+		expect(brouillon.lignes[0].pricingMode).toBe('forfaitaire');
+	});
+
+	it('ramène les montants non numériques à zéro', () => {
+		const brouillon = normaliserMandat({
+			lignes: [{ montantForfaitaire: 'beaucoup', tauxHoraire: NaN, heuresEstimees: null }]
+		});
+		expect(brouillon.lignes[0].montantForfaitaire).toBe(0);
+		expect(brouillon.lignes[0].tauxHoraire).toBe(0);
+		expect(brouillon.lignes[0].heuresEstimees).toBe(0);
+	});
+
+	it('borne le rabais à 100 %, pour qu’un total ne devienne jamais négatif', () => {
+		const brouillon = normaliserMandat({
+			lignes: [{ montantForfaitaire: 1000 }],
+			conditions: { rabaisPct: 300 }
+		});
+		expect(brouillon.conditions.rabaisPct).toBe(100);
+		expect(totalNet(brouillon.lignes, brouillon.conditions.rabaisPct)).toBe(0);
+	});
+
+	it('déduit toujours le solde de l’acompte', () => {
+		// Un échéancier 50 % + 90 % s'enregistrait, et le document annonçait 140 % du total.
+		const brouillon = normaliserMandat({ modalitesPaiement: { acomptePct: 50, soldePct: 90 } });
+		expect(brouillon.modalitesPaiement.acomptePct).toBe(50);
+		expect(brouillon.modalitesPaiement.soldePct).toBe(50);
+	});
+
+	it('accepte un paiement entièrement à la livraison', () => {
+		const brouillon = normaliserMandat({ modalitesPaiement: { acomptePct: 0 } });
+		expect(brouillon.modalitesPaiement.acomptePct).toBe(0);
+		expect(brouillon.modalitesPaiement.soldePct).toBe(100);
+	});
+
+	it('rejette les valeurs hors énumération en retombant sur le défaut', () => {
+		const brouillon = normaliserMandat({
+			type: 'facture',
+			structureProjet: 'spirale',
+			client: { typeClient: 'extraterrestre' },
+			abonnement: { frequence: 'quotidien' },
+			lignes: [{ pricingMode: 'troc' }]
+		});
+		expect(brouillon.type).toBe('soumission');
+		expect(brouillon.structureProjet).toBe('blocs');
+		expect(brouillon.client.typeClient).toBe('entreprise');
+		expect(brouillon.abonnement.frequence).toBe('annuel');
+		expect(brouillon.lignes[0].pricingMode).toBe('forfaitaire');
+	});
+
+	it('n’accepte comme date qu’un format AAAA-MM-JJ', () => {
+		expect(normaliserMandat({ dateSignature: '2026-03-14' }).dateSignature).toBe('2026-03-14');
+		// Une date libre casserait `formatDateLongue` et le nom du fichier PDF.
+		const defaut = nouveauMandat().dateSignature;
+		for (const mauvaise of ['14 mars', '2026/03/14', '', null, 20260314]) {
+			expect(normaliserMandat({ dateSignature: mauvaise }).dateSignature).toBe(defaut);
+		}
+	});
+
+	it('borne le nombre de lignes et de puces', () => {
+		const brouillon = normaliserMandat({
+			lignes: Array.from({ length: 500 }, () => ({ nom: 'x', inclus: Array(500).fill('y') }))
+		});
+		expect(brouillon.lignes.length).toBeLessThanOrEqual(60);
+		expect(brouillon.lignes[0].inclus.length).toBeLessThanOrEqual(40);
+	});
+
+	it('ne laisse passer aucun champ étranger', () => {
+		const brouillon = normaliserMandat({ titre: 'ok', statut: 'envoye', id: 'x', admin: true });
+		expect(Object.keys(brouillon)).not.toContain('statut');
+		expect(Object.keys(brouillon)).not.toContain('id');
+		expect(Object.keys(brouillon)).not.toContain('admin');
+	});
+});
+
+describe('lireMandat', () => {
+	it('lit une charge JSON valide', () => {
+		const brouillon = lireMandat(JSON.stringify({ titre: 'Refonte' }));
+		expect(brouillon.titre).toBe('Refonte');
+	});
+
+	it('signale un JSON illisible au lieu de laisser remonter une erreur brute', () => {
+		// Ce qui produisait une page 500 : `JSON.parse` sur un corps tronqué.
+		expect(() => lireMandat('{"titre": "trongu')).toThrow(SoumissionInvalideError);
+	});
+
+	it('signale une charge absente', () => {
+		for (const entree of [null, undefined, 42]) {
+			expect(() => lireMandat(entree)).toThrow(SoumissionInvalideError);
+		}
+	});
+});

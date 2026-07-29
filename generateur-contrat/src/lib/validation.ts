@@ -1,48 +1,51 @@
-import type { MandatDraft } from './types';
-import { lineTotal } from './pricing';
+import type { BrouillonMandat } from './types';
+import { totalLigne } from './montants';
 
-export interface ValidationError {
-	field: string;
+export interface ErreurValidation {
+	champ: string;
 	message: string;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function validateDraft(draft: MandatDraft): ValidationError[] {
-	const errors: ValidationError[] = [];
+export function verifierMandat(brouillon: BrouillonMandat): ErreurValidation[] {
+	const erreurs: ErreurValidation[] = [];
 
-	if (!draft.client.nom.trim()) {
-		errors.push({ field: 'client.nom', message: 'Le nom du client est requis.' });
+	if (!brouillon.client.nom.trim()) {
+		erreurs.push({ champ: 'client.nom', message: 'Le nom du client est requis.' });
 	}
-	if (draft.client.courriel && !EMAIL_RE.test(draft.client.courriel)) {
-		errors.push({ field: 'client.courriel', message: 'Le courriel du client est invalide.' });
+	if (brouillon.client.courriel && !EMAIL_RE.test(brouillon.client.courriel)) {
+		erreurs.push({ champ: 'client.courriel', message: 'Le courriel du client est invalide.' });
 	}
-	if (!draft.titre.trim()) {
-		errors.push({ field: 'titre', message: 'Le titre du projet est requis.' });
+	if (!brouillon.titre.trim()) {
+		erreurs.push({ champ: 'titre', message: 'Le titre du projet est requis.' });
 	}
-	if (!draft.objet.trim()) {
-		errors.push({ field: 'objet', message: "L'objet du mandat est requis." });
+	if (!brouillon.objet.trim()) {
+		erreurs.push({ champ: 'objet', message: "L'objet du mandat est requis." });
 	}
 
-	if (draft.lignes.length === 0) {
-		errors.push({ field: 'lignes', message: 'Au moins une ligne de service est requise.' });
+	if (brouillon.lignes.length === 0) {
+		erreurs.push({ champ: 'lignes', message: 'Au moins une ligne de service est requise.' });
 	}
-	draft.lignes.forEach((ligne, i) => {
+	brouillon.lignes.forEach((ligne, i) => {
 		if (!ligne.nom.trim()) {
-			errors.push({ field: `lignes.${i}.nom`, message: `Le nom de la ligne ${i + 1} est requis.` });
+			erreurs.push({
+				champ: `lignes.${i}.nom`,
+				message: `Le nom de la ligne ${i + 1} est requis.`
+			});
 		}
-		if (!(lineTotal(ligne) > 0)) {
-			errors.push({
-				field: `lignes.${i}.montant`,
+		if (!(totalLigne(ligne) > 0)) {
+			erreurs.push({
+				champ: `lignes.${i}.montant`,
 				message: `Le montant de la ligne ${i + 1} doit être supérieur à 0.`
 			});
 		}
 	});
 
-	const { acomptePct, soldePct, delaiJoursSolde } = draft.modalitesPaiement;
+	const { acomptePct, soldePct, delaiJoursSolde } = brouillon.modalitesPaiement;
 	if (acomptePct < 0 || acomptePct > 100) {
-		errors.push({
-			field: 'modalitesPaiement.acomptePct',
+		erreurs.push({
+			champ: 'modalitesPaiement.acomptePct',
 			message: "L'acompte doit être entre 0 et 100 %."
 		});
 	}
@@ -51,38 +54,38 @@ export function validateDraft(draft: MandatDraft): ValidationError[] {
 	// l'égalité tout seul, mais elle doit être vérifiée pour de bon, y compris sur un brouillon
 	// enregistré avant que cette règle existe.
 	else if (acomptePct + soldePct !== 100) {
-		errors.push({
-			field: 'modalitesPaiement.soldePct',
+		erreurs.push({
+			champ: 'modalitesPaiement.soldePct',
 			message: `L'acompte et le solde doivent totaliser 100 % (actuellement ${acomptePct + soldePct} %).`
 		});
 	}
 	if (delaiJoursSolde < 0) {
-		errors.push({
-			field: 'modalitesPaiement.delaiJoursSolde',
+		erreurs.push({
+			champ: 'modalitesPaiement.delaiJoursSolde',
 			message: 'Le délai de paiement du solde ne peut pas être négatif.'
 		});
 	}
 
 	// Un rabais supérieur à 100 % rendrait le total négatif, c'est-à-dire un document où le
 	// prestataire devrait de l'argent au client.
-	const { rabaisPct } = draft.conditions;
+	const { rabaisPct } = brouillon.conditions;
 	if (rabaisPct < 0 || rabaisPct > 100) {
-		errors.push({
-			field: 'conditions.rabaisPct',
+		erreurs.push({
+			champ: 'conditions.rabaisPct',
 			message: 'Le rabais doit être entre 0 et 100 %.'
 		});
 	}
 
-	if (draft.abonnement.actif && !(draft.abonnement.montant > 0)) {
-		errors.push({
-			field: 'abonnement.montant',
+	if (brouillon.abonnement.actif && !(brouillon.abonnement.montant > 0)) {
+		erreurs.push({
+			champ: 'abonnement.montant',
 			message: "Le montant de l'abonnement doit être supérieur à 0, ou décochez l'abonnement."
 		});
 	}
 
-	return errors;
+	return erreurs;
 }
 
-export function fieldError(errors: ValidationError[], field: string): string | undefined {
-	return errors.find((e) => e.field === field)?.message;
+export function erreurDuChamp(erreurs: ErreurValidation[], champ: string): string | undefined {
+	return erreurs.find((e) => e.champ === champ)?.message;
 }

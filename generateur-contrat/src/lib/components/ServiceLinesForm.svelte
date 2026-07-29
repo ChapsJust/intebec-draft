@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { ServiceLine, PricingMode, StructureProjet } from '$lib/types';
-	import { lineTotal, formatCad } from '$lib/pricing';
-	import { createEmptyLigne } from '$lib/mandat';
+	import type { LigneService, ModeTarification, StructureProjet } from '$lib/types';
+	import { totalLigne, formatCad } from '$lib/montants';
+	import { nouvelleLigne } from '$lib/mandat';
 	import { libelleLigne } from '$lib/document/format';
-	import type { ValidationError } from '$lib/validation';
-	import { fieldError } from '$lib/validation';
+	import type { ErreurValidation } from '$lib/validation';
+	import { erreurDuChamp } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 	import AiAssistButton from './AiAssistButton.svelte';
@@ -12,17 +12,17 @@
 	let {
 		lignes = $bindable(),
 		structureProjet,
-		errors = [],
+		erreurs = [],
 		onRediger
 	}: {
-		lignes: ServiceLine[];
+		lignes: LigneService[];
 		structureProjet: StructureProjet;
-		errors?: ValidationError[];
+		erreurs?: ErreurValidation[];
 		onRediger?: (champ: string) => Promise<string>;
 	} = $props();
 
 	function addLigne() {
-		lignes.push(createEmptyLigne());
+		lignes.push(nouvelleLigne());
 	}
 
 	function removeLigne(id: string) {
@@ -30,19 +30,19 @@
 		if (idx !== -1) lignes.splice(idx, 1);
 	}
 
-	function addTexte(ligne: ServiceLine, list: 'inclus' | 'nonInclus') {
+	function addTexte(ligne: LigneService, list: 'inclus' | 'nonInclus') {
 		ligne[list].push('');
 	}
 
-	function removeTexte(ligne: ServiceLine, list: 'inclus' | 'nonInclus', index: number) {
+	function removeTexte(ligne: LigneService, list: 'inclus' | 'nonInclus', index: number) {
 		ligne[list].splice(index, 1);
 	}
 
-	function addItem(ligne: ServiceLine) {
+	function addItem(ligne: LigneService) {
 		ligne.items.push({ id: crypto.randomUUID(), description: '', quantite: 1, prixUnitaire: 0 });
 	}
 
-	function removeItem(ligne: ServiceLine, id: string) {
+	function removeItem(ligne: LigneService, id: string) {
 		const idx = ligne.items.findIndex((i) => i.id === id);
 		if (idx !== -1) ligne.items.splice(idx, 1);
 	}
@@ -51,7 +51,7 @@
 	// saisie et le contrat produit.
 	const lineLabel = $derived(libelleLigne(structureProjet));
 
-	const pricingModes: { value: PricingMode; label: string }[] = [
+	const pricingModes: { value: ModeTarification; label: string }[] = [
 		{ value: 'forfaitaire', label: 'Forfaitaire' },
 		{ value: 'horaire', label: 'Taux horaire' },
 		{ value: 'quantite', label: 'Lignes détaillées' }
@@ -77,8 +77,8 @@
 							bind:value={ligne.nom}
 							placeholder="Ex. Gestion documentaire"
 						/>
-						{#if fieldError(errors, `lignes.${i}.nom`)}
-							<p class="mt-1 text-xs text-warning">{fieldError(errors, `lignes.${i}.nom`)}</p>
+						{#if erreurDuChamp(erreurs, `lignes.${i}.nom`)}
+							<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, `lignes.${i}.nom`)}</p>
 						{/if}
 					</div>
 					{#if lignes.length > 1}
@@ -285,10 +285,10 @@
 					{/if}
 
 					<p class="mt-3 text-sm font-medium text-ink">
-						Sous-total de cette ligne : {formatCad(lineTotal(ligne))}
+						Sous-total de cette ligne : {formatCad(totalLigne(ligne))}
 					</p>
-					{#if fieldError(errors, `lignes.${i}.montant`)}
-						<p class="mt-1 text-xs text-warning">{fieldError(errors, `lignes.${i}.montant`)}</p>
+					{#if erreurDuChamp(erreurs, `lignes.${i}.montant`)}
+						<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, `lignes.${i}.montant`)}</p>
 					{/if}
 				</div>
 

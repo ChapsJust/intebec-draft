@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
-	import { createEmptyDraft } from '$lib/mandat';
+	import { nouveauMandat } from '$lib/mandat';
 	import MandatEditor from '$lib/components/MandatEditor.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	const initialType = page.url.searchParams.get('type') === 'contrat' ? 'contrat' : 'soumission';
 
-	let draft = $state(createEmptyDraft(initialType));
+	let brouillon = $state(nouveauMandat(initialType));
 	let clientId = $state<string | null>(null);
-	let saveAsNewClient = $state(true);
+	let enregistrerNouveauClient = $state(true);
 </script>
 
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-semibold text-ink">
-			{draft.type === 'contrat' ? 'Nouveau contrat' : 'Nouvelle soumission'}
+			{brouillon.type === 'contrat' ? 'Nouveau contrat' : 'Nouvelle soumission'}
 		</h1>
 		<a
 			href="/"
@@ -26,5 +26,5 @@
 		</a>
 	</div>
 
-	<MandatEditor bind:draft bind:clientId bind:saveAsNewClient clients={data.clients} />
+	<MandatEditor bind:brouillon bind:clientId bind:enregistrerNouveauClient clients={data.clients} />
 </div>

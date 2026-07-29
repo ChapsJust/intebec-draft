@@ -1,12 +1,12 @@
 <script lang="ts">
-	import type { ClientRecord } from '$lib/types';
+	import type { FicheClient } from '$lib/types';
 
 	let {
 		clients,
 		onselect,
 		onnew
 	}: {
-		clients: ClientRecord[];
+		clients: FicheClient[];
 		onselect: (id: string) => void;
 		onnew: () => void;
 	} = $props();

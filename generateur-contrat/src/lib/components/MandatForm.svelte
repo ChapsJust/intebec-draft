@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { DocumentType, StructureProjet } from '$lib/types';
-	import type { ValidationError } from '$lib/validation';
-	import { fieldError } from '$lib/validation';
+	import type { TypeDocument, StructureProjet } from '$lib/types';
+	import type { ErreurValidation } from '$lib/validation';
+	import { erreurDuChamp } from '$lib/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 	import AiAssistButton from './AiAssistButton.svelte';
@@ -11,19 +11,19 @@
 		titre = $bindable(),
 		structureProjet = $bindable(),
 		objet = $bindable(),
-		errors = [],
+		erreurs = [],
 		onRediger
 	}: {
-		type: DocumentType;
+		type: TypeDocument;
 		titre: string;
 		structureProjet: StructureProjet;
 		objet: string;
-		errors?: ValidationError[];
+		erreurs?: ErreurValidation[];
 		onRediger?: (champ: string) => Promise<string>;
 	} = $props();
 
 	const types: {
-		value: DocumentType;
+		value: TypeDocument;
 		label: string;
 		description: string;
 		icon: 'document' | 'contract';
@@ -104,8 +104,8 @@
 			bind:value={titre}
 			placeholder="Ex. Transformation numérique"
 		/>
-		{#if fieldError(errors, 'titre')}
-			<p class="mt-1 text-xs text-warning">{fieldError(errors, 'titre')}</p>
+		{#if erreurDuChamp(erreurs, 'titre')}
+			<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, 'titre')}</p>
 		{/if}
 	</div>
 
@@ -143,8 +143,8 @@
 			rows="3"
 			bind:value={objet}
 			placeholder="Décrivez brièvement le mandat…"></textarea>
-		{#if fieldError(errors, 'objet')}
-			<p class="mt-1 text-xs text-warning">{fieldError(errors, 'objet')}</p>
+		{#if erreurDuChamp(erreurs, 'objet')}
+			<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, 'objet')}</p>
 		{/if}
 		{#if onRediger}
 			<div class="mt-2">

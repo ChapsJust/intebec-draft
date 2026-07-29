@@ -5,11 +5,11 @@
 	let {
 		modalitesPaiement = $bindable(),
 		abonnement = $bindable(),
-		hasError = false
+		enErreur = false
 	}: {
 		modalitesPaiement: ModalitesPaiement;
 		abonnement: AbonnementRecurrent;
-		hasError?: boolean;
+		enErreur?: boolean;
 	} = $props();
 
 	// Le solde complète toujours l'acompte à 100 % : un split incohérent ne doit pas être représentable.
@@ -78,7 +78,7 @@
 	title="Modalités de paiement"
 	description="Moment du paiement, délai de règlement, et abonnement récurrent optionnel."
 	collapsible
-	defaultOpen={hasError}
+	defaultOpen={enErreur}
 	{summary}
 >
 	<fieldset>

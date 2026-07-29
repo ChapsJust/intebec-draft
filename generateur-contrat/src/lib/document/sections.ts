@@ -1,5 +1,5 @@
-import type { MandatDraft, RedactionIA, ServiceLine } from '$lib/types';
-import { lineTotal, subtotal, rabaisAmount, totalNet, formatCad } from '$lib/pricing';
+import type { BrouillonMandat, RedactionIA, LigneService } from '$lib/types';
+import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$lib/montants';
 import { PRESTATAIRE } from '$lib/config';
 import type { BlocArticle } from './clauses';
 import { clausesActives } from './clauses';
@@ -73,7 +73,7 @@ export type ContenuSection =
 	| { kind: 'echeancier'; versements: Versement[]; notes: string[] }
 	| { kind: 'blocs'; blocs: BlocArticle[] };
 
-export interface DocumentSection {
+export interface SectionDocument {
 	numero: number;
 	titre: string;
 	contenu: ContenuSection;
@@ -84,13 +84,13 @@ export interface DocumentSection {
  * `compact` resserre un contrat chargé pour éviter les pages qui débordent de trois lignes. */
 export type Densite = 'aere' | 'normal' | 'compact';
 
-export interface DocumentModel {
+export interface ModeleDocument {
 	typeLabel: string;
 	titre: string;
 	dateLongue: string;
 	lieu: string;
 	parties: Partie[];
-	sections: DocumentSection[];
+	sections: SectionDocument[];
 	/** Formule liminaire fermant l'identification des parties, avant le premier article. */
 	attendu: string;
 	signatures: BlocSignature[];
@@ -103,7 +103,7 @@ export interface DocumentModel {
 	redigeParIA: boolean;
 }
 
-function detailTarification(ligne: ServiceLine): string[] {
+function detailTarification(ligne: LigneService): string[] {
 	if (ligne.pricingMode === 'horaire') {
 		const heures = ligne.heuresEstimees;
 		return [
@@ -121,33 +121,36 @@ function detailTarification(ligne: ServiceLine): string[] {
 	return ['Forfait'];
 }
 
-function construirePortee(draft: MandatDraft, redaction?: RedactionIA | null): PorteeEntree[] {
-	const label = libelleLigne(draft.structureProjet);
-	return draft.lignes.map((ligne, i) => ({
+function construirePortee(
+	brouillon: BrouillonMandat,
+	redaction?: RedactionIA | null
+): PorteeEntree[] {
+	const label = libelleLigne(brouillon.structureProjet);
+	return brouillon.lignes.map((ligne, i) => ({
 		label: `${label} ${i + 1}`,
 		nom: ligne.nom.trim() || 'Sans titre',
 		description: redaction?.lignes[ligne.id]?.trim() || ligne.description.trim(),
 		inclus: nettoyerListe(ligne.inclus),
 		nonInclus: nettoyerListe(ligne.nonInclus),
 		delai: ligne.delaiEstime.trim(),
-		montant: formatCad(lineTotal(ligne)),
+		montant: formatCad(totalLigne(ligne)),
 		tarification: detailTarification(ligne)
 	}));
 }
 
-function construireHonoraires(draft: MandatDraft): ContenuSection {
-	const label = libelleLigne(draft.structureProjet);
-	const st = subtotal(draft.lignes);
-	const { rabaisPct, rabaisMotif } = draft.conditions;
+function construireHonoraires(brouillon: BrouillonMandat): ContenuSection {
+	const label = libelleLigne(brouillon.structureProjet);
+	const st = sousTotal(brouillon.lignes);
+	const { rabaisPct, rabaisMotif } = brouillon.conditions;
 
 	return {
 		kind: 'honoraires',
-		lignes: draft.lignes.map((ligne, i) => ({
+		lignes: brouillon.lignes.map((ligne, i) => ({
 			label: `${label} ${i + 1}`,
 			nom: ligne.nom.trim() || 'Sans titre',
 			details: detailTarification(ligne),
 			delai: ligne.delaiEstime.trim(),
-			montant: formatCad(lineTotal(ligne))
+			montant: formatCad(totalLigne(ligne))
 		})),
 		sousTotal: formatCad(st),
 		rabais:
@@ -155,10 +158,10 @@ function construireHonoraires(draft: MandatDraft): ContenuSection {
 				? {
 						pct: rabaisPct,
 						motif: rabaisMotif.trim(),
-						montant: `− ${formatCad(rabaisAmount(st, rabaisPct))}`
+						montant: `− ${formatCad(montantRabais(st, rabaisPct))}`
 					}
 				: null,
-		total: formatCad(totalNet(draft.lignes, rabaisPct))
+		total: formatCad(totalNet(brouillon.lignes, rabaisPct))
 	};
 }
 
@@ -169,9 +172,9 @@ function echeanceSolde(delaiJoursSolde: number): string {
 		: 'À la livraison';
 }
 
-function construireEcheancier(draft: MandatDraft): ContenuSection {
-	const total = totalNet(draft.lignes, draft.conditions.rabaisPct);
-	const { acomptePct, soldePct, delaiJoursSolde } = draft.modalitesPaiement;
+function construireEcheancier(brouillon: BrouillonMandat): ContenuSection {
+	const total = totalNet(brouillon.lignes, brouillon.conditions.rabaisPct);
+	const { acomptePct, soldePct, delaiJoursSolde } = brouillon.modalitesPaiement;
 	const versements: Versement[] = [];
 
 	// Un seul versement quand l’acompte est nul ou couvre tout : parler de « solde » suppose
@@ -207,8 +210,8 @@ function construireEcheancier(draft: MandatDraft): ContenuSection {
 		'Les montants indiqués sont en dollars canadiens et excluent les taxes applicables.'
 	];
 
-	if (draft.abonnement.actif && draft.abonnement.montant > 0) {
-		const { frequence, montant, couverture, periodeOfferteMois } = draft.abonnement;
+	if (brouillon.abonnement.actif && brouillon.abonnement.montant > 0) {
+		const { frequence, montant, couverture, periodeOfferteMois } = brouillon.abonnement;
 		const periodicite = frequence === 'mensuel' ? 'par mois' : 'par année';
 		let note = `Un abonnement récurrent de ${formatCad(montant)} ${periodicite} s'applique en sus`;
 		note += couverture.trim() ? ` et couvre ${couverture.trim()}.` : '.';
@@ -221,8 +224,8 @@ function construireEcheancier(draft: MandatDraft): ContenuSection {
 	return { kind: 'echeancier', versements, notes };
 }
 
-function construireParties(draft: MandatDraft): Partie[] {
-	const client = draft.client;
+function construireParties(brouillon: BrouillonMandat): Partie[] {
+	const client = brouillon.client;
 	const lignesClient = [
 		client.adresse.trim(),
 		client.numeroEntreprise.trim() ? `NEQ : ${client.numeroEntreprise.trim()}` : '',
@@ -234,6 +237,7 @@ function construireParties(draft: MandatDraft): Partie[] {
 		PRESTATAIRE.adresse,
 		PRESTATAIRE.numeroEntreprise ? `NEQ : ${PRESTATAIRE.numeroEntreprise}` : '',
 		PRESTATAIRE.courriel,
+		PRESTATAIRE.telephone,
 		PRESTATAIRE.siteWeb
 	].filter(Boolean);
 
@@ -247,7 +251,10 @@ function construireParties(draft: MandatDraft): Partie[] {
 			role: 'Le Prestataire',
 			nom: PRESTATAIRE.nom,
 			lignes: lignesPrestataire,
-			representant: [draft.representantIntebecNom.trim(), draft.representantIntebecTitre.trim()]
+			representant: [
+				brouillon.representantIntebecNom.trim(),
+				brouillon.representantIntebecTitre.trim()
+			]
 				.filter(Boolean)
 				.join(', '),
 			designation: PRESTATAIRE.nom
@@ -263,22 +270,22 @@ function construireParties(draft: MandatDraft): Partie[] {
 	];
 }
 
-function construirePreambule(draft: MandatDraft, redaction?: RedactionIA | null): string[] {
+function construirePreambule(brouillon: BrouillonMandat, redaction?: RedactionIA | null): string[] {
 	const textes: string[] = [];
 	const prealable = redaction?.preambule?.trim();
 	if (prealable) {
 		textes.push(prealable);
 	} else {
-		const designation = designationClient(draft.client.typeClient);
-		const nomClient = draft.client.nom.trim() || 'le Client';
+		const designation = designationClient(brouillon.client.typeClient);
+		const nomClient = brouillon.client.nom.trim() || 'le Client';
 		textes.push(
-			draft.type === 'contrat'
+			brouillon.type === 'contrat'
 				? `Le présent contrat établit les modalités selon lesquelles ${PRESTATAIRE.nom} réalise, pour ${designation} ${nomClient}, le mandat décrit aux présentes.`
 				: `La présente soumission présente à ${designation} ${nomClient} la portée, les honoraires et les conditions proposés par ${PRESTATAIRE.nom} pour la réalisation du mandat décrit aux présentes.`
 		);
 	}
 
-	const objet = redaction?.objet?.trim() || draft.objet.trim();
+	const objet = redaction?.objet?.trim() || brouillon.objet.trim();
 	if (objet) textes.push(objet);
 
 	return textes;
@@ -286,7 +293,7 @@ function construirePreambule(draft: MandatDraft, redaction?: RedactionIA | null)
 
 /** Compte les caractères de prose et les blocs d'une section, pour estimer la place qu'elle
  * occupera. Les tableaux pèsent plus que leur texte : chaque rangée est une ligne à part. */
-function poidsSection(section: DocumentSection): number {
+function poidsSection(section: SectionDocument): number {
 	const c = section.contenu;
 	switch (c.kind) {
 		case 'paragraphes':
@@ -316,7 +323,7 @@ function poidsSection(section: DocumentSection): number {
 /** Choisit l'espacement en fonction du volume réel du document, plutôt que d'imposer une valeur
  * fixe qui convient à un contrat de dix pages mais laisse une soumission d'une page à moitié
  * vide. Les seuils correspondent grossièrement à une et à trois pages de texte. */
-export function calculerDensite(sections: DocumentSection[]): Densite {
+export function calculerDensite(sections: SectionDocument[]): Densite {
 	const poids = sections.reduce((n, s) => n + poidsSection(s), 0);
 	if (poids < 2200) return 'aere';
 	if (poids < 6500) return 'normal';
@@ -324,32 +331,38 @@ export function calculerDensite(sections: DocumentSection[]): Densite {
 }
 
 /** Transforme un mandat en modèle de document prêt à rendre.
- * Fonction pure : aucune valeur monétaire n'est recalculée ici, tout passe par `pricing.ts`,
+ * Fonction pure : aucune valeur monétaire n'est recalculée ici, tout passe par `montants.ts`,
  * seule source de vérité des montants (la même que celle affichée dans l'éditeur). */
-export function buildDocument(draft: MandatDraft, redaction?: RedactionIA | null): DocumentModel {
-	const contrat = draft.type === 'contrat';
-	const sections: DocumentSection[] = [];
+export function construireDocument(
+	brouillon: BrouillonMandat,
+	redaction?: RedactionIA | null
+): ModeleDocument {
+	const contrat = brouillon.type === 'contrat';
+	const sections: SectionDocument[] = [];
 	const pousser = (titre: string, contenu: ContenuSection) =>
 		sections.push({ numero: sections.length + 1, titre, contenu });
 
 	pousser('Objet du mandat', {
 		kind: 'paragraphes',
-		textes: construirePreambule(draft, redaction)
+		textes: construirePreambule(brouillon, redaction)
 	});
 
-	pousser('Portée des travaux', { kind: 'portee', entrees: construirePortee(draft, redaction) });
-	pousser('Honoraires', construireHonoraires(draft));
-	pousser('Modalités de paiement', construireEcheancier(draft));
+	pousser('Portée des travaux', {
+		kind: 'portee',
+		entrees: construirePortee(brouillon, redaction)
+	});
+	pousser('Honoraires', construireHonoraires(brouillon));
+	pousser('Modalités de paiement', construireEcheancier(brouillon));
 
 	// Chaque clause est un article de premier niveau, numéroté comme les autres sections, plutôt
 	// qu'une sous-section d'un bloc « Conditions générales ». Regroupées, les dix clauses
 	// formaient trois pages d'un seul tenant sans repère de lecture ; à plat, chacune reçoit son
 	// numéro et son filet, ce qui est aussi la structure des contrats Intébec existants.
-	for (const article of clausesActives(draft)) {
+	for (const article of clausesActives(brouillon)) {
 		pousser(article.titre, { kind: 'blocs', blocs: article.corps });
 	}
 
-	const notes = draft.conditions.notesAdditionnelles.trim();
+	const notes = brouillon.conditions.notesAdditionnelles.trim();
 	if (notes) {
 		pousser('Dispositions particulières', { kind: 'paragraphes', textes: notes.split(/\n{2,}/) });
 	}
@@ -358,40 +371,40 @@ export function buildDocument(draft: MandatDraft, redaction?: RedactionIA | null
 		pousser('Validité de la soumission', {
 			kind: 'paragraphes',
 			textes: [
-				`La présente soumission est valide pour une période de ${nombreContractuel(30)} jours à compter du ${formatDateLongue(draft.dateSignature)}. Son acceptation par le Client vaut autorisation d'entreprendre les travaux décrits aux présentes.`
+				`La présente soumission est valide pour une période de ${nombreContractuel(30)} jours à compter du ${formatDateLongue(brouillon.dateSignature)}. Son acceptation par le Client vaut autorisation d'entreprendre les travaux décrits aux présentes.`
 			]
 		});
 	}
 
 	return {
 		typeLabel: contrat ? 'Contrat de services' : 'Soumission',
-		titre: draft.titre.trim() || 'Sans titre',
-		dateLongue: formatDateLongue(draft.dateSignature),
-		lieu: draft.lieuSignature.trim(),
-		parties: construireParties(draft),
+		titre: brouillon.titre.trim() || 'Sans titre',
+		dateLongue: formatDateLongue(brouillon.dateSignature),
+		lieu: brouillon.lieuSignature.trim(),
+		parties: construireParties(brouillon),
 		attendu: contrat
 			? 'Lesquelles parties conviennent de ce qui suit :'
 			: 'À laquelle partie la présente soumission est adressée aux conditions suivantes :',
 		sections,
-		enFoiDeQuoi: `En foi de quoi, les parties ont signé à ${draft.lieuSignature.trim() || 'Victoriaville'}, le ${formatDateLongue(draft.dateSignature)}.`,
+		enFoiDeQuoi: `En foi de quoi, les parties ont signé à ${brouillon.lieuSignature.trim() || 'Victoriaville'}, le ${formatDateLongue(brouillon.dateSignature)}.`,
 		signatures: [
 			{
 				role: 'Le Prestataire',
 				organisation: PRESTATAIRE.nom,
-				nom: draft.representantIntebecNom.trim(),
-				titre: draft.representantIntebecTitre.trim()
+				nom: brouillon.representantIntebecNom.trim(),
+				titre: brouillon.representantIntebecTitre.trim()
 			},
 			{
 				role: 'Le Client',
-				organisation: draft.client.nom.trim(),
-				nom: draft.client.representantNom.trim(),
-				titre: draft.client.representantTitre.trim()
+				organisation: brouillon.client.nom.trim(),
+				nom: brouillon.client.representantNom.trim(),
+				titre: brouillon.client.representantTitre.trim()
 			}
 		],
 		piedDePage: [
 			PRESTATAIRE.nom,
 			contrat ? 'Contrat de services' : 'Soumission',
-			draft.titre.trim()
+			brouillon.titre.trim()
 		]
 			.filter(Boolean)
 			.join(' · '),

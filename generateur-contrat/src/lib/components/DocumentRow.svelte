@@ -3,9 +3,9 @@
 	import ConfirmAction from './ConfirmAction.svelte';
 	import Icon from './Icon.svelte';
 	import StatusBadge from './StatusBadge.svelte';
-	import type { DocumentSummary } from '$lib/types';
+	import type { ResumeDocument } from '$lib/types';
 
-	let { doc }: { doc: DocumentSummary } = $props();
+	let { doc }: { doc: ResumeDocument } = $props();
 
 	const formatted = $derived(
 		new Date(doc.updatedAt).toLocaleDateString('fr-CA', {

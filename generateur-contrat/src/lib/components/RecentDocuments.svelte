@@ -2,9 +2,9 @@
 	import DocumentRow from './DocumentRow.svelte';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
-	import type { DocumentSummary } from '$lib/types';
+	import type { ResumeDocument } from '$lib/types';
 
-	let { documents, archives = [] }: { documents: DocumentSummary[]; archives?: DocumentSummary[] } =
+	let { documents, archives = [] }: { documents: ResumeDocument[]; archives?: ResumeDocument[] } =
 		$props();
 </script>
 

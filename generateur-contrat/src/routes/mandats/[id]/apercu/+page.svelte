@@ -3,14 +3,29 @@
 	import type { PageData, ActionData } from './$types';
 	import DocumentView from '$lib/components/DocumentView.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { formatDateLongue } from '$lib/document/format';
+	import { identiteIncomplete } from '$lib/config';
+
+	const manques = identiteIncomplete();
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let redactionEnCours = $state(false);
+	let formulaireRediger = $state<HTMLFormElement | null>(null);
 
 	const mandat = $derived(data.mandat);
 	const redaction = $derived(mandat.redaction);
+
+	/** Déclenche la passe de rédaction dès l'arrivée quand « Générer » vient de nous envoyer ici.
+	 * L'appel dure jusqu'à quelques minutes : il a désormais sa propre requête, avec un état
+	 * d'attente visible, plutôt que d'être adossé à l'enregistrement du mandat. */
+	let redactionLancee = false;
+	$effect(() => {
+		if (!data.redactionAFaire || redactionLancee || !formulaireRediger) return;
+		redactionLancee = true;
+		formulaireRediger.requestSubmit();
+	});
 </script>
 
 <svelte:head>
@@ -21,16 +36,20 @@
 	<div
 		class="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border-subtle bg-surface p-4 shadow-sm print:hidden"
 	>
-		<a
-			href="/mandats/{mandat.id}"
-			class="inline-flex items-center gap-2 text-sm font-medium text-ink-muted transition hover:text-ink"
-		>
-			← Modifier le mandat
-		</a>
+		<div class="flex items-center gap-3">
+			<a
+				href="/mandats/{mandat.id}"
+				class="inline-flex items-center gap-2 text-sm font-medium text-ink-muted transition hover:text-ink"
+			>
+				← Modifier le mandat
+			</a>
+			<StatusBadge status={mandat.statut} />
+		</div>
 		<div class="flex flex-wrap gap-3">
 			<form
 				method="POST"
 				action="?/rediger"
+				bind:this={formulaireRediger}
 				use:enhance={() => {
 					redactionEnCours = true;
 					return async ({ update }) => {
@@ -64,6 +83,23 @@
 				</form>
 			{/if}
 
+			<!-- Statut purement déclaratif : l'application n'envoie rien elle-même, elle note que
+				vous l'avez fait. C'est ce qui distingue un document en attente d'un dossier clos. -->
+			<form method="POST" action="?/changerStatut" use:enhance>
+				<input
+					type="hidden"
+					name="statut"
+					value={mandat.statut === 'envoye' ? 'genere' : 'envoye'}
+				/>
+				<button
+					type="submit"
+					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink-muted transition hover:bg-surface-muted hover:text-ink"
+				>
+					<Icon name={mandat.statut === 'envoye' ? 'archive-restore' : 'send'} size={16} />
+					{mandat.statut === 'envoye' ? 'Marquer comme non envoyé' : 'Marquer comme envoyé'}
+				</button>
+			</form>
+
 			<!-- Le PDF est produit côté serveur : c'est la seule voie qui permet une numérotation
 				« Page X sur Y », le nombre total de pages n'étant pas accessible au CSS. -->
 			<a
@@ -76,6 +112,30 @@
 		</div>
 	</div>
 
+	{#if redactionEnCours}
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-card border border-accent-400/30 bg-accent-500/5 p-3 text-sm text-ink-muted print:hidden"
+		>
+			<Icon name="sparkles" size={16} />
+			<span>
+				L’IA locale rédige le document. Cela prend de quelques secondes à quelques minutes selon que
+				le modèle doit être rechargé en mémoire. Le mandat est déjà enregistré : vous pouvez quitter
+				cette page et revenir.
+			</span>
+		</div>
+	{/if}
+
+	{#if manques.length > 0}
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"
+		>
+			<span>
+				Identité du prestataire incomplète : il manque {manques.join(' et ')}. À renseigner dans
+				<code>src/lib/config.ts</code> avant d'envoyer un document à un client.
+			</span>
+		</div>
+	{/if}
+
 	{#if form?.message}
 		<div
 			class="rounded-card border p-4 text-sm print:hidden {form.ok
@@ -83,18 +143,6 @@
 				: 'border-warning/30 bg-warning/5 text-warning'}"
 		>
 			{form.message}
-		</div>
-	{/if}
-
-	{#if data.iaIndisponible && !redaction}
-		<div
-			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"
-		>
-			<Icon name="sparkles" size={16} />
-			<span>
-				L’IA locale n’a pas pu être jointe : le document ci-dessous reprend votre saisie telle
-				quelle, sans adaptation. Démarrez Ollama, puis relancez la rédaction.
-			</span>
 		</div>
 	{/if}
 
@@ -114,6 +162,6 @@
 	<div
 		class="overflow-hidden rounded-card border border-border-subtle shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
 	>
-		<DocumentView draft={mandat.draft} {redaction} />
+		<DocumentView brouillon={mandat.brouillon} {redaction} />
 	</div>
 </div>

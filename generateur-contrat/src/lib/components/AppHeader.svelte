@@ -1,6 +1,9 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
 	import { APP_NAME } from '$lib/config';
+	import type { Utilisateur } from '$lib/types';
+
+	let { utilisateur = null }: { utilisateur?: Utilisateur | null } = $props();
 </script>
 
 <header class="border-b border-border-subtle bg-surface">
@@ -29,6 +32,20 @@
 				<Icon name="help" size={18} />
 				<span class="hidden sm:inline">Aide</span>
 			</a>
+
+			{#if utilisateur}
+				<!-- La déconnexion est une action, donc un POST : un simple lien serait déclenché par
+					n'importe quelle préconnexion du navigateur. -->
+				<form method="POST" action="/connexion?/deconnexion" class="ml-2 flex items-center gap-2">
+					<span class="hidden text-sm text-ink-muted sm:inline">{utilisateur.nom}</span>
+					<button
+						type="submit"
+						class="rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-surface-muted hover:text-ink"
+					>
+						Déconnexion
+					</button>
+				</form>
+			{/if}
 		</nav>
 	</div>
 </header>

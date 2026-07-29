@@ -1,0 +1,569 @@
+/* Mise en page du document généré : soumission ou contrat.
+ *
+ * Ces styles vivaient dans le bloc <style> de DocumentView.svelte, qui atteignait 880 lignes dont
+ * 650 de CSS. Les sortir rend le composant lisible, et permet aux sous-composants de rendu
+ * (parties, sections, tableaux, signatures) de partager la même feuille : la portée automatique de
+ * Svelte, elle, s'arrête à la frontière de chaque composant.
+ *
+ * En quittant le composant, le CSS perd cette portée. Tous les sélecteurs sont donc préfixés par
+ * `.document`, qui n'existe qu'à la racine de DocumentView : des noms aussi génériques que
+ * `.para`, `.note` ou `.section` n'ont rien à faire dans la portée globale. */
+
+.document {
+	/* Le document a sa propre identité typographique : empattements pour la prose juridique,
+			sans-serif de la marque pour les titres, étiquettes et chiffres. */
+	--doc-serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+	--doc-sans: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+	--doc-encre: #16233a;
+	--doc-second: #5a6a80;
+	--doc-marine: #0f2a4a;
+	--doc-filet: #d8dfe8;
+	--doc-filet-fort: #9fb0c4;
+
+	/* Échelle d'espacement pilotée par `densite`, calculée dans sections.ts à partir du volume
+			réel du document. Toutes les marges verticales en dépendent, donc un seul multiplicateur
+			resserre ou aère la mise en page entière. */
+	--ec: 1;
+
+	background: #fff;
+	color: var(--doc-encre);
+	max-width: 45rem;
+	margin-inline: auto;
+	padding: 3.5rem 3.5rem 4rem;
+	font-family: var(--doc-serif);
+	font-size: 0.9375rem;
+	line-height: 1.6;
+}
+.document.densite-aere {
+	--ec: 1.4;
+	line-height: 1.7;
+}
+.document.densite-compact {
+	--ec: 0.72;
+	line-height: 1.5;
+}
+
+/* ---------- En-tête ---------- */
+.document .entete {
+	border-bottom: 3px solid var(--doc-marine);
+	padding-bottom: 1.1rem;
+	margin-bottom: calc(2.25rem * var(--ec));
+}
+.document .entete-type {
+	font-family: var(--doc-sans);
+	text-transform: uppercase;
+	letter-spacing: 0.16em;
+	font-size: 0.6875rem;
+	font-weight: 600;
+	color: var(--doc-marine);
+}
+.document .entete-titre {
+	font-family: var(--doc-sans);
+	font-size: 1.75rem;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	line-height: 1.2;
+	margin-top: 0.4rem;
+	color: var(--doc-marine);
+}
+.document .entete-lieu {
+	font-family: var(--doc-sans);
+	margin-top: 0.55rem;
+	font-size: 0.8125rem;
+	color: var(--doc-second);
+}
+
+/* ---------- Étiquettes communes ---------- */
+.document .etiquette {
+	font-family: var(--doc-sans);
+	text-transform: uppercase;
+	letter-spacing: 0.11em;
+	font-size: 0.625rem;
+	font-weight: 600;
+	color: var(--doc-second);
+	margin-bottom: 0.3rem;
+}
+
+/* ---------- Parties ---------- */
+
+/* auto-fit plutôt que deux colonnes fixes : si une seule partie est renseignée, elle occupe
+		toute la largeur au lieu de laisser une colonne vide. */
+.document .parties {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	gap: 2rem;
+	padding: 1.25rem 1.5rem;
+	background: #f7f9fc;
+	border-left: 3px solid var(--doc-marine);
+	margin-bottom: calc(2.5rem * var(--ec));
+	break-inside: avoid;
+}
+
+/* « Entre » / « Et » : la charnière du préambule d'identification, dans la forme consacrée
+		des contrats québécois. */
+.document .partie-connecteur {
+	font-family: var(--doc-sans);
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	color: var(--doc-marine);
+	margin-bottom: 0.4rem;
+}
+.document .partie-nom {
+	font-family: var(--doc-sans);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.3;
+	text-transform: uppercase;
+	letter-spacing: 0.01em;
+}
+.document .partie-designation {
+	margin-top: 0.4rem;
+	font-size: 0.8125rem;
+	font-style: italic;
+	color: var(--doc-encre);
+}
+.document .parties-attendu {
+	grid-column: 1 / -1;
+	border-top: 1px solid var(--doc-filet);
+	padding-top: 0.85rem;
+	font-size: 0.875rem;
+	font-style: italic;
+}
+.document .partie-coordonnees {
+	display: flex;
+	flex-direction: column;
+	margin-top: 0.4rem;
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	color: var(--doc-second);
+}
+.document .partie-representant {
+	margin-top: 0.5rem;
+	font-size: 0.8125rem;
+	font-style: italic;
+	color: var(--doc-encre);
+}
+
+/* ---------- Sections ---------- */
+.document .section {
+	margin-bottom: calc(2.25rem * var(--ec));
+}
+.document .section:last-of-type {
+	margin-bottom: 0;
+}
+.document .section-titre {
+	display: flex;
+	align-items: baseline;
+	gap: 0.6rem;
+	font-family: var(--doc-sans);
+	font-size: 1.125rem;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--doc-marine);
+	border-bottom: 1px solid var(--doc-filet-fort);
+	padding-bottom: 0.45rem;
+	margin-bottom: calc(1rem * var(--ec));
+	break-after: avoid;
+}
+
+/* Le numéro est porté par une pastille pleine : il donne le repère de lecture sans que le
+		titre ait besoin d'être plus gros. */
+.document .section-numero {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.5rem;
+	height: 1.5rem;
+	padding: 0 0.35rem;
+	border-radius: 0.25rem;
+	background: var(--doc-marine);
+	color: #fff;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0;
+}
+
+/* Seul titre sans numéro : un filet vertical lui rend le poids visuel que la pastille donne
+		aux autres, pour qu'il ne paraisse pas dégradé en fin de document. */
+.document .section-titre-nonnumerote {
+	border-left: 3px solid var(--doc-marine);
+	padding-left: 0.7rem;
+}
+.document .sous-titre {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	font-family: var(--doc-sans);
+	font-size: 0.9375rem;
+	font-weight: 600;
+	margin-bottom: 0.4rem;
+	break-after: avoid;
+}
+.document .sous-numero {
+	flex-shrink: 0;
+	color: var(--doc-marine);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Prose ---------- */
+.document .para {
+	/* Alignement à gauche volontaire : sans césure française, le texte justifié creusait
+			des « rivières » entre les mots dans les articles de conditions. */
+	text-align: left;
+	margin-bottom: calc(0.65rem * var(--ec));
+	/* Empêche qu'une seule ligne d'un paragraphe soit reléguée seule en haut ou en bas
+			d'une page à l'impression. */
+	orphans: 2;
+	widows: 2;
+}
+.document .para:last-child {
+	margin-bottom: 0;
+}
+.document .note {
+	font-size: 0.8125rem;
+	line-height: 1.55;
+	color: var(--doc-second);
+	margin-top: 0.5rem;
+}
+
+/* ---------- Portée ---------- */
+.document .portee {
+	margin-bottom: calc(1.5rem * var(--ec));
+	break-inside: avoid;
+}
+.document .portee:last-child {
+	margin-bottom: 0;
+}
+.document .portee-entete {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.4rem;
+}
+.document .portee-entete .sous-titre {
+	margin-bottom: 0;
+}
+.document .portee-label {
+	flex-shrink: 0;
+	font-family: var(--doc-sans);
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-size: 0.625rem;
+	font-weight: 600;
+	color: var(--doc-second);
+	border: 1px solid var(--doc-filet);
+	border-radius: 999px;
+	padding: 0.1rem 0.5rem;
+}
+
+/* Même logique que le bloc des parties : une seule liste occupe toute la largeur plutôt que
+		de laisser un vide à droite. */
+.document .portee-listes {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 1.25rem;
+	margin-top: 0.75rem;
+}
+.document .liste {
+	list-style: none;
+	font-size: 0.875rem;
+	line-height: 1.5;
+}
+.document .liste li {
+	position: relative;
+	padding-left: 1rem;
+	margin-bottom: 0.15rem;
+}
+.document .liste li::before {
+	position: absolute;
+	left: 0;
+	font-family: var(--doc-sans);
+	font-weight: 600;
+}
+.document .liste-inclus li::before {
+	content: '+';
+	color: var(--doc-marine);
+}
+.document .liste-exclus li::before {
+	content: '−';
+	color: var(--doc-second);
+}
+.document .liste-puces li::before {
+	content: '•';
+	color: var(--doc-marine);
+}
+.document .liste-puces {
+	margin-bottom: calc(0.65rem * var(--ec));
+}
+.document .liste-puces li {
+	margin-bottom: 0.25rem;
+}
+.document .liste-intro {
+	margin-bottom: 0.35rem;
+}
+
+/* Montant et délai en exergue sous le titre de phase. */
+.document .portee-exergue {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	font-family: var(--doc-sans);
+	margin-bottom: 0.55rem;
+}
+.document .exergue-montant {
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--doc-marine);
+	font-variant-numeric: tabular-nums;
+}
+.document .exergue-note {
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	font-size: 0.625rem;
+	font-weight: 600;
+	color: var(--doc-second);
+}
+.document .exergue-separateur {
+	width: 1px;
+	align-self: stretch;
+	background: var(--doc-filet);
+	margin-inline: 0.3rem;
+}
+.document .exergue-delai {
+	font-size: 0.8125rem;
+	color: var(--doc-second);
+}
+
+/* ---------- Tableaux ---------- */
+.document .tableau {
+	width: 100%;
+	border-collapse: collapse;
+	font-family: var(--doc-sans);
+	font-size: 0.8125rem;
+	margin-top: 0.25rem;
+}
+.document .tableau th {
+	text-align: left;
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	font-size: 0.625rem;
+	font-weight: 600;
+	color: var(--doc-second);
+	border-bottom: 1.5px solid var(--doc-marine);
+	padding: 0 0.65rem 0.45rem;
+}
+.document .tableau td {
+	border-bottom: 1px solid var(--doc-filet);
+	padding: 0.6rem 0.65rem;
+	vertical-align: top;
+}
+.document .tableau tbody tr,
+.document .tableau tfoot tr {
+	break-inside: avoid;
+}
+.document .tableau-honoraires th:first-child,
+.document .tableau-honoraires td:first-child {
+	width: 42%;
+}
+.document .tableau-echeancier th:first-child,
+.document .tableau-echeancier td:first-child {
+	width: 28%;
+}
+.document .cellule-label {
+	display: block;
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	font-size: 0.625rem;
+	font-weight: 600;
+	color: var(--doc-second);
+}
+
+/* Pas de `display` ici : cette classe est portée par un `<td>`, et le passer en block le
+		sortirait de l'algorithme de colonnes du tableau (le libellé se cassait alors en trois). */
+.document .cellule-forte {
+	font-weight: 500;
+	color: var(--doc-encre);
+}
+.document .cellule-nom {
+	display: block;
+	font-weight: 500;
+	color: var(--doc-encre);
+}
+
+/* Chaque élément facturé sur sa propre ligne : la concaténation « A ; B ; C » forçait des
+		retours de ligne arbitraires au milieu des montants. */
+.document .cellule-detail {
+	display: table-cell;
+	color: var(--doc-second);
+}
+.document .cellule-detail span {
+	display: block;
+}
+.document .col-montant {
+	text-align: right;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.document .rang-sous-total td {
+	padding-top: 0.7rem;
+	color: var(--doc-second);
+	border-bottom: none;
+}
+.document .rang-rabais td {
+	color: var(--doc-second);
+	border-bottom: none;
+	padding-top: 0.2rem;
+}
+.document .rabais-motif {
+	font-style: italic;
+}
+.document .rang-total td {
+	font-size: 0.9375rem;
+	font-weight: 700;
+	color: var(--doc-marine);
+	border-top: 1.5px solid var(--doc-marine);
+	border-bottom: none;
+	padding-top: 0.6rem;
+}
+.document .rang-total-note {
+	font-size: 0.6875rem;
+	font-weight: 500;
+	color: var(--doc-second);
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	margin-left: 0.4rem;
+}
+
+/* ---------- Signatures ---------- */
+.document .signatures {
+	margin-top: calc(2.75rem * var(--ec));
+	break-inside: avoid;
+}
+.document .signatures-grille {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	gap: 2.5rem;
+	margin-top: calc(1.5rem * var(--ec));
+}
+.document .signature {
+	break-inside: avoid;
+}
+.document .signature-organisation {
+	font-family: var(--doc-sans);
+	font-size: 0.9375rem;
+	font-weight: 600;
+}
+.document .signature-champ {
+	margin-top: 1.9rem;
+}
+.document .signature-trait {
+	border-bottom: 1px solid var(--doc-encre);
+}
+.document .signature-legende {
+	font-family: var(--doc-sans);
+	font-size: 0.75rem;
+	color: var(--doc-second);
+	margin-top: 0.35rem;
+}
+
+/* ---------- Pied de document ---------- */
+.document .pied {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1.5rem;
+	margin-top: calc(3rem * var(--ec));
+	padding-top: 0.85rem;
+	border-top: 1px solid var(--doc-filet);
+	font-family: var(--doc-sans);
+	font-size: 0.6875rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--doc-second);
+	break-inside: avoid;
+}
+.document .pied-logo {
+	height: 2.25rem;
+	width: auto;
+	flex-shrink: 0;
+}
+.document .en-foi-de-quoi {
+	margin-top: 0.9rem;
+	font-weight: 600;
+}
+
+/* ---------- Impression ---------- */
+@media print {
+	.document {
+		/* Les marges viennent de `@page` : le padding de l'écran ferait une double marge et
+				étranglerait la colonne de texte. */
+		max-width: none;
+		margin: 0;
+		padding: 0;
+		font-size: 10.5pt;
+		line-height: 1.5;
+	}
+
+	/* Le corps de texte suit aussi la densité : un demi-point gagné sur un contrat de dix
+			pages économise souvent une page entière. */
+	.document.densite-aere {
+		font-size: 11pt;
+		line-height: 1.65;
+	}
+	.document.densite-compact {
+		font-size: 9.8pt;
+		line-height: 1.42;
+	}
+	.document .entete-titre {
+		font-size: 20pt;
+	}
+	.document .section-titre {
+		font-size: 13pt;
+	}
+
+	/* Un titre ne reste jamais seul en bas de page, mais le corps de l'article peut couler
+			d'une page à l'autre : le rendre insécable laissait de grands vides en fin de page. */
+	.document .section-titre,
+	.document .sous-titre {
+		break-after: avoid;
+		break-inside: avoid;
+	}
+	.document .section {
+		break-inside: auto;
+	}
+	.document .tableau {
+		break-inside: auto;
+	}
+	.document .tableau thead {
+		display: table-header-group;
+	}
+	.document .parties {
+		background: #f7f9fc;
+	}
+	.document .pied {
+		font-size: 7.5pt;
+	}
+}
+
+/* ---------- Écran étroit ---------- */
+@media screen and (max-width: 640px) {
+	.document {
+		padding: 1.75rem 1.25rem 2.5rem;
+	}
+	.document .parties,
+	.document .portee-listes,
+	.document .signatures-grille {
+		grid-template-columns: 1fr;
+		gap: 1.25rem;
+	}
+	.document .tableau {
+		display: block;
+		overflow-x: auto;
+		white-space: nowrap;
+	}
+}

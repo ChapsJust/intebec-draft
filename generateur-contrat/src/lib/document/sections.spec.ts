@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { buildDocument } from './sections';
-import { createEmptyDraft, createEmptyLigne } from '$lib/mandat';
-import { formatCad, totalNet } from '$lib/pricing';
-import type { MandatDraft, RedactionIA, ServiceLine } from '$lib/types';
+import { construireDocument } from './sections';
+import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
+import { formatCad, totalNet } from '$lib/montants';
+import type { BrouillonMandat, RedactionIA, LigneService } from '$lib/types';
 
-function ligne(overrides: Partial<ServiceLine>): ServiceLine {
-	return { ...createEmptyLigne(), ...overrides };
+function ligne(overrides: Partial<LigneService>): LigneService {
+	return { ...nouvelleLigne(), ...overrides };
 }
 
-function draft(modifier: (d: MandatDraft) => void = () => {}): MandatDraft {
-	const d = createEmptyDraft('contrat');
+function brouillon(modifier: (d: BrouillonMandat) => void = () => {}): BrouillonMandat {
+	const d = nouveauMandat('contrat');
 	d.titre = 'Refonte du site';
 	d.objet = 'Refonte complète du site web.';
 	d.client.nom = 'Boulangerie Tremblay';
@@ -18,32 +18,36 @@ function draft(modifier: (d: MandatDraft) => void = () => {}): MandatDraft {
 	return d;
 }
 
-const section = (d: MandatDraft, titre: string) =>
-	buildDocument(d).sections.find((s) => s.titre === titre);
+const section = (d: BrouillonMandat, titre: string) =>
+	construireDocument(d).sections.find((s) => s.titre === titre);
 
-describe('buildDocument : structure', () => {
+describe('construireDocument : structure', () => {
 	it('numérote les sections séquentiellement à partir de 1', () => {
-		const numeros = buildDocument(draft()).sections.map((s) => s.numero);
+		const numeros = construireDocument(brouillon()).sections.map((s) => s.numero);
 		expect(numeros).toEqual(numeros.map((_, i) => i + 1));
 	});
 
 	it('distingue contrat et soumission', () => {
-		expect(buildDocument(draft((d) => (d.type = 'contrat'))).typeLabel).toBe('Contrat de services');
-		expect(buildDocument(draft((d) => (d.type = 'soumission'))).typeLabel).toBe('Soumission');
+		expect(construireDocument(brouillon((d) => (d.type = 'contrat'))).typeLabel).toBe(
+			'Contrat de services'
+		);
+		expect(construireDocument(brouillon((d) => (d.type = 'soumission'))).typeLabel).toBe(
+			'Soumission'
+		);
 	});
 
 	it('ajoute une section de validité aux soumissions seulement', () => {
-		const soumission = buildDocument(draft((d) => (d.type = 'soumission')));
-		const contrat = buildDocument(draft((d) => (d.type = 'contrat')));
+		const soumission = construireDocument(brouillon((d) => (d.type = 'soumission')));
+		const contrat = construireDocument(brouillon((d) => (d.type = 'contrat')));
 
 		expect(soumission.sections.map((s) => s.titre)).toContain('Validité de la soumission');
 		expect(contrat.sections.map((s) => s.titre)).not.toContain('Validité de la soumission');
 	});
 
 	it('n’ajoute la section de dispositions particulières que si des notes existent', () => {
-		const sans = buildDocument(draft()).sections.map((s) => s.titre);
-		const avec = buildDocument(
-			draft((d) => (d.conditions.notesAdditionnelles = 'Une note.'))
+		const sans = construireDocument(brouillon()).sections.map((s) => s.titre);
+		const avec = construireDocument(
+			brouillon((d) => (d.conditions.notesAdditionnelles = 'Une note.'))
 		).sections.map((s) => s.titre);
 
 		expect(sans).not.toContain('Dispositions particulières');
@@ -51,9 +55,9 @@ describe('buildDocument : structure', () => {
 	});
 });
 
-describe('buildDocument : densité automatique', () => {
+describe('construireDocument : densité automatique', () => {
 	it('aère une soumission courte', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.type = 'soumission';
 			x.objet = 'Refonte du logo.';
 			x.lignes = [ligne({ nom: 'Logo', montantForfaitaire: 800 })];
@@ -71,11 +75,11 @@ describe('buildDocument : densité automatique', () => {
 			x.conditions.tauxHoraireHorsPerimetre = 0;
 		});
 
-		expect(buildDocument(d).densite).toBe('aere');
+		expect(construireDocument(d).densite).toBe('aere');
 	});
 
 	it('resserre un contrat chargé', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.lignes = Array.from({ length: 8 }, (_, i) =>
 				ligne({
 					nom: `Volet ${i + 1}`,
@@ -86,17 +90,17 @@ describe('buildDocument : densité automatique', () => {
 			);
 		});
 
-		expect(buildDocument(d).densite).toBe('compact');
+		expect(construireDocument(d).densite).toBe('compact');
 	});
 
 	it('garde une densité normale pour un mandat courant', () => {
-		expect(buildDocument(draft()).densite).toBe('normal');
+		expect(construireDocument(brouillon()).densite).toBe('normal');
 	});
 });
 
-describe('buildDocument : montants', () => {
-	it('reprend exactement le total calculé par pricing.ts', () => {
-		const d = draft((x) => {
+describe('construireDocument : montants', () => {
+	it('reprend exactement le total calculé par montants.ts', () => {
+		const d = brouillon((x) => {
 			x.lignes = [
 				ligne({ nom: 'A', montantForfaitaire: 3000 }),
 				ligne({ nom: 'B', pricingMode: 'horaire', tauxHoraire: 100, heuresEstimees: 10 })
@@ -112,9 +116,9 @@ describe('buildDocument : montants', () => {
 	});
 
 	it('n’affiche la ligne de rabais que lorsqu’un rabais est appliqué', () => {
-		const sans = section(draft(), 'Honoraires')?.contenu;
+		const sans = section(brouillon(), 'Honoraires')?.contenu;
 		const avec = section(
-			draft((d) => (d.conditions.rabaisPct = 15)),
+			brouillon((d) => (d.conditions.rabaisPct = 15)),
 			'Honoraires'
 		)?.contenu;
 
@@ -126,7 +130,7 @@ describe('buildDocument : montants', () => {
 	});
 
 	it('répartit l’échéancier selon les pourcentages saisis', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.lignes = [ligne({ nom: 'A', montantForfaitaire: 10000 })];
 			x.modalitesPaiement = { acomptePct: 40, soldePct: 60, delaiJoursSolde: 30 };
 		});
@@ -138,7 +142,7 @@ describe('buildDocument : montants', () => {
 	});
 
 	it('omet un versement à 0 %', () => {
-		const d = draft(
+		const d = brouillon(
 			(x) => (x.modalitesPaiement = { acomptePct: 0, soldePct: 100, delaiJoursSolde: 30 })
 		);
 		const echeancier = section(d, 'Modalités de paiement')?.contenu;
@@ -147,8 +151,48 @@ describe('buildDocument : montants', () => {
 		expect(echeancier.versements).toHaveLength(1);
 	});
 
+	it('parle de paiement intégral, pas de « solde », quand tout est payé à la livraison', () => {
+		// « Solde (100 %) » sans acompte qui précède se lit comme une erreur de saisie.
+		const d = brouillon((x) => {
+			x.lignes = [ligne({ nom: 'A', montantForfaitaire: 8000 })];
+			x.modalitesPaiement = { acomptePct: 0, soldePct: 100, delaiJoursSolde: 0 };
+		});
+		const echeancier = section(d, 'Modalités de paiement')?.contenu;
+		if (echeancier?.kind !== 'echeancier') throw new Error('section échéancier absente');
+
+		expect(echeancier.versements).toHaveLength(1);
+		expect(echeancier.versements[0].libelle).toContain('Paiement intégral');
+		expect(echeancier.versements[0].libelle).not.toContain('Solde');
+		expect(echeancier.versements[0].echeance).toBe('À la livraison');
+		expect(echeancier.versements[0].montant).toBe(formatCad(8000));
+	});
+
+	it('reporte l’échéance du paiement unique selon le délai saisi', () => {
+		const d = brouillon(
+			(x) => (x.modalitesPaiement = { acomptePct: 0, soldePct: 100, delaiJoursSolde: 30 })
+		);
+		const echeancier = section(d, 'Modalités de paiement')?.contenu;
+		if (echeancier?.kind !== 'echeancier') throw new Error('section échéancier absente');
+
+		expect(echeancier.versements[0].echeance).toBe('Net trente (30) jours suivant la livraison');
+	});
+
+	it('annonce un paiement à la signature quand l’acompte couvre tout', () => {
+		const d = brouillon((x) => {
+			x.lignes = [ligne({ nom: 'A', montantForfaitaire: 8000 })];
+			x.modalitesPaiement = { acomptePct: 100, soldePct: 0, delaiJoursSolde: 30 };
+		});
+		const echeancier = section(d, 'Modalités de paiement')?.contenu;
+		if (echeancier?.kind !== 'echeancier') throw new Error('section échéancier absente');
+
+		expect(echeancier.versements).toHaveLength(1);
+		expect(echeancier.versements[0].libelle).toContain('Paiement intégral');
+		expect(echeancier.versements[0].echeance).toContain('signature');
+		expect(echeancier.versements[0].montant).toBe(formatCad(8000));
+	});
+
 	it('mentionne l’abonnement récurrent en note seulement s’il est actif', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.abonnement = {
 				actif: true,
 				frequence: 'mensuel',
@@ -167,9 +211,9 @@ describe('buildDocument : montants', () => {
 	});
 });
 
-describe('buildDocument : portée', () => {
+describe('construireDocument : portée', () => {
 	it('nomme les entrées selon la structure du projet', () => {
-		const d = draft((x) => (x.structureProjet = 'phases'));
+		const d = brouillon((x) => (x.structureProjet = 'phases'));
 		const portee = section(d, 'Portée des travaux')?.contenu;
 		if (portee?.kind !== 'portee') throw new Error('section portée absente');
 
@@ -178,7 +222,7 @@ describe('buildDocument : portée', () => {
 	});
 
 	it('retire les éléments vides des listes inclus / non inclus', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.lignes = [ligne({ nom: 'A', montantForfaitaire: 100, inclus: ['Hébergement', '', '  '] })];
 		});
 		const portee = section(d, 'Portée des travaux')?.contenu;
@@ -188,7 +232,7 @@ describe('buildDocument : portée', () => {
 	});
 
 	it('détaille la tarification horaire', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.lignes = [
 				ligne({ nom: 'A', pricingMode: 'horaire', tauxHoraire: 125, heuresEstimees: 12 })
 			];
@@ -204,7 +248,7 @@ describe('buildDocument : portée', () => {
 	});
 
 	it('éclate le mode quantité en une entrée par élément facturé', () => {
-		const d = draft((x) => {
+		const d = brouillon((x) => {
 			x.lignes = [
 				ligne({
 					nom: 'A',
@@ -223,7 +267,7 @@ describe('buildDocument : portée', () => {
 	});
 });
 
-describe('buildDocument : rédaction IA', () => {
+describe('construireDocument : rédaction IA', () => {
 	const redaction = (partiel: Partial<RedactionIA>): RedactionIA => ({
 		preambule: '',
 		objet: '',
@@ -234,8 +278,8 @@ describe('buildDocument : rédaction IA', () => {
 	});
 
 	it('substitue la prose de l’IA à la saisie', () => {
-		const d = draft();
-		const doc = buildDocument(d, redaction({ objet: 'Objet réécrit par l’IA.' }));
+		const d = brouillon();
+		const doc = construireDocument(d, redaction({ objet: 'Objet réécrit par l’IA.' }));
 		const objet = doc.sections[0].contenu;
 		if (objet.kind !== 'paragraphes') throw new Error('section objet absente');
 
@@ -245,7 +289,7 @@ describe('buildDocument : rédaction IA', () => {
 	});
 
 	it('retombe sur la saisie quand l’IA n’a rien produit pour un champ', () => {
-		const doc = buildDocument(draft(), redaction({ objet: '   ' }));
+		const doc = construireDocument(brouillon(), redaction({ objet: '   ' }));
 		const objet = doc.sections[0].contenu;
 		if (objet.kind !== 'paragraphes') throw new Error('section objet absente');
 
@@ -253,9 +297,9 @@ describe('buildDocument : rédaction IA', () => {
 	});
 
 	it('ne laisse pas l’IA modifier les montants', () => {
-		const d = draft((x) => (x.lignes = [ligne({ nom: 'A', montantForfaitaire: 7500 })]));
+		const d = brouillon((x) => (x.lignes = [ligne({ nom: 'A', montantForfaitaire: 7500 })]));
 		const sansIA = section(d, 'Honoraires')?.contenu;
-		const avecIA = buildDocument(d, redaction({ objet: 'Autre chose.' })).sections.find(
+		const avecIA = construireDocument(d, redaction({ objet: 'Autre chose.' })).sections.find(
 			(s) => s.titre === 'Honoraires'
 		)?.contenu;
 

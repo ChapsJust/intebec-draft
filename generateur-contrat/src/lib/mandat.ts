@@ -1,6 +1,12 @@
-import type { ClientInfo, ClientRecord, DocumentType, MandatDraft, ServiceLine } from './types';
+import type {
+	CoordonneesClient,
+	FicheClient,
+	TypeDocument,
+	BrouillonMandat,
+	LigneService
+} from './types';
 
-export function createEmptyClient(): ClientInfo {
+export function nouveauClient(): CoordonneesClient {
 	return {
 		nom: '',
 		typeClient: 'entreprise',
@@ -15,7 +21,7 @@ export function createEmptyClient(): ClientInfo {
 }
 
 /** Ne garde que les champs de contrat d'un client persisté : exclut id/notes/dates. */
-export function clientRecordToInfo(record: ClientRecord): ClientInfo {
+export function coordonneesDuClient(record: FicheClient): CoordonneesClient {
 	const {
 		nom,
 		typeClient,
@@ -40,7 +46,7 @@ export function clientRecordToInfo(record: ClientRecord): ClientInfo {
 	};
 }
 
-export function createEmptyLigne(): ServiceLine {
+export function nouvelleLigne(): LigneService {
 	return {
 		id: crypto.randomUUID(),
 		nom: '',
@@ -56,14 +62,14 @@ export function createEmptyLigne(): ServiceLine {
 	};
 }
 
-export function createEmptyDraft(type: DocumentType = 'soumission'): MandatDraft {
+export function nouveauMandat(type: TypeDocument = 'soumission'): BrouillonMandat {
 	return {
 		type,
 		titre: '',
 		structureProjet: 'blocs',
 		objet: '',
-		client: createEmptyClient(),
-		lignes: [createEmptyLigne()],
+		client: nouveauClient(),
+		lignes: [nouvelleLigne()],
 		modalitesPaiement: { acomptePct: 50, soldePct: 50, delaiJoursSolde: 30 },
 		abonnement: {
 			actif: false,
@@ -97,8 +103,8 @@ export function createEmptyDraft(type: DocumentType = 'soumission'): MandatDraft
 }
 
 /** Copie pour repartir d'un mandat existant sans partager de référence avec l'original. */
-export function duplicateDraft(draft: MandatDraft): MandatDraft {
-	const copy = structuredClone(draft);
+export function dupliquerMandat(brouillon: BrouillonMandat): BrouillonMandat {
+	const copy = structuredClone(brouillon);
 	copy.lignes = copy.lignes.map((ligne) => ({ ...ligne, id: crypto.randomUUID() }));
 	copy.dateSignature = new Date().toISOString().slice(0, 10);
 	return copy;

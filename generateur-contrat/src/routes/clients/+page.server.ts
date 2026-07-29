@@ -1,24 +1,22 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import {
-	listClients,
-	createClient,
-	archiveClient,
-	unarchiveClient,
-	deleteClient
+	listerClients,
+	creerClient,
+	archiverClient,
+	desarchiverClient,
+	supprimerClient
 } from '$lib/server/db/clients';
+import { idPoste } from '$lib/server/formulaire';
 import type { TypeClient } from '$lib/types';
 
 export const load: PageServerLoad = async () => {
-	const [clients, archives] = await Promise.all([listClients(), listClients({ archives: true })]);
+	const [clients, archives] = await Promise.all([
+		listerClients(),
+		listerClients({ archives: true })
+	]);
 	return { clients, archives };
 };
-
-async function idPoste(request: Request): Promise<string | null> {
-	const data = await request.formData();
-	const id = data.get('id');
-	return typeof id === 'string' && id ? id : null;
-}
 
 export const actions: Actions = {
 	creer: async ({ request }) => {
@@ -27,7 +25,7 @@ export const actions: Actions = {
 		if (!nom) {
 			return fail(400, { message: 'Le nom du client est requis.' });
 		}
-		const created = await createClient({
+		const created = await creerClient({
 			nom,
 			typeClient: ((data.get('typeClient') as string) || 'entreprise') as TypeClient,
 			adresse: (data.get('adresse') as string) || '',
@@ -46,21 +44,21 @@ export const actions: Actions = {
 	archiver: async ({ request }) => {
 		const id = await idPoste(request);
 		if (!id) return fail(400, { notice: 'Identifiant manquant.' });
-		await archiveClient(id);
+		if (!(await archiverClient(id))) return fail(404, { notice: 'Client introuvable.' });
 		return { notice: 'Client archivé, avec ses mandats.' };
 	},
 
 	desarchiver: async ({ request }) => {
 		const id = await idPoste(request);
 		if (!id) return fail(400, { notice: 'Identifiant manquant.' });
-		await unarchiveClient(id);
+		if (!(await desarchiverClient(id))) return fail(404, { notice: 'Client introuvable.' });
 		return { notice: 'Client désarchivé.' };
 	},
 
 	supprimer: async ({ request }) => {
 		const id = await idPoste(request);
 		if (!id) return fail(400, { notice: 'Identifiant manquant.' });
-		await deleteClient(id);
+		if (!(await supprimerClient(id))) return fail(404, { notice: 'Client introuvable.' });
 		return { notice: 'Client et mandats supprimés définitivement.' };
 	}
 };

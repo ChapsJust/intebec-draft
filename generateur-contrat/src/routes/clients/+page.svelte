@@ -4,14 +4,39 @@
 	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
 	import FormSection from '$lib/components/FormSection.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import type { ClientListItem } from '$lib/types';
+	import type { FicheClientListee } from '$lib/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const mandats = (n: number) => `${n} mandat${n > 1 ? 's' : ''}`;
+
+	let recherche = $state('');
+
+	/** Recherche sans accents ni casse : taper « riviere » doit trouver « Rivière ». */
+	function aplatir(valeur: string): string {
+		return valeur
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase();
+	}
+
+	/** Filtrage côté navigateur : à cette échelle, quelques centaines de fiches au plus, la liste
+	 * est déjà chargée et un aller-retour serveur par frappe n'apporterait rien. */
+	function filtrer(liste: FicheClientListee[]): FicheClientListee[] {
+		const terme = aplatir(recherche.trim());
+		if (!terme) return liste;
+		return liste.filter((c) =>
+			[c.nom, c.representantNom, c.courriel, c.telephone, c.numeroEntreprise]
+				.filter(Boolean)
+				.some((champ) => aplatir(champ).includes(terme))
+		);
+	}
+
+	const clientsVisibles = $derived(filtrer(data.clients));
+	const archivesVisibles = $derived(filtrer(data.archives));
 </script>
 
-{#snippet actionsClient(c: ClientListItem)}
+{#snippet actionsClient(c: FicheClientListee)}
 	{#if c.archiveLe}
 		<ConfirmAction
 			action="?/desarchiver"
@@ -158,12 +183,34 @@
 		</form>
 	</FormSection>
 
+	{#if data.clients.length > 0}
+		<div class="flex items-center gap-3">
+			<label class="sr-only" for="recherche-client">Rechercher un client</label>
+			<input
+				id="recherche-client"
+				class="field-input"
+				type="search"
+				bind:value={recherche}
+				placeholder="Rechercher par nom, représentant, courriel, téléphone ou NE…"
+			/>
+			{#if recherche}
+				<span class="shrink-0 text-sm text-ink-muted">
+					{clientsVisibles.length} / {data.clients.length}
+				</span>
+			{/if}
+		</div>
+	{/if}
+
 	<div class="overflow-hidden rounded-card border border-border-subtle bg-surface shadow-sm">
 		{#if data.clients.length === 0}
 			<p class="px-6 py-12 text-center text-sm text-ink-muted">Aucun client pour l'instant.</p>
+		{:else if clientsVisibles.length === 0}
+			<p class="px-6 py-12 text-center text-sm text-ink-muted">
+				Aucun client ne correspond à « {recherche} ».
+			</p>
 		{:else}
 			<ul class="divide-y divide-border-subtle">
-				{#each data.clients as c (c.id)}
+				{#each clientsVisibles as c (c.id)}
 					<li class="flex items-center gap-3 px-4 py-3 transition hover:bg-surface-muted">
 						<a href="/clients/{c.id}" class="flex min-w-0 flex-1 items-center gap-4">
 							<span
@@ -187,14 +234,18 @@
 		{/if}
 	</div>
 
-	{#if data.archives.length > 0}
-		<FormSection title="Clients archivés ({data.archives.length})" collapsible defaultOpen={false}>
+	{#if archivesVisibles.length > 0}
+		<FormSection
+			title="Clients archivés ({archivesVisibles.length})"
+			collapsible
+			defaultOpen={false}
+		>
 			<p class="mb-4 text-sm text-ink-muted">
 				Ces fiches et les mandats archivés avec elles n'apparaissent plus dans les listes courantes.
 				Désarchivez pour les remettre en circulation.
 			</p>
 			<ul class="divide-y divide-border-subtle">
-				{#each data.archives as c (c.id)}
+				{#each archivesVisibles as c (c.id)}
 					<li class="flex items-center gap-3 py-3">
 						<a href="/clients/{c.id}" class="min-w-0 flex-1">
 							<span class="block truncate font-medium text-ink">{c.nom}</span>

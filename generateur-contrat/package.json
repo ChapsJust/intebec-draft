@@ -14,6 +14,8 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
+		"auth:compte": "node scripts/compte.mjs",
+		"auth:secret": "node scripts/compte.mjs --secret",
 		"db:start": "docker compose up -d",
 		"db:stop": "docker compose down",
 		"db:reset": "docker compose down -v && docker compose up -d",

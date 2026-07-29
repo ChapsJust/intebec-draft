@@ -1,37 +1,44 @@
-export type DocumentType = 'soumission' | 'contrat';
+/** Personne connectée. Défini ici plutôt que dans `server/auth.ts` parce que l'en-tête, qui est du
+ * code client, a besoin du type : SvelteKit interdit d'importer quoi que ce soit de `$lib/server`
+ * depuis le navigateur. */
+export interface Utilisateur {
+	nom: string;
+}
 
-export type DocumentStatus = 'brouillon' | 'genere' | 'envoye';
+export type TypeDocument = 'soumission' | 'contrat';
 
-export interface DocumentSummary {
+export type StatutDocument = 'brouillon' | 'genere' | 'envoye';
+
+export interface ResumeDocument {
 	id: string;
 	title: string;
 	client: string;
-	type: DocumentType;
-	status: DocumentStatus;
+	type: TypeDocument;
+	status: StatutDocument;
 	updatedAt: string; // ISO date
 	archived: boolean;
 }
 
-export type PricingMode = 'forfaitaire' | 'horaire' | 'quantite';
+export type ModeTarification = 'forfaitaire' | 'horaire' | 'quantite';
 
-export interface QuantityItem {
+export interface LigneQuantite {
 	id: string;
 	description: string;
 	quantite: number;
 	prixUnitaire: number;
 }
 
-export interface ServiceLine {
+export interface LigneService {
 	id: string;
 	nom: string;
 	description: string;
 	inclus: string[];
 	nonInclus: string[];
-	pricingMode: PricingMode;
+	pricingMode: ModeTarification;
 	montantForfaitaire: number;
 	tauxHoraire: number;
 	heuresEstimees: number;
-	items: QuantityItem[];
+	items: LigneQuantite[];
 	delaiEstime: string;
 }
 
@@ -39,7 +46,7 @@ export type StructureProjet = 'phases' | 'blocs' | 'recurrent';
 
 export type TypeClient = 'entreprise' | 'obnl' | 'particulier';
 
-export interface ClientInfo {
+export interface CoordonneesClient {
 	nom: string;
 	typeClient: TypeClient;
 	adresse: string;
@@ -123,14 +130,14 @@ export interface AuditClauses {
 	modele: string;
 }
 
-/** Brouillon de mandat, tel que saisi par l'utilisateur. Il est stocké tel quel dans la colonne `draft` de la table `mandat`. */
-export interface MandatDraft {
-	type: DocumentType;
+/** Brouillon de mandat, tel que saisi par l'utilisateur. Il est stocké tel quel dans la colonne `brouillon` de la table `mandat`. */
+export interface BrouillonMandat {
+	type: TypeDocument;
 	titre: string;
 	structureProjet: StructureProjet;
 	objet: string;
-	client: ClientInfo;
-	lignes: ServiceLine[];
+	client: CoordonneesClient;
+	lignes: LigneService[];
 	modalitesPaiement: ModalitesPaiement;
 	abonnement: AbonnementRecurrent;
 	conditions: ConditionsParticulieres;
@@ -141,7 +148,7 @@ export interface MandatDraft {
 }
 
 /** Fiche client persistée : source de vérité pour un client réutilisable d'un mandat à l'autre. */
-export interface ClientRecord extends ClientInfo {
+export interface FicheClient extends CoordonneesClient {
 	id: string;
 	notes: string;
 	archiveLe: string | null;
@@ -151,30 +158,30 @@ export interface ClientRecord extends ClientInfo {
 
 /** Fiche client accompagnée du nombre de mandats rattachés, pour annoncer les conséquences d'un
  * archivage ou d'une suppression avant de les exécuter. */
-export interface ClientListItem extends ClientRecord {
+export interface FicheClientListee extends FicheClient {
 	nbMandats: number;
 }
 
-/** Rédaction produite par l'IA, stockée à côté du draft et jamais à sa place. Permet de conserver les modifications apportées par l'IA sans altérer le brouillon original. */
+/** Rédaction produite par l'IA, stockée à côté du brouillon et jamais à sa place. Permet de conserver les modifications apportées par l'IA sans altérer le brouillon original. */
 export interface RedactionIA {
 	preambule: string;
 	objet: string;
-	/** Descriptions réécrites, indexées par `ServiceLine.id`. */
+	/** Descriptions réécrites, indexées par `LigneService.id`. */
 	lignes: Record<string, string>;
 	genereLe: string;
 	modele: string;
 }
 
-/** Mandat persisté. `draft` est le snapshot figé au moment de l'enregistrement : voir clientId vs draft.client. */
-export interface MandatRecord {
+/** Mandat persisté. `brouillon` est le snapshot figé au moment de l'enregistrement : voir clientId vs brouillon.client. */
+export interface MandatEnregistre {
 	id: string;
 	clientId: string | null;
-	type: DocumentType;
-	statut: DocumentStatus;
+	type: TypeDocument;
+	statut: StatutDocument;
 	titre: string;
 	clientNom: string;
 	totalNet: number;
-	draft: MandatDraft;
+	brouillon: BrouillonMandat;
 	redaction: RedactionIA | null;
 	/** Non nul = mandat archivé : il disparaît des listes courantes sans être détruit. */
 	archiveLe: string | null;

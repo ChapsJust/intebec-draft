@@ -2,11 +2,11 @@
 	import HeroWelcome from '$lib/components/HeroWelcome.svelte';
 	import RecentDocuments from '$lib/components/RecentDocuments.svelte';
 	import type { PageData } from './$types';
-	import type { DocumentSummary, MandatRecord } from '$lib/types';
+	import type { ResumeDocument, MandatEnregistre } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
 
-	const resume = (m: MandatRecord): DocumentSummary => ({
+	const resume = (m: MandatEnregistre): ResumeDocument => ({
 		id: m.id,
 		title: m.titre || 'Sans titre',
 		client: m.clientNom || 'Client à définir',

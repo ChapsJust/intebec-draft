@@ -1,18 +1,18 @@
 import type {
 	AbonnementRecurrent,
-	ClientInfo,
+	CoordonneesClient,
 	ConditionsParticulieres,
-	MandatDraft,
+	BrouillonMandat,
 	ModalitesPaiement,
-	QuantityItem,
-	ServiceLine
+	LigneQuantite,
+	LigneService
 } from '$lib/types';
-import { createEmptyDraft, createEmptyLigne } from '$lib/mandat';
+import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
 
-export interface ParsedMandatSubmission {
-	draft: MandatDraft;
+export interface SoumissionMandat {
+	brouillon: BrouillonMandat;
 	clientId: string | null;
-	saveAsNewClient: boolean;
+	enregistrerNouveauClient: boolean;
 }
 
 /** Erreur de forme d'une soumission de formulaire : le contenu reçu n'est pas exploitable.
@@ -67,7 +67,7 @@ function dateIso(valeur: unknown, defaut: string): string {
 	return typeof valeur === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valeur) ? valeur : defaut;
 }
 
-function normaliserItem(brut: unknown, defautId: string): QuantityItem {
+function normaliserItem(brut: unknown, defautId: string): LigneQuantite {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	return {
 		id: texte(source.id) || defautId,
@@ -77,9 +77,9 @@ function normaliserItem(brut: unknown, defautId: string): QuantityItem {
 	};
 }
 
-function normaliserLigne(brut: unknown, index: number): ServiceLine {
+function normaliserLigne(brut: unknown, index: number): LigneService {
 	const source = (brut ?? {}) as Record<string, unknown>;
-	const vide = createEmptyLigne();
+	const vide = nouvelleLigne();
 
 	return {
 		id: texte(source.id) || vide.id,
@@ -100,7 +100,7 @@ function normaliserLigne(brut: unknown, index: number): ServiceLine {
 	};
 }
 
-function normaliserClient(brut: unknown, defaut: ClientInfo): ClientInfo {
+function normaliserClient(brut: unknown, defaut: CoordonneesClient): CoordonneesClient {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	return {
 		nom: texte(source.nom),
@@ -184,9 +184,9 @@ function normaliserConditions(
  * On normalise au lieu de refuser : les écarts viennent presque toujours d'un champ laissé vide,
  * pas d'une attaque, et perdre une saisie complète pour un nombre mal formé serait pire que de le
  * ramener à zéro. */
-export function normaliserMandat(brut: unknown): MandatDraft {
+export function normaliserMandat(brut: unknown): BrouillonMandat {
 	const source = (brut ?? {}) as Record<string, unknown>;
-	const defaut = createEmptyDraft();
+	const defaut = nouveauMandat();
 
 	const lignesBrutes = Array.isArray(source.lignes) ? source.lignes.slice(0, MAX_LIGNES) : [];
 	const lignes = lignesBrutes.map((ligne, i) => normaliserLigne(ligne, i));
@@ -217,7 +217,7 @@ export function normaliserMandat(brut: unknown): MandatDraft {
 
 /** Lit un brouillon depuis une chaîne JSON. Le `try` n'est pas décoratif : `JSON.parse` sur un
  * corps tronqué levait une erreur que personne n'attrapait, donc une page 500. */
-export function lireMandat(payload: unknown): MandatDraft {
+export function lireMandat(payload: unknown): BrouillonMandat {
 	if (typeof payload !== 'string') {
 		throw new SoumissionInvalideError('Le contenu du formulaire est absent.');
 	}
@@ -230,13 +230,13 @@ export function lireMandat(payload: unknown): MandatDraft {
 	return normaliserMandat(brut);
 }
 
-export async function parseMandatSubmission(request: Request): Promise<ParsedMandatSubmission> {
+export async function lireSoumissionMandat(request: Request): Promise<SoumissionMandat> {
 	const data = await request.formData();
 	const clientId = data.get('clientId');
 
 	return {
-		draft: lireMandat(data.get('payload')),
+		brouillon: lireMandat(data.get('payload')),
 		clientId: typeof clientId === 'string' && clientId ? clientId : null,
-		saveAsNewClient: data.get('saveAsNewClient') === '1'
+		enregistrerNouveauClient: data.get('enregistrerNouveauClient') === '1'
 	};
 }

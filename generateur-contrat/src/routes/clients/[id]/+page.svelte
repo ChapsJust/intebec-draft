@@ -4,8 +4,8 @@
 	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { formatCad } from '$lib/pricing';
-	import type { MandatRecord } from '$lib/types';
+	import { formatCad } from '$lib/montants';
+	import type { MandatEnregistre } from '$lib/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -13,7 +13,7 @@
 	const libelleMandats = $derived(`${total} mandat${total > 1 ? 's' : ''}`);
 </script>
 
-{#snippet ligneMandat(m: MandatRecord)}
+{#snippet ligneMandat(m: MandatEnregistre)}
 	<li class="flex flex-wrap items-center gap-3 py-3">
 		<a href="/mandats/{m.id}" class="min-w-0 flex-1">
 			<span class="block truncate font-medium text-ink">{m.titre || 'Sans titre'}</span>

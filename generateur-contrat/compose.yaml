@@ -61,6 +61,9 @@ services:
       # (http://<nom-machine>:11434) pour joindre le serveur sans passer par l'hôte.
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      # Accès. Reprises du .env local : sans elles le conteneur refuse toute requête.
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      AUTH_UTILISATEURS: ${AUTH_UTILISATEURS:-}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:

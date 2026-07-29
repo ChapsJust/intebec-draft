@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { DocumentStatus } from '$lib/types';
+	import type { StatutDocument } from '$lib/types';
 
-	let { status }: { status: DocumentStatus } = $props();
+	let { status }: { status: StatutDocument } = $props();
 
-	const config: Record<DocumentStatus, { label: string; class: string }> = {
+	const config: Record<StatutDocument, { label: string; class: string }> = {
 		brouillon: { label: 'Brouillon', class: 'bg-slate-100 text-slate-600' },
 		genere: { label: 'Généré', class: 'bg-emerald-50 text-emerald-700' },
 		envoye: { label: 'Envoyé', class: 'bg-blue-50 text-blue-700' }

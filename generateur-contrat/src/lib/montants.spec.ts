@@ -1,26 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { lineTotal, subtotal, rabaisAmount, totalNet, formatCad } from './pricing';
-import { createEmptyLigne } from './mandat';
-import type { ServiceLine } from './types';
+import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from './montants';
+import { nouvelleLigne } from './mandat';
+import type { LigneService } from './types';
 
-function ligne(overrides: Partial<ServiceLine>): ServiceLine {
-	return { ...createEmptyLigne(), ...overrides };
+function ligne(overrides: Partial<LigneService>): LigneService {
+	return { ...nouvelleLigne(), ...overrides };
 }
 
-describe('lineTotal', () => {
+describe('totalLigne', () => {
 	it('utilise le montant forfaitaire en mode forfaitaire', () => {
-		expect(lineTotal(ligne({ pricingMode: 'forfaitaire', montantForfaitaire: 1500 }))).toBe(1500);
+		expect(totalLigne(ligne({ pricingMode: 'forfaitaire', montantForfaitaire: 1500 }))).toBe(1500);
 	});
 
 	it('multiplie taux et heures en mode horaire', () => {
-		expect(lineTotal(ligne({ pricingMode: 'horaire', tauxHoraire: 100, heuresEstimees: 8 }))).toBe(
+		expect(totalLigne(ligne({ pricingMode: 'horaire', tauxHoraire: 100, heuresEstimees: 8 }))).toBe(
 			800
 		);
 	});
 
 	it('additionne quantité × prix unitaire en mode quantité', () => {
 		expect(
-			lineTotal(
+			totalLigne(
 				ligne({
 					pricingMode: 'quantite',
 					items: [
@@ -33,18 +33,18 @@ describe('lineTotal', () => {
 	});
 });
 
-describe('subtotal / rabaisAmount / totalNet', () => {
+describe('sousTotal / montantRabais / totalNet', () => {
 	const lignes = [
 		ligne({ pricingMode: 'forfaitaire', montantForfaitaire: 1000 }),
 		ligne({ pricingMode: 'forfaitaire', montantForfaitaire: 500 })
 	];
 
 	it('additionne le total de toutes les lignes', () => {
-		expect(subtotal(lignes)).toBe(1500);
+		expect(sousTotal(lignes)).toBe(1500);
 	});
 
 	it('calcule le montant du rabais à partir du pourcentage', () => {
-		expect(rabaisAmount(1500, 10)).toBe(150);
+		expect(montantRabais(1500, 10)).toBe(150);
 	});
 
 	it('soustrait le rabais du sous-total', () => {

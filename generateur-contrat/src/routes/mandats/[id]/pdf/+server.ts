@@ -1,11 +1,11 @@
 import { error } from '@sveltejs/kit';
-import { getMandat } from '$lib/server/db/mandats';
+import { obtenirMandat } from '$lib/server/db/mandats';
 import { genererPdf, nomFichier, origineInterne } from '$lib/server/pdf';
 import { PRESTATAIRE } from '$lib/config';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, url, request, fetch: _fetch }) => {
-	const mandat = await getMandat(params.id);
+	const mandat = await obtenirMandat(params.id);
 	if (!mandat) error(404, 'Mandat introuvable');
 
 	const origine = origineInterne(url.origin);
@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ params, url, request, fetch: _fetch 
 		);
 	}
 
-	const fichier = nomFichier(mandat.type, mandat.titre, mandat.draft.dateSignature);
+	const fichier = nomFichier(mandat.type, mandat.titre, mandat.brouillon.dateSignature);
 
 	return new Response(pdf as BodyInit, {
 		headers: {

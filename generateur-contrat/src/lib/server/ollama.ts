@@ -3,7 +3,7 @@ import type {
 	AuditClauses,
 	ChampCondition,
 	ClausesStandards,
-	MandatDraft,
+	BrouillonMandat,
 	PropositionClause,
 	RedactionIA,
 	SuggestionClause,
@@ -265,9 +265,9 @@ export function extraireJson(brut: string): unknown {
 
 /** Résumé factuel du mandat envoyé au modèle. Les montants sont volontairement omis : le modèle
  * n'a pas à les connaître puisqu'il n'a pas le droit de les écrire. */
-function contexte(draft: MandatDraft): string {
-	const label = libelleLigne(draft.structureProjet);
-	const lignes = draft.lignes
+function contexte(brouillon: BrouillonMandat): string {
+	const label = libelleLigne(brouillon.structureProjet);
+	const lignes = brouillon.lignes
 		.map((ligne, i) => {
 			const parties = [
 				`  - id: ${ligne.id}`,
@@ -285,22 +285,22 @@ function contexte(draft: MandatDraft): string {
 		})
 		.join('\n');
 
-	return `Type de document: ${draft.type === 'contrat' ? 'contrat de services' : 'soumission'}
-Titre du projet: ${draft.titre || '(sans titre)'}
-Client: ${draft.client.nom || '(non renseigné)'} (${draft.client.typeClient})
-Objet saisi par l'utilisateur: ${draft.objet || '(vide)'}
-Structure: ${draft.structureProjet}
+	return `Type de document: ${brouillon.type === 'contrat' ? 'contrat de services' : 'soumission'}
+Titre du projet: ${brouillon.titre || '(sans titre)'}
+Client: ${brouillon.client.nom || '(non renseigné)'} (${brouillon.client.typeClient})
+Objet saisi par l'utilisateur: ${brouillon.objet || '(vide)'}
+Structure: ${brouillon.structureProjet}
 Lignes de service:
 ${lignes}`;
 }
 
 /** Passe complète : réécrit toute la prose du document d'un coup, de façon cohérente. */
-export async function redigerDocument(draft: MandatDraft): Promise<RedactionIA> {
-	const idsConnus = new Set(draft.lignes.map((l) => l.id));
+export async function redigerDocument(brouillon: BrouillonMandat): Promise<RedactionIA> {
+	const idsConnus = new Set(brouillon.lignes.map((l) => l.id));
 
 	const prompt = `Voici les données d'un mandat.
 
-${contexte(draft)}
+${contexte(brouillon)}
 
 Rédige la prose du document sous forme d'un objet JSON avec exactement ces clés :
 - "preambule" : un paragraphe d'introduction situant le mandat et les parties.
@@ -361,11 +361,11 @@ export function normaliser(brut: unknown, idsConnus: Set<string>): RedactionIA {
 
 /** État du volet contractuel : ce qui est déjà couvert, et ce qui ne l'est pas. Les valeurs
  * chiffrées sont montrées telles quelles, ce sont des faits saisis, pas des chiffres à inventer. */
-function contexteClauses(draft: MandatDraft): string {
-	const actives = CLES_CLAUSES.filter((c) => draft.conditions.clauses[c]);
-	const inactives = CLES_CLAUSES.filter((c) => !draft.conditions.clauses[c]);
-	const zero = CLES_CONDITIONS.filter((c) => draft.conditions[c] <= 0);
-	const renseignees = CLES_CONDITIONS.filter((c) => draft.conditions[c] > 0);
+function contexteClauses(brouillon: BrouillonMandat): string {
+	const actives = CLES_CLAUSES.filter((c) => brouillon.conditions.clauses[c]);
+	const inactives = CLES_CLAUSES.filter((c) => !brouillon.conditions.clauses[c]);
+	const zero = CLES_CONDITIONS.filter((c) => brouillon.conditions[c] <= 0);
+	const renseignees = CLES_CONDITIONS.filter((c) => brouillon.conditions[c] > 0);
 
 	const liste = <K extends string>(cles: K[], source: Record<K, string>) =>
 		cles.length ? cles.map((c) => `  - ${c} : ${source[c]}`).join('\n') : '  (aucune)';
@@ -377,23 +377,23 @@ Clauses du catalogue NON activées :
 ${liste(inactives, LIBELLES_CLAUSES)}
 
 Conditions chiffrées renseignées :
-${renseignees.length ? renseignees.map((c) => `  - ${c} = ${draft.conditions[c]}`).join('\n') : '  (aucune)'}
+${renseignees.length ? renseignees.map((c) => `  - ${c} = ${brouillon.conditions[c]}`).join('\n') : '  (aucune)'}
 
 Conditions chiffrées laissées à zéro (l'article correspondant est absent du contrat) :
 ${liste(zero, LIBELLES_CONDITIONS)}
 
-Notes additionnelles saisies : ${draft.conditions.notesAdditionnelles.trim() || '(vide)'}
-Abonnement récurrent : ${draft.abonnement.actif ? `oui, ${draft.abonnement.frequence}, couvre : ${draft.abonnement.couverture.trim() || '(non précisé)'}` : 'non'}`;
+Notes additionnelles saisies : ${brouillon.conditions.notesAdditionnelles.trim() || '(vide)'}
+Abonnement récurrent : ${brouillon.abonnement.actif ? `oui, ${brouillon.abonnement.frequence}, couvre : ${brouillon.abonnement.couverture.trim() || '(non précisé)'}` : 'non'}`;
 }
 
 /** Relit le mandat et signale ce qui manque au volet contractuel. Ne modifie rien : l'utilisateur
  * reste seul à décider d'activer une clause, et les brouillons partent en révision, pas au document. */
-export async function auditerClauses(draft: MandatDraft): Promise<AuditClauses> {
+export async function auditerClauses(brouillon: BrouillonMandat): Promise<AuditClauses> {
 	const prompt = `Voici un mandat à relire.
 
-${contexte(draft)}
+${contexte(brouillon)}
 
-${contexteClauses(draft)}
+${contexteClauses(brouillon)}
 
 Relis ce mandat et signale ce qui manque au volet contractuel. Réponds par un objet JSON avec exactement ces clés :
 - "suggestions" : tableau des clauses NON activées qui devraient l'être compte tenu de la nature de ce mandat. Chaque entrée : {"cle": "<une clé exacte de la liste des clauses non activées>", "raison": "<une phrase expliquant pourquoi ce mandat l'appelle>"}. N'y mets aucune clause déjà activée.
@@ -403,13 +403,13 @@ Relis ce mandat et signale ce qui manque au volet contractuel. Réponds par un o
 Ne signale que ce qui est réellement justifié par ce mandat.`;
 
 	const brut = await appeler(prompt, CONSIGNES_AUDIT);
-	return normaliserAudit(brut, draft);
+	return normaliserAudit(brut, brouillon);
 }
 
 /** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un
  * objet là où un tableau est attendu. On ne garde que ce qui désigne une case réellement
  * décochée : une suggestion sans effet est du bruit qui décrédibilise l'audit entier. */
-export function normaliserAudit(brut: unknown, draft: MandatDraft): AuditClauses {
+export function normaliserAudit(brut: unknown, brouillon: BrouillonMandat): AuditClauses {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const tableau = (v: unknown): Record<string, unknown>[] =>
 		Array.isArray(v)
@@ -420,7 +420,7 @@ export function normaliserAudit(brut: unknown, draft: MandatDraft): AuditClauses
 	for (const entree of tableau(source.suggestions)) {
 		const cle = entree.cle as keyof ClausesStandards;
 		if (!CLES_CLAUSES.includes(cle)) continue;
-		if (draft.conditions.clauses[cle]) continue;
+		if (brouillon.conditions.clauses[cle]) continue;
 		if (suggestions.some((s) => s.cle === cle)) continue;
 		suggestions.push({ cle, raison: texte(entree.raison) });
 	}
@@ -429,7 +429,7 @@ export function normaliserAudit(brut: unknown, draft: MandatDraft): AuditClauses
 	for (const entree of tableau(source.conditions)) {
 		const champ = entree.champ as ChampCondition;
 		if (!CLES_CONDITIONS.includes(champ)) continue;
-		if (draft.conditions[champ] > 0) continue;
+		if (brouillon.conditions[champ] > 0) continue;
 		if (conditions.some((c) => c.champ === champ)) continue;
 		conditions.push({ champ, raison: texte(entree.raison) });
 	}
@@ -454,7 +454,7 @@ export function normaliserAudit(brut: unknown, draft: MandatDraft): AuditClauses
 export type CibleChamp = { kind: 'objet' } | { kind: 'ligne'; id: string };
 
 /** Aide ponctuelle : étoffe un seul champ pendant la saisie, sans rien persister. */
-export async function redigerChamp(draft: MandatDraft, cible: CibleChamp): Promise<string> {
+export async function redigerChamp(brouillon: BrouillonMandat, cible: CibleChamp): Promise<string> {
 	const consigne =
 		cible.kind === 'objet'
 			? `Rédige uniquement l'objet du mandat, en développant ce que l'utilisateur a saisi. Un ou deux paragraphes.`
@@ -462,7 +462,7 @@ export async function redigerChamp(draft: MandatDraft, cible: CibleChamp): Promi
 
 	const prompt = `Voici les données d'un mandat.
 
-${contexte(draft)}
+${contexte(brouillon)}
 
 ${consigne}
 

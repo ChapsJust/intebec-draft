@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ServiceLine } from '$lib/types';
-	import { subtotal, rabaisAmount, totalNet, formatCad } from '$lib/pricing';
+	import type { LigneService } from '$lib/types';
+	import { sousTotal, montantRabais, totalNet, formatCad } from '$lib/montants';
 	import FormSection from './FormSection.svelte';
 
 	let {
@@ -8,13 +8,13 @@
 		rabaisPct = $bindable(),
 		rabaisMotif = $bindable()
 	}: {
-		lignes: ServiceLine[];
+		lignes: LigneService[];
 		rabaisPct: number;
 		rabaisMotif: string;
 	} = $props();
 
-	const st = $derived(subtotal(lignes));
-	const rabais = $derived(rabaisAmount(st, rabaisPct));
+	const st = $derived(sousTotal(lignes));
+	const rabais = $derived(montantRabais(st, rabaisPct));
 	const total = $derived(totalNet(lignes, rabaisPct));
 </script>
 

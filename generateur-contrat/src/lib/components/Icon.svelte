@@ -16,7 +16,8 @@
 		| 'chevron-down'
 		| 'copy'
 		| 'archive'
-		| 'archive-restore';
+		| 'archive-restore'
+		| 'send';
 
 	let {
 		name,
@@ -41,7 +42,8 @@
 		copy: 'M8 8h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm-3 8H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1',
 		archive: 'M4 5h16v4H4zM6 9v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9M10 13h4',
 		'archive-restore':
-			'M4 5h16v4H4zM6 9v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9M12 18v-6m0 0-2.5 2.5M12 12l2.5 2.5'
+			'M4 5h16v4H4zM6 9v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9M12 18v-6m0 0-2.5 2.5M12 12l2.5 2.5',
+		send: 'M21 4 3 11l6 2.5L11.5 20 21 4Zm0 0-12 9.5'
 	};
 </script>
 
