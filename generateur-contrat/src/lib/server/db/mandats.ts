@@ -61,8 +61,7 @@ export async function getMandat(id: string): Promise<MandatRecord | null> {
  *
  * Renvoie `null` quand la mise à jour ne touche aucune ligne, c'est-à-dire quand le mandat a été
  * supprimé entre-temps. Le cas se produit pour de vrai : deux onglets ouverts, suppression dans
- * l'un, « Enregistrer » dans l'autre. Sans ce retour, `toRecord(undefined)` levait une erreur et
- * l'utilisateur recevait une page 500 au lieu d'un « Mandat introuvable ». */
+ * l'un, « Enregistrer » dans l'autre. */
 export async function saveMandat(
 	draft: MandatDraft,
 	options?: { id?: string; clientId?: string | null; statut?: DocumentStatus }
@@ -79,21 +78,23 @@ export async function saveMandat(
 	};
 
 	if (options?.id) {
+		if (!estUuid(options.id)) return null;
 		const [row] = await db.update(mandat).set(values).where(eq(mandat.id, options.id)).returning();
-		return toRecord(row);
+		return row ? toRecord(row) : null;
 	}
 
 	const [row] = await db.insert(mandat).values(values).returning();
 	return toRecord(row);
 }
 
-/** Enregistre (ou efface, avec `null`) la prose générée par l'IA. Volontairement séparé de
+/** Enregistre (ou efface, avec `null`) la rédaction générée par l'IA. Volontairement séparé de
  * `saveMandat` : sauvegarder le brouillon ne doit jamais toucher à la rédaction, et relancer la
  * rédaction ne doit jamais toucher à la saisie. */
 export async function saveRedaction(
 	id: string,
 	redaction: RedactionIA | null
 ): Promise<MandatRecord | null> {
+	if (!estUuid(id)) return null;
 	const [row] = await db
 		.update(mandat)
 		.set({ redaction, majLe: new Date() })
@@ -102,17 +103,34 @@ export async function saveRedaction(
 	return row ? toRecord(row) : null;
 }
 
-export async function archiveMandat(id: string): Promise<void> {
-	await db
+/** Les trois opérations ci-dessous renvoient `true` seulement si elles ont réellement touché une
+ * ligne. Auparavant elles ne renvoyaient rien, et l'interface annonçait « Mandat supprimé. » même
+ * quand l'identifiant ne correspondait à aucun mandat : une confirmation fausse est pire qu'une
+ * erreur, puisqu'elle dispense de vérifier. IA */
+export async function archiveMandat(id: string): Promise<boolean> {
+	if (!estUuid(id)) return false;
+	const lignes = await db
 		.update(mandat)
 		.set({ archiveLe: new Date() })
-		.where(and(eq(mandat.id, id), isNull(mandat.archiveLe)));
+		.where(and(eq(mandat.id, id), isNull(mandat.archiveLe)))
+		.returning({ id: mandat.id });
+	return lignes.length > 0;
 }
 
-export async function unarchiveMandat(id: string): Promise<void> {
-	await db.update(mandat).set({ archiveLe: null }).where(eq(mandat.id, id));
+ /** Annule l'archivage d'un mandat. */
+export async function unarchiveMandat(id: string): Promise<boolean> {
+	if (!estUuid(id)) return false;
+	const lignes = await db
+		.update(mandat)
+		.set({ archiveLe: null })
+		.where(eq(mandat.id, id))
+		.returning({ id: mandat.id });
+	return lignes.length > 0;
 }
 
-export async function deleteMandat(id: string): Promise<void> {
-	await db.delete(mandat).where(eq(mandat.id, id));
+/** Efface un mandat. */
+export async function deleteMandat(id: string): Promise<boolean> {
+	if (!estUuid(id)) return false;
+	const lignes = await db.delete(mandat).where(eq(mandat.id, id)).returning({ id: mandat.id });
+	return lignes.length > 0;
 }

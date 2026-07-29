@@ -162,31 +162,47 @@ function construireHonoraires(draft: MandatDraft): ContenuSection {
 	};
 }
 
+/** Échéance du solde, exprimée par rapport à la livraison. */
+function echeanceSolde(delaiJoursSolde: number): string {
+	return delaiJoursSolde > 0
+		? `Net ${nombreContractuel(delaiJoursSolde)} jours suivant la livraison`
+		: 'À la livraison';
+}
+
 function construireEcheancier(draft: MandatDraft): ContenuSection {
 	const total = totalNet(draft.lignes, draft.conditions.rabaisPct);
 	const { acomptePct, soldePct, delaiJoursSolde } = draft.modalitesPaiement;
 	const versements: Versement[] = [];
 
+	// Un seul versement quand l’acompte est nul ou couvre tout : parler de « solde » suppose
+	// qu’un acompte l’a précédé, et « Solde (100 %) » se lirait comme une erreur de saisie sur
+	// un mandat payable en entier à la livraison.
 	// Espace insécable avant le %, conformément à la typographie française : le libellé ne doit
 	// jamais se couper entre le nombre et son symbole.
-	if (acomptePct > 0) {
+	if (acomptePct <= 0) {
+		versements.push({
+			libelle: `Paiement intégral (100 %)`,
+			echeance: echeanceSolde(delaiJoursSolde),
+			montant: formatCad(total)
+		});
+	} else if (acomptePct >= 100) {
+		versements.push({
+			libelle: `Paiement intégral (100 %)`,
+			echeance: 'À la signature du présent document',
+			montant: formatCad(total)
+		});
+	} else {
 		versements.push({
 			libelle: `Acompte (${acomptePct} %)`,
 			echeance: 'À la signature du présent document',
 			montant: formatCad(total * (acomptePct / 100))
 		});
-	}
-	if (soldePct > 0) {
 		versements.push({
 			libelle: `Solde (${soldePct} %)`,
-			echeance:
-				delaiJoursSolde > 0
-					? `Net ${nombreContractuel(delaiJoursSolde)} jours suivant la livraison`
-					: 'À la livraison',
+			echeance: echeanceSolde(delaiJoursSolde),
 			montant: formatCad(total * (soldePct / 100))
 		});
 	}
-
 	const notes = [
 		'Les montants indiqués sont en dollars canadiens et excluent les taxes applicables.'
 	];

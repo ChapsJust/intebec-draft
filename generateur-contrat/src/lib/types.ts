@@ -87,7 +87,7 @@ export interface ConditionsParticulieres {
 
 /** Champs chiffrés des conditions particulières qui font naître un article lorsqu'ils sont
  * renseignés. Laissés à zéro, l'article correspondant disparaît du contrat : c'est exactement le
- * genre d'oubli que l'audit doit rattraper. */
+ * genre d'oubli que l'audit doit rattraper. (IA) */
 export type ChampCondition =
 	| 'heuresFormationIncluses'
 	| 'dureeGarantieJours'
@@ -95,30 +95,26 @@ export type ChampCondition =
 	| 'tauxHoraireHorsPerimetre'
 	| 'preavisResiliationJours';
 
-/** Clause du catalogue que l'IA recommande d'activer. Elle ne désigne qu'une case à cocher
- * existante : le corps juridique reste celui, vérifié, de `clauses.ts`. */
+/** Suggestion de clause à inclure dans le contrat. */
 export interface SuggestionClause {
 	cle: keyof ClausesStandards;
 	raison: string;
 }
 
-/** Condition chiffrée laissée à zéro alors que le mandat semble l'appeler. L'IA signale le
- * manque mais ne propose aucune valeur : les chiffres restent la décision de l'utilisateur. */
+/** Suggestion de valeur pour un champ condition. */
 export interface SuggestionCondition {
 	champ: ChampCondition;
 	raison: string;
 }
 
-/** Manque que le catalogue ne couvre pas. `brouillon` n'est **jamais** rendu dans un document :
- * c'est une piste à réviser, puis à intégrer à `clauses.ts` si elle est retenue. Une clause revue
- * une fois et versionnée vaut mieux qu'une clause regénérée à chaque contrat. */
+/** Mention d'une clause que l'IA propose d'inclure dans le contrat. */
 export interface PropositionClause {
 	titre: string;
 	raison: string;
 	brouillon: string;
 }
 
-/** Audit des clauses par l'IA. Purement consultatif : rien n'est activé ni écrit d'office. */
+/** Audit des clauses par l'IA. Sert à identifier les éléments à revoir dans le contrat. */
 export interface AuditClauses {
 	suggestions: SuggestionClause[];
 	conditions: SuggestionCondition[];
@@ -127,6 +123,7 @@ export interface AuditClauses {
 	modele: string;
 }
 
+/** Brouillon de mandat, tel que saisi par l'utilisateur. Il est stocké tel quel dans la colonne `draft` de la table `mandat`. */
 export interface MandatDraft {
 	type: DocumentType;
 	titre: string;
@@ -158,10 +155,7 @@ export interface ClientListItem extends ClientRecord {
 	nbMandats: number;
 }
 
-/** Prose produite par l'IA locale, stockée **à côté** du draft et jamais à sa place.
- * C'est ce qui rend la passe de rédaction rejouable : la saisie de l'utilisateur reste intacte,
- * on peut relancer la génération, comparer, ou revenir en arrière en effaçant la rédaction.
- * L'IA ne touche qu'à la prose : montants, dates et clauses restent calculés par le template. */
+/** Rédaction produite par l'IA, stockée à côté du draft et jamais à sa place. Permet de conserver les modifications apportées par l'IA sans altérer le brouillon original. */
 export interface RedactionIA {
 	preambule: string;
 	objet: string;

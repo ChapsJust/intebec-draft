@@ -28,9 +28,6 @@ export const mandat = pgTable('mandat', {
 	totalNet: numeric('total_net', { precision: 12, scale: 2 }).notNull().default('0'),
 	draft: jsonb('draft').$type<MandatDraft>().notNull(),
 	redaction: jsonb('redaction').$type<RedactionIA>(),
-	// Archivage réversible. Quand un client est archivé, ses mandats reçoivent *exactement* le même
-	// horodatage : c'est ce qui permet, au désarchivage, de ne relever que ceux qui sont tombés avec
-	// lui et de laisser archivés ceux que l'utilisateur avait archivés à la main auparavant.
 	archiveLe: timestamp('archive_le', { withTimezone: true }),
 	creeLe: timestamp('cree_le', { withTimezone: true }).notNull().defaultNow(),
 	majLe: timestamp('maj_le', { withTimezone: true }).notNull().defaultNow()
