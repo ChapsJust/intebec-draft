@@ -3,8 +3,11 @@ services:
     image: postgres:16-alpine
     container_name: generateur-contrat-db
     restart: always
+    # Lié à la boucle locale seulement : l'app joint la base par le réseau Compose (`db:5432`),
+    # la publication ne sert qu'aux outils locaux (`npm run db:studio`). Sans le `127.0.0.1`,
+    # le port serait ouvert à tout le réseau, avec le mot de passe de développement ci-dessous.
     ports:
-      - 5432:5432
+      - 127.0.0.1:5432:5432
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: mysecretpassword

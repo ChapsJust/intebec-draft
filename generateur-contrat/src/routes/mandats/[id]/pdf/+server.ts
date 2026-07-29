@@ -1,19 +1,8 @@
 import { error } from '@sveltejs/kit';
 import { getMandat } from '$lib/server/db/mandats';
-import { genererPdf, origineInterne } from '$lib/server/pdf';
+import { genererPdf, nomFichier, origineInterne } from '$lib/server/pdf';
 import { PRESTATAIRE } from '$lib/config';
 import type { RequestHandler } from './$types';
-
-/** Transforme un titre en nom de fichier sûr : sans accents, sans ponctuation, en minuscules. */
-function nomFichier(type: string, titre: string, date: string): string {
-	const base = `${type}-${titre}`
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/[^a-zA-Z0-9]+/g, '-')
-		.replace(/^-|-$/g, '')
-		.toLowerCase();
-	return `${base || 'document'}-${date}.pdf`;
-}
 
 export const GET: RequestHandler = async ({ params, url, request, fetch: _fetch }) => {
 	const mandat = await getMandat(params.id);

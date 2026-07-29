@@ -3,6 +3,7 @@ import { db } from './index';
 import { mandat } from './schema';
 import type { MandatDraft, MandatRecord, DocumentStatus, RedactionIA } from '$lib/types';
 import { totalNet } from '$lib/pricing';
+import { estUuid } from '../formulaire';
 
 function toRecord(row: typeof mandat.$inferSelect): MandatRecord {
 	return {
@@ -26,29 +27,46 @@ function toRecord(row: typeof mandat.$inferSelect): MandatRecord {
 export async function listMandats(options?: {
 	clientId?: string;
 	archives?: boolean;
+	limite?: number;
 }): Promise<MandatRecord[]> {
 	const filtres: SQL[] = [
 		options?.archives ? isNotNull(mandat.archiveLe) : isNull(mandat.archiveLe)
 	];
-	if (options?.clientId) filtres.push(eq(mandat.clientId, options.clientId));
+	// Un `clientId` mal formé ne peut correspondre à aucune fiche : on renvoie une liste vide au
+	// lieu de laisser Postgres refuser la conversion en `uuid`.
+	if (options?.clientId) {
+		if (!estUuid(options.clientId)) return [];
+		filtres.push(eq(mandat.clientId, options.clientId));
+	}
 
-	const rows = await db
+	const requete = db
 		.select()
 		.from(mandat)
 		.where(and(...filtres))
 		.orderBy(desc(mandat.majLe));
+
+	// La limite est appliquée par la requête, pas après coup : l'accueil n'affiche que huit lignes
+	// et n'a aucune raison de faire remonter toute la table pour en jeter le reste.
+	const rows = options?.limite ? await requete.limit(options.limite) : await requete;
 	return rows.map(toRecord);
 }
 
 export async function getMandat(id: string): Promise<MandatRecord | null> {
+	if (!estUuid(id)) return null;
 	const [row] = await db.select().from(mandat).where(eq(mandat.id, id));
 	return row ? toRecord(row) : null;
 }
 
+/** Crée un mandat, ou met à jour celui désigné par `options.id`.
+ *
+ * Renvoie `null` quand la mise à jour ne touche aucune ligne, c'est-à-dire quand le mandat a été
+ * supprimé entre-temps. Le cas se produit pour de vrai : deux onglets ouverts, suppression dans
+ * l'un, « Enregistrer » dans l'autre. Sans ce retour, `toRecord(undefined)` levait une erreur et
+ * l'utilisateur recevait une page 500 au lieu d'un « Mandat introuvable ». */
 export async function saveMandat(
 	draft: MandatDraft,
 	options?: { id?: string; clientId?: string | null; statut?: DocumentStatus }
-): Promise<MandatRecord> {
+): Promise<MandatRecord | null> {
 	const values = {
 		clientId: options?.clientId ?? null,
 		type: draft.type,

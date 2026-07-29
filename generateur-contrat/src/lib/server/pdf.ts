@@ -7,12 +7,23 @@ let navigateur: Browser | null = null;
 
 async function obtenirNavigateur(): Promise<Browser> {
 	if (navigateur?.isConnected()) return navigateur;
+
+	// `CHROMIUM_PATH` n'est renseignée qu'en conteneur : elle sert donc aussi d'indice de contexte.
+	const enConteneur = Boolean(env.CHROMIUM_PATH);
+
 	navigateur = await chromium.launch({
 		// En conteneur Alpine, Chromium vient du gestionnaire de paquets : les binaires téléchargés
 		// par Playwright sont liés à la glibc et ne démarrent pas sur musl. Hors conteneur, la
 		// variable est absente et Playwright utilise son propre navigateur.
 		executablePath: env.CHROMIUM_PATH || undefined,
-		args: ['--no-sandbox', '--disable-dev-shm-usage']
+		args: enConteneur
+			? // Le bac à sable de Chromium a besoin de capacités que le conteneur n'accorde pas ; il
+				// faut donc le désactiver là, et seulement là. `/dev/shm` y est aussi trop petit par
+				// défaut, ce qui fait planter le rendu des documents longs.
+				['--no-sandbox', '--disable-dev-shm-usage']
+			: // Hors conteneur, on garde le bac à sable actif : c'est la protection qui contient
+				// Chromium si la page imprimée déclenche une faille du moteur de rendu.
+				[]
 	});
 	return navigateur;
 }
@@ -74,4 +85,22 @@ export async function genererPdf({ url, mention, cookie }: OptionsPdf): Promise<
  * le conteneur lui-même, ce qui est correct ici puisque l'app et Chromium y cohabitent. */
 export function origineInterne(fallback: string): string {
 	return env.PDF_ORIGIN || fallback;
+}
+
+/** Transforme un mandat en nom de fichier sûr : sans accents, sans ponctuation, en minuscules.
+ * La date subit le même nettoyage que le titre. Elle vient du brouillon, donc de la saisie de
+ * l'utilisateur, et un guillemet ou un retour à la ligne qui s'y glisserait casserait l'en-tête
+ * `Content-Disposition` dans lequel ce nom est inséré. */
+export function nomFichier(type: string, titre: string, date: string): string {
+	const nettoyer = (valeur: string) =>
+		valeur
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-zA-Z0-9]+/g, '-')
+			.replace(/^-|-$/g, '')
+			.toLowerCase();
+
+	const base = nettoyer(`${type}-${titre}`) || 'document';
+	const suffixe = nettoyer(date);
+	return suffixe ? `${base}-${suffixe}.pdf` : `${base}.pdf`;
 }
