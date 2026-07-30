@@ -1,12 +1,12 @@
 import { error } from '@sveltejs/kit';
 import { redactionCaduque } from '$document/sections';
-import { obtenirMandat } from '$lib/server/db/mandats';
+import { obtenirMandat } from '$serveur/db/mandats';
 import {
 	basculerPassageAction,
-	changerStatutAction,
 	effacerRedactionAction,
 	redigerDocumentAction
-} from '$lib/server/mandatActions';
+} from '$serveur/actions/ia';
+import { changerStatutAction } from '$serveur/actions/mandat';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params, url }) => {

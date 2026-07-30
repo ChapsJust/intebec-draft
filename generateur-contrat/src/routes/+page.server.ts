@@ -1,11 +1,11 @@
 import type { PageServerLoad, Actions } from './$types';
-import { listerMandats } from '$lib/server/db/mandats';
+import { listerMandats } from '$serveur/db/mandats';
 import {
 	dupliquerMandatAction,
 	archiverMandatAction,
 	desarchiverMandatAction,
 	supprimerMandatAction
-} from '$lib/server/mandatActions';
+} from '$serveur/actions/mandat';
 
 /** Nombre de documents montrés sur l'accueil. La limite est passée à la requête : faire remonter
  * toute la table pour n'en afficher que huit lignes ne tient plus dès quelques dizaines de mandats. */

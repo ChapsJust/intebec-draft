@@ -1,5 +1,5 @@
 import type { Handle } from '@sveltejs/kit';
-import { lireIdentite } from '$lib/server/acces';
+import { lireIdentite } from '$serveur/acces';
 
 /** Ce fichier ne garde rien, et ce n'est pas un oubli.
  *

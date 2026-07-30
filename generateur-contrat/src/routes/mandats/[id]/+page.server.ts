@@ -1,14 +1,16 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { listerClients } from '$lib/server/db/clients';
-import { listerClausesBibliotheque } from '$lib/server/db/clauses';
-import { obtenirMandat } from '$lib/server/db/mandats';
+import { listerClients } from '$serveur/db/clients';
+import { listerClausesBibliotheque } from '$serveur/db/clauses';
+import { obtenirMandat } from '$serveur/db/mandats';
 import {
-	mandatActions,
+	actionsMandat,
 	archiverMandatAction,
 	desarchiverMandatAction,
 	supprimerMandatAction
-} from '$lib/server/mandatActions';
+} from '$serveur/actions/mandat';
+import { actionsIaEditeur } from '$serveur/actions/ia';
+import { modifierClientAction } from '$serveur/actions/client';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const [mandat, clients, clausesBibliotheque] = await Promise.all([
@@ -21,7 +23,9 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	...mandatActions,
+	...actionsMandat,
+	...actionsIaEditeur,
+	modifierClient: modifierClientAction,
 	archiver: archiverMandatAction,
 	desarchiver: desarchiverMandatAction,
 	supprimer: supprimerMandatAction

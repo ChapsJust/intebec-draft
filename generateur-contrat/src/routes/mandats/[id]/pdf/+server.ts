@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { obtenirMandat } from '$lib/server/db/mandats';
-import { genererPdf, nomFichier, origineInterne } from '$lib/server/pdf';
+import { obtenirMandat } from '$serveur/db/mandats';
+import { genererPdf, nomFichier, origineInterne } from '$serveur/pdf';
 import { PRESTATAIRE } from '$domaine/config';
 import type { RequestHandler } from './$types';
 

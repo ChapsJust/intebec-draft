@@ -29,7 +29,7 @@ interface RouteTestee {
 }
 
 /** Actions partagées par /nouveau et /mandats/[id] : les deux routes étalent le même objet
- * `mandatActions`, la seule différence entre créer et éditer étant la présence de `params.id`. */
+ * `actionsMandat` et `actionsIaEditeur`, la seule différence entre créer et éditer étant la présence de `params.id`. */
 const ACTIONS_EDITEUR = [
 	'enregistrer',
 	'generer',
