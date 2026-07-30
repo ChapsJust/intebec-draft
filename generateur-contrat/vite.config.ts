@@ -1,7 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import tailwindcss from '@tailwindcss/vite';
-import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
@@ -29,26 +28,10 @@ export default defineConfig({
 				}
 			: undefined
 	},
-	plugins: [
-		tailwindcss(),
-		sveltekit({
-			compilerOptions: {
-				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-				runes: ({ filename }) =>
-					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
-			},
-
-			// adapter-node : l'application est déployée comme un serveur Node, en cohérence avec
-			// le service `app` de compose.yaml.
-			adapter: adapter(),
-
-			typescript: {
-				config: (config) => {
-					config.include.push('../drizzle.config.ts');
-				}
-			}
-		})
-	],
+	// Adaptateur, alias et options du compilateur vivent dans `svelte.config.js`, que le plugin lit
+	// tout seul : c'est là que les outils tiers (svelte-check, prettier-plugin-svelte, l'extension
+	// VS Code) vont les chercher.
+	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
