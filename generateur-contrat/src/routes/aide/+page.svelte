@@ -13,7 +13,10 @@
 		</p>
 	</div>
 
-	<SectionFormulaire title="Produire un document" description="Le parcours complet, du brouillon au PDF.">
+	<SectionFormulaire
+		title="Produire un document"
+		description="Le parcours complet, du brouillon au PDF."
+	>
 		<ol class="list-decimal space-y-3 pl-5 text-sm text-ink">
 			<li>
 				Depuis l'accueil, cliquez sur <strong>Nouveau document</strong> et choisissez soumission ou contrat.

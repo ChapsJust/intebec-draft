@@ -203,6 +203,7 @@ curl -s $AI_API_URL/v1/models -H "X-API-Key: $AI_API_KEY"   # le modèle voulu d
 
 ```
 src/
+  app.css                     # thème Tailwind et jetons de design, importés par +layout.svelte
   hooks.server.ts             # lit l'identité Tailscale ; ne garde rien, la garde est réseau
   routes/
     +page.svelte              # accueil : documents récents
@@ -212,24 +213,80 @@ src/
     mandats/[id]/pdf/         # endpoint de téléchargement du PDF
     clients/                  # CRUD clients (liste, fiche, archivage)
     aide/                     # mode d'emploi
+    actions.spec.ts           # fige les clés d'actions de chaque route (voir plus bas)
   lib/
-    components/               # éditeur (MandatEditor + sections) et rendu (DocumentView)
-    components/document.css   # mise en page du document, partagée par les composants de rendu
-    document/                 # génération du document : clauses, sections, formatage
-    server/acces.ts           # identité lue dans les en-têtes de `tailscale serve`
-    server/db/                # schéma Drizzle et accès aux données
-    server/pdf.ts             # impression Chromium, pied numéroté, nom de fichier
-    server/ollama.ts          # client d'appel à l'IA : passerelle ou Ollama direct
-    server/mandatActions.ts   # form actions partagées création / édition
-    server/mandatForm.ts      # lecture et normalisation du mandat reçu du formulaire
-    server/formulaire.ts      # garde d'identifiant partagée par les form actions
-    montants.ts               # calculs monétaires : source de vérité unique
-    validation.ts             # validation partagée client et serveur
+    domaine/                  # le métier, sans dépendance à SvelteKit
+      types/                  # une famille de types par fichier, réexportés par index.ts
+      fabriques.ts            # objets vides : nouveauMandat, nouvelleLigne, dupliquerMandat
+      montants.ts             # calculs monétaires : source de vérité unique
+      validation.ts           # règles qui bloquent la génération, partagées client et serveur
+      config.ts               # PRESTATAIRE : à renseigner avant le premier envoi client
+      titres.ts               # normalisation des titres de clause, partagée avec le serveur
+    document/                 # génération du document, sans DOM ni base
+      modele.ts               # types du document rendu, consommés par composants/document/
+      sections.ts             # ce qui figure au contrat et dans quel ordre
+      empreinte.ts            # « la prose affichée décrit-elle encore ce mandat-là »
+      clauses.ts  catalogue.ts  format.ts  diff.ts
+    composants/
+      ui/                     # primitives : Icone, SectionFormulaire, ConfirmationAction…
+      app/                    # chrome : Entete, PiedPage, BanniereAccueil
+      mandat/                 # éditeur : Editeur + conditions/ + lignes/
+      client/  ia/            # formulaire client, assistance et revue de rédaction
+      document/               # rendu imprimable + document.css
+      tableau-bord/           # listes de documents récents
+    ressources/               # favicon et logo
+    server/                   # NE PAS RENOMMER : chemin magique SvelteKit (voir ci-dessous)
+      acces.ts                # identité lue dans les en-têtes de `tailscale serve`
+      formulaire.ts           # garde d'identifiant partagée par les form actions
+      pdf.ts                  # impression Chromium, pied numéroté, nom de fichier
+      db/                     # schéma Drizzle et accès aux données
+      mandat/formulaire.ts    # lecture et normalisation du mandat reçu du formulaire
+      ia/                     # transport, invites, normalisation ; index.ts = API publique
+      actions/                # form actions : mandat.ts, ia.ts, client.ts
 ```
+
+### Où ranger un fichier
+
+L'emplacement se déduit de la nature du fichier, pas de la fonctionnalité à laquelle il sert :
+`domaine/` ne dépend de rien, `document/` ne dépend que du domaine, `composants/` affiche,
+`server/` accède au réseau et à la base. Un import qui remonte cette liste à contresens signale une
+erreur de rangement.
+
+Quatre alias déclarés dans `svelte.config.js`, un par couche : `$domaine`, `$document`,
+`$composants`, `$serveur`. **Tout import inter-dossiers passe par un alias ; seul l'intra-dossier
+reste relatif.** Un fichier peut ainsi changer de dossier sans que ses importateurs bougent, et le
+préfixe rend une violation de couche visible à la lecture.
+
+### Deux pièges qui ne préviennent pas
+
+**`src/lib/server/` garde son nom anglais.** C'est un chemin magique de SvelteKit : le compilateur
+refuse tout import de ce dossier depuis un bundle client. Le renommer en `serveur/` supprimerait la
+protection sans le moindre avertissement. L'alias `$serveur`, lui, la conserve — la vérification
+porte sur le chemin résolu, pas sur le spécificateur.
+
+**Le suffixe `.svelte.spec.ts` sélectionne le runner.** `vite.config.ts` envoie ces fichiers-là au
+projet vitest « navigateur » (Chromium), et tous les autres `.spec.ts` au projet « node ». Renommer
+un test en `.spec.ts` le fait basculer en silence, où il échouera — ou pire, passera pour de
+mauvaises raisons.
+
+À quoi s'ajoute une dépendance de configuration : `drizzle.config.ts` code en dur le chemin
+`./src/lib/server/db/schema.ts`, et `prettier.config.js` celui de `./src/app.css`. Déplacer l'un ou
+l'autre casse un outil sans erreur TypeScript.
+
+### Le filet de sécurité des form actions
+
+Les gabarits postent vers `?/nomAction` : des chaînes de caractères, que ni TypeScript ni
+`svelte-check` ne rapprochent jamais des clés réellement exportées par le `+page.server.ts` en face.
+Perdre une action au fil d'un déplacement de fichier ne casse donc aucune compilation.
+
+`src/routes/actions.spec.ts` fige la surface exacte de chaque route et vérifie que toute cible `?/…`
+écrite dans un gabarit atterrit quelque part. `src/lib/server/ia/contrat.spec.ts` fait de même pour
+la surface publique du client IA. Les mettre à jour est le prix à payer pour ajouter une action ;
+c'est aussi ce qui rend un déménagement de `lib/server/` vérifiable.
 
 ### Ce qui entre en base
 
-Tout ce qui arrive du formulaire passe par `normaliserMandat` (`server/mandatForm.ts`), qui repart du
+Tout ce qui arrive du formulaire passe par `normaliserMandat` (`server/mandat/formulaire.ts`), qui repart du
 mandat vide et n'y recopie que ce qui a la forme attendue. Le brouillon est stocké dans une colonne
 `jsonb` que rien ne contraint : sans cette étape, un `lignes` qui n'est pas un tableau s'enregistre
 sans broncher, puis fait échouer l'affichage du mandat à _chaque_ visite suivante.
@@ -302,9 +359,9 @@ faire perdre la mise en page sans être vu.
 
 ## À venir
 
-- Renseigner le NEQ et le téléphone dans `PRESTATAIRE` (`src/lib/config.ts`). Tant qu'ils manquent,
+- Renseigner le NEQ et le téléphone dans `PRESTATAIRE` (`src/lib/domaine/config.ts`). Tant qu'ils manquent,
   l'aperçu affiche un rappel, qui disparaît de lui-même une fois les champs remplis.
-- Remplacer `src/lib/assets/logo-intebec.svg` par le logo officiel (le fichier actuel est une
+- Remplacer `src/lib/ressources/logo-intebec.svg` par le logo officiel (le fichier actuel est une
   approximation provisoire).
 - Faire relire le texte des clauses par un conseiller juridique avant tout envoi réel.
 - Intégration avec Intébec Sign (Docuseal) pour l'envoi direct en signature. Le statut `envoyé` est

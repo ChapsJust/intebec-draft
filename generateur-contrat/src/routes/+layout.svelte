@@ -1,5 +1,5 @@
 <script lang="ts">
-	import './layout.css';
+	import '../app.css';
 	import favicon from '$lib/ressources/favicon.svg';
 	import Entete from '$composants/app/Entete.svelte';
 	import PiedPage from '$composants/app/PiedPage.svelte';

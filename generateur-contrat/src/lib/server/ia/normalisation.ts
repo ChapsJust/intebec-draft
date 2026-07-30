@@ -76,7 +76,6 @@ export function normaliser(brut: unknown, idsConnus: Set<string>, empreinte = ''
 	};
 }
 
-
 /** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un
  * objet là où un tableau est attendu. On ne garde que ce qui désigne une case réellement
  * décochée : une suggestion sans effet est du bruit qui décrédibilise l'audit entier. */
