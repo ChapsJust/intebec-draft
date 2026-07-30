@@ -17,7 +17,12 @@ import type {
 	SuggestionCondition
 } from '$domaine/types';
 import { CLES_CLAUSES, CLES_CONDITIONS } from '$document/catalogue';
+import { titreNormalise } from '$domaine/titres';
 import { modeleActif } from './transport';
+
+// Réexporté parce que la normalisation est ce qui s'en sert le plus, et que les tests du
+// dédoublonnage vivent ici. L'implémentation, elle, est partagée avec l'éditeur.
+export { titreNormalise };
 
 /** Le tiret cadratin est la ponctuation qui trahit le plus vite un texte généré, et les modèles
  * continuent d'en produire malgré la consigne. On le remplace donc systématiquement :
@@ -71,12 +76,6 @@ export function normaliser(brut: unknown, idsConnus: Set<string>, empreinte = ''
 	};
 }
 
-/** Compare deux titres de clause sans se laisser arrêter par la casse ni les accents. Le modèle
- * réécrit « Cession de créance » en « cession de creance » d'une relecture à l'autre : sans cette
- * normalisation, la bibliothèque se serait remplie de doublons typographiques. */
-export function titreNormalise(titre: string): string {
-	return titre.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
 
 /** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un
  * objet là où un tableau est attendu. On ne garde que ce qui désigne une case réellement

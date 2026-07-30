@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance, applyAction, deserialize } from '$app/forms';
+	import { enhance, applyAction } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import type {
 		AuditClauses,
@@ -9,12 +9,14 @@
 		PropositionClause
 	} from '$domaine/types';
 	import { verifierMandat } from '$domaine/validation';
+	import { posterAction } from './action-distante';
+	import * as ia from './assistance-ia';
 	import InfosGenerales from './InfosGenerales.svelte';
 	import FormulaireClient from '$composants/client/FormulaireClient.svelte';
-	import LignesService from './LignesService.svelte';
+	import LignesService from './lignes/LignesService.svelte';
 	import Totaux from './Totaux.svelte';
 	import Paiement from './Paiement.svelte';
-	import Clauses from './Clauses.svelte';
+	import Conditions from './conditions/Conditions.svelte';
 	import Signature from './Signature.svelte';
 
 	let {
@@ -52,33 +54,6 @@
 		}
 	}
 
-	/** Appelle une form action sans quitter la page. L'en-tête `x-sveltekit-action` est
-	 * indispensable : sans lui SvelteKit traite la requête comme une soumission classique et
-	 * répond par une redirection HTML, que `deserialize()` ne sait pas lire. */
-	async function posterAction(action: string, body: FormData) {
-		const response = await fetch(action, {
-			method: 'POST',
-			headers: { 'x-sveltekit-action': 'true' },
-			body
-		});
-		const texte = await response.text();
-		try {
-			return deserialize(texte);
-		} catch {
-			// Arrive quand la réponse n'est pas un résultat d'action, donc une erreur d'infrastructure
-			// renvoyée en HTML. Le message brut ne veut rien dire pour l'utilisateur.
-			//
-			// Le 403 mérite son propre message : c'est le refus d'origine croisée de SvelteKit, et il
-			// signale presque toujours un `ORIGIN` qui ne correspond pas à l'adresse publique du
-			// proxy. Voir la section « Accès » du README.
-			throw new Error(
-				response.status === 403
-					? "Le serveur a refusé l'enregistrement (origine non reconnue). Prévenez l'administrateur : la variable ORIGIN est probablement mal réglée."
-					: 'Le serveur a renvoyé une réponse inattendue. Réessayez.'
-			);
-		}
-	}
-
 	async function majFicheClient() {
 		if (!clientId) return;
 		majClientEnCours = true;
@@ -103,61 +78,17 @@
 		}
 	}
 
-	/** Fait relire le volet contractuel par l'IA. Le résultat est purement consultatif : il remonte
-	 * au formulaire de conditions, qui laisse l'utilisateur activer ou ignorer chaque suggestion. */
-	async function auditerClauses(): Promise<AuditClauses> {
-		const body = new FormData();
-		body.set('payload', JSON.stringify(brouillon));
-		const result = await posterAction('?/auditerClauses', body);
+	const auditerClauses = (): Promise<AuditClauses> => ia.auditerClauses(brouillon);
 
-		if (result.type === 'success' && result.data?.audit) {
-			return result.data.audit as AuditClauses;
-		}
-		throw new Error(
-			result.type === 'failure' && typeof result.data?.message === 'string'
-				? result.data.message
-				: "L'IA locale n'a pas répondu."
-		);
-	}
+	const proposerTexte = (champ: string): Promise<string> => ia.proposerTexte(brouillon, champ);
 
-	/** Ajoute à la bibliothèque une clause proposée par la relecture, et renvoie la fiche créée pour
-	 * que le formulaire en pousse une copie figée dans le mandat. La bibliothèque locale est complétée
-	 * au passage : sans cela, la clause n'apparaîtrait dans « Ajouter depuis la bibliothèque » qu'après
+	/** Retient une clause proposée par la relecture. La bibliothèque locale est complétée au
+	 * passage : sans cela, la clause n'apparaîtrait dans « Ajouter depuis la bibliothèque » qu'après
 	 * un rechargement, et paraîtrait n'avoir été enregistrée nulle part. */
 	async function retenirProposition(proposition: PropositionClause): Promise<ClauseBibliotheque> {
-		const body = new FormData();
-		body.set('titre', proposition.titre);
-		body.set('corps', proposition.brouillon);
-		const result = await posterAction('?/retenirProposition', body);
-
-		if (result.type === 'success' && result.data?.clause) {
-			const clause = result.data.clause as ClauseBibliotheque;
-			clausesBibliotheque = [...clausesBibliotheque, clause];
-			return clause;
-		}
-		throw new Error(
-			result.type === 'failure' && typeof result.data?.message === 'string'
-				? result.data.message
-				: 'La clause n’a pas pu être enregistrée.'
-		);
-	}
-
-	/** Demande une proposition de texte à l'IA locale pour un champ précis. Rien n'est persisté :
-	 * la proposition remonte au bouton, qui laisse l'utilisateur l'accepter ou l'ignorer. */
-	async function proposerTexte(champ: string): Promise<string> {
-		const body = new FormData();
-		body.set('payload', JSON.stringify(brouillon));
-		body.set('champ', champ);
-		const result = await posterAction('?/redigerChamp', body);
-
-		if (result.type === 'success' && typeof result.data?.texte === 'string') {
-			return result.data.texte;
-		}
-		const message =
-			result.type === 'failure' && typeof result.data?.message === 'string'
-				? result.data.message
-				: "L'IA locale n'a pas répondu.";
-		throw new Error(message);
+		const clause = await ia.enregistrerClause(proposition);
+		clausesBibliotheque = [...clausesBibliotheque, clause];
+		return clause;
 	}
 </script>
 
@@ -229,7 +160,7 @@
 		enErreur={erreurPaiement}
 	/>
 
-	<Clauses
+	<Conditions
 		bind:conditions={brouillon.conditions}
 		{clausesBibliotheque}
 		onAuditer={auditerClauses}
