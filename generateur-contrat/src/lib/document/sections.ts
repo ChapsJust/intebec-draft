@@ -1,7 +1,11 @@
+/** Assemble le modèle de vue d'un document à partir d'un brouillon.
+ *
+ * Le seul endroit qui décide de ce qui figure au contrat et dans quel ordre. Les types du résultat
+ * sont dans `modele.ts`, l'empreinte de fraîcheur dans `empreinte.ts`.
+ */
 import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
 import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$domaine/montants';
 import { PRESTATAIRE } from '$domaine/config';
-import type { BlocArticle } from './clauses';
 import { clausesActives } from './clauses';
 import { texteEffectif } from './diff';
 import {
@@ -11,98 +15,17 @@ import {
 	nettoyerListe,
 	nombreContractuel
 } from './format';
-
-export interface Partie {
-	/** « ENTRE » / « ET » : la charnière du préambule d'identification. */
-	connecteur: string;
-	role: string;
-	nom: string;
-	lignes: string[];
-	representant: string;
-	/** Désignation abrégée employée dans tout le reste du contrat. La mention « (ci-après … ) »
-	 * n'est pas décorative : c'est elle qui définit le terme, sans quoi les articles renvoient
-	 * à une désignation qui n'a jamais été établie. */
-	designation: string;
-}
-
-export interface PorteeEntree {
-	/** « Phase 1 », affiché en exergue et séparé du nom pour permettre une hiérarchie visuelle. */
-	label: string;
-	nom: string;
-	description: string;
-	inclus: string[];
-	nonInclus: string[];
-	delai: string;
-	montant: string;
-	tarification: string[];
-}
-
-export interface LigneHonoraires {
-	label: string;
-	nom: string;
-	/** Une entrée par élément facturé : le tableau les empile au lieu de les concaténer. */
-	details: string[];
-	delai: string;
-	montant: string;
-}
-
-export interface Versement {
-	libelle: string;
-	echeance: string;
-	montant: string;
-}
-
-export interface BlocSignature {
-	role: string;
-	organisation: string;
-	nom: string;
-	titre: string;
-}
-
-/** Chaque section rend un type de contenu différent : l'union discriminée évite au composant de
- * rendu de deviner ce qu'il manipule, et garde toute la logique métier ici. */
-export type ContenuSection =
-	| { kind: 'paragraphes'; textes: string[] }
-	| { kind: 'portee'; entrees: PorteeEntree[] }
-	| {
-			kind: 'honoraires';
-			lignes: LigneHonoraires[];
-			sousTotal: string;
-			rabais: { pct: number; motif: string; montant: string } | null;
-			total: string;
-	  }
-	| { kind: 'echeancier'; versements: Versement[]; notes: string[] }
-	| { kind: 'blocs'; blocs: BlocArticle[] };
-
-export interface SectionDocument {
-	numero: number;
-	titre: string;
-	contenu: ContenuSection;
-}
-
-/** Réglage d'espacement appliqué au document entier.
- * `aere` étire une soumission courte pour qu'elle ne flotte pas en haut d'une page vide ;
- * `compact` resserre un contrat chargé pour éviter les pages qui débordent de trois lignes. */
-export type Densite = 'aere' | 'normal' | 'compact';
-
-export interface ModeleDocument {
-	typeLabel: string;
-	titre: string;
-	dateLongue: string;
-	lieu: string;
-	parties: Partie[];
-	sections: SectionDocument[];
-	/** Formule liminaire fermant l'identification des parties, avant le premier article. */
-	attendu: string;
-	signatures: BlocSignature[];
-	/** Formule de clôture consacrée, juste avant les blocs de signature. */
-	enFoiDeQuoi: string;
-	/** Ligne discrète fermant le document. */
-	piedDePage: string;
-	densite: Densite;
-	/** Vrai lorsque la prose affichée provient de l'IA plutôt que de la saisie brute. */
-	redigeParIA: boolean;
-}
+import type {
+	BlocSignature,
+	ContenuSection,
+	Densite,
+	LigneHonoraires,
+	ModeleDocument,
+	Partie,
+	PorteeEntree,
+	SectionDocument,
+	Versement
+} from './modele';
 
 function detailTarification(ligne: LigneService): string[] {
 	if (ligne.pricingMode === 'horaire') {
@@ -284,71 +207,6 @@ export function preambuleParDefaut(brouillon: BrouillonMandat): string {
 	return brouillon.type === 'contrat'
 		? `Le présent contrat établit les modalités selon lesquelles ${PRESTATAIRE.nom} réalise, pour ${designation} ${nomClient}, le mandat décrit aux présentes.`
 		: `La présente soumission présente à ${designation} ${nomClient} la portée, les honoraires et les conditions proposés par ${PRESTATAIRE.nom} pour la réalisation du mandat décrit aux présentes.`;
-}
-
-/** Hachage court et non cryptographique (FNV-1a 32 bits). On ne cherche qu'à détecter un changement
- * de saisie, pas à résister à une collision provoquée, et cela évite de stocker une seconde copie de
- * la prose à côté de la rédaction. */
-function hacher(texte: string): string {
-	let h = 2166136261;
-	for (let i = 0; i < texte.length; i++) {
-		h ^= texte.charCodeAt(i);
-		h = Math.imul(h, 16777619);
-	}
-	return (h >>> 0).toString(36);
-}
-
-/** Séparateur de champs de l'empreinte : le « unit separator » ASCII, que la saisie ne contient
- * jamais. Construit par `fromCharCode` plutôt qu'écrit tel quel, parce qu'un octet de contrôle déposé
- * dans le source rend le fichier binaire pour l'outillage. Avec une simple espace, un objet « A »
- * suivi d'une ligne « B » aurait donné la même empreinte qu'un objet « A B » sans ligne. */
-const SEPARATEUR_EMPREINTE = String.fromCharCode(31);
-
-/** Empreinte de la saisie dont une rédaction est dérivée.
- *
- * Reprend ce que `contexte()` transmet au modèle dans `server/ia/invites.ts`, plus ce qui compose le préambule
- * par défaut. Le critère n'est pas « ce que l'IA réécrit » mais « ce que l'IA a lu » : un nom de ligne
- * ou une puce « non inclus » ne sont pas réécrits, pourtant ils orientent la prose, donc les changer
- * la périme.
- *
- * Les montants en sont absents, et c'est cohérent de bout en bout : le prompt ne les transmet pas, le
- * gabarit les rend directement. Ajuster un prix ne redemande donc pas la prose à l'IA et ne fait pas
- * perdre les passages déjà arbitrés. */
-export function empreinteProse(brouillon: BrouillonMandat): string {
-	const parties = [
-		brouillon.type,
-		brouillon.titre.trim(),
-		brouillon.structureProjet,
-		brouillon.client.typeClient,
-		brouillon.client.nom.trim(),
-		brouillon.objet.trim()
-	];
-
-	for (const ligne of brouillon.lignes) {
-		parties.push(
-			ligne.id,
-			ligne.nom.trim(),
-			ligne.description.trim(),
-			nettoyerListe(ligne.inclus).join('|'),
-			nettoyerListe(ligne.nonInclus).join('|'),
-			ligne.delaiEstime.trim()
-		);
-	}
-
-	return hacher(parties.join(SEPARATEUR_EMPREINTE));
-}
-
-/** Vrai quand la saisie a changé depuis que cette prose a été produite.
- *
- * Une rédaction caduque décrit un mandat qui n'existe plus : elle masque les modifications qu'on vient
- * de faire, et ses refus pointent des passages qui ont glissé. Les rédactions enregistrées avant
- * l'empreinte n'en ont pas : on se tait plutôt que d'alerter sur tous les documents existants. */
-export function redactionCaduque(
-	brouillon: BrouillonMandat,
-	redaction: RedactionIA | null | undefined
-): boolean {
-	if (!redaction?.empreinte) return false;
-	return redaction.empreinte !== empreinteProse(brouillon);
 }
 
 /** Passages refusés pour un champ. Tolère l'absence de `refuses` : les rédactions enregistrées avant

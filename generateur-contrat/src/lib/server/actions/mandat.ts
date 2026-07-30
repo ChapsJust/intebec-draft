@@ -16,7 +16,7 @@ import {
 	desarchiverMandat
 } from '$serveur/db/mandats';
 import { verifierMandat } from '$domaine/validation';
-import { empreinteProse } from '$document/sections';
+import { empreinteProse } from '$document/empreinte';
 import { dupliquerMandat } from '$domaine/fabriques';
 import { SoumissionInvalideError, lireSoumissionMandat } from '$serveur/mandat/formulaire';
 import { idPoste } from '$serveur/formulaire';

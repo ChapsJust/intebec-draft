@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ContenuSection } from '$document/sections';
+	import type { ContenuSection } from '$document/modele';
 
 	let {
 		contenu,

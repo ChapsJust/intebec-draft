@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Partie } from '$document/sections';
+	import type { Partie } from '$document/modele';
 
 	let { parties, attendu }: { parties: Partie[]; attendu: string } = $props();
 </script>

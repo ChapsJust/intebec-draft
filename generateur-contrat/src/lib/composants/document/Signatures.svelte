@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BlocSignature } from '$document/sections';
+	import type { BlocSignature } from '$document/modele';
 
 	let { signatures, enFoiDeQuoi }: { signatures: BlocSignature[]; enFoiDeQuoi: string } = $props();
 </script>

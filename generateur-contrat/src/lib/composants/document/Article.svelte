@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SectionDocument } from '$document/sections';
+	import type { SectionDocument } from '$document/modele';
 	import Echeancier from './Echeancier.svelte';
 	import Honoraires from './Honoraires.svelte';
 	import Portee from './Portee.svelte';

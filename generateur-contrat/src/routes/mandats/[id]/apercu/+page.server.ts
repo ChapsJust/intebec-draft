@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { redactionCaduque } from '$document/sections';
+import { redactionCaduque } from '$document/empreinte';
 import { obtenirMandat } from '$serveur/db/mandats';
 import {
 	basculerPassageAction,

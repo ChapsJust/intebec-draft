@@ -10,7 +10,7 @@ import type {
 	ClauseBibliotheque,
 	RedactionIA
 } from '$domaine/types';
-import { empreinteProse } from '$document/sections';
+import { empreinteProse } from '$document/empreinte';
 import {
 	CONSIGNES,
 	CONSIGNES_AUDIT,
