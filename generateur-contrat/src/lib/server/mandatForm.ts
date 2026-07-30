@@ -8,7 +8,7 @@ import type {
 	LigneQuantite,
 	LigneService
 } from '$domaine/types';
-import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
+import { nouveauMandat, nouvelleLigne } from '$domaine/fabriques';
 import { estUuid } from './formulaire';
 
 export interface SoumissionMandat {

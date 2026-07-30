@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { TypeDocument, StructureProjet } from '$domaine/types';
-	import type { ErreurValidation } from '$lib/validation';
-	import { erreurDuChamp } from '$lib/validation';
+	import type { ErreurValidation } from '$domaine/validation';
+	import { erreurDuChamp } from '$domaine/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 	import AiAssistButton from './AiAssistButton.svelte';

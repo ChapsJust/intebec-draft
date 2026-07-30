@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ContenuSection } from '$lib/document/sections';
+	import type { ContenuSection } from '$document/sections';
 
 	let { contenu }: { contenu: Extract<ContenuSection, { kind: 'echeancier' }> } = $props();
 </script>

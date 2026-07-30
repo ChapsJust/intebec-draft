@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ActionCard from './ActionCard.svelte';
-	import { APP_TAGLINE } from '$lib/config';
+	import { APP_TAGLINE } from '$domaine/config';
 </script>
 
 <section>

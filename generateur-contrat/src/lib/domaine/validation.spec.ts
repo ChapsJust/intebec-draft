@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { verifierMandat, erreurDuChamp } from './validation';
-import { nouveauMandat } from './mandat';
+import { nouveauMandat } from './fabriques';
 
 describe('verifierMandat', () => {
 	it('signale les champs requis manquants sur un brouillon vide', () => {

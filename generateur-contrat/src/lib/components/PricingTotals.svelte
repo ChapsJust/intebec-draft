@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { LigneService } from '$domaine/types';
-	import { sousTotal, montantRabais, totalNet, formatCad } from '$lib/montants';
+	import { sousTotal, montantRabais, totalNet, formatCad } from '$domaine/montants';
 	import FormSection from './FormSection.svelte';
 
 	let {

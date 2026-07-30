@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/config';
+	import { APP_NAME } from '$domaine/config';
 	import FormSection from '$lib/components/FormSection.svelte';
 </script>
 

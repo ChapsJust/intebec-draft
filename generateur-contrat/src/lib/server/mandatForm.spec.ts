@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SoumissionInvalideError, lireMandat, normaliserMandat } from './mandatForm';
-import { nouveauMandat } from '$lib/mandat';
-import { totalNet } from '$lib/montants';
+import { nouveauMandat } from '$domaine/fabriques';
+import { totalNet } from '$domaine/montants';
 
 /** Ces tests portent sur le point d'entrée des données : tout ce qui est enregistré passe par là.
  * Le brouillon part dans une colonne `jsonb` que rien ne contraint, donc un objet mal formé accepté

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { CoordonneesClient, FicheClient } from '$domaine/types';
-	import { nouveauClient, coordonneesDuClient } from '$lib/mandat';
-	import type { ErreurValidation } from '$lib/validation';
-	import { erreurDuChamp } from '$lib/validation';
+	import { nouveauClient, coordonneesDuClient } from '$domaine/fabriques';
+	import type { ErreurValidation } from '$domaine/validation';
+	import { erreurDuChamp } from '$domaine/validation';
 	import FormSection from './FormSection.svelte';
 	import ClientPicker from './ClientPicker.svelte';
 

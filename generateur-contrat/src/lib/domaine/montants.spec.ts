@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from './montants';
-import { nouvelleLigne } from './mandat';
+import { nouvelleLigne } from './fabriques';
 import type { LigneService } from '$domaine/types';
 
 function ligne(overrides: Partial<LigneService>): LigneService {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { APP_NAME } from '$lib/config';
+	import { APP_NAME } from '$domaine/config';
 </script>
 
 <footer class="mt-auto border-t border-border-subtle bg-surface">

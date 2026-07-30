@@ -7,7 +7,7 @@ import {
 	normaliserAudit,
 	titreNormalise
 } from './ollama';
-import { nouveauMandat } from '$lib/mandat';
+import { nouveauMandat } from '$domaine/fabriques';
 import type { BrouillonMandat, ClauseBibliotheque } from '$domaine/types';
 
 describe('extraireJson', () => {

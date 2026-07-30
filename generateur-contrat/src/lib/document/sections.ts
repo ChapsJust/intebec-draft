@@ -1,6 +1,6 @@
 import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
-import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$lib/montants';
-import { PRESTATAIRE } from '$lib/config';
+import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$domaine/montants';
+import { PRESTATAIRE } from '$domaine/config';
 import type { BlocArticle } from './clauses';
 import { clausesActives } from './clauses';
 import { texteEffectif } from './diff';

@@ -8,7 +8,7 @@
 		ConditionsParticulieres,
 		PropositionClause
 	} from '$domaine/types';
-	import { CLES_CLAUSES, LIBELLES_CLAUSES, libelleSuggestion } from '$lib/document/catalogue';
+	import { CLES_CLAUSES, LIBELLES_CLAUSES, libelleSuggestion } from '$document/catalogue';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 

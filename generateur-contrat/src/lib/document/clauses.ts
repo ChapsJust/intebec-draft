@@ -1,6 +1,6 @@
 import type { BrouillonMandat } from '$domaine/types';
-import { totalNet, formatCad } from '$lib/montants';
-import { PRESTATAIRE } from '$lib/config';
+import { totalNet, formatCad } from '$domaine/montants';
+import { PRESTATAIRE } from '$domaine/config';
 import { elider, nombreContractuel } from './format';
 
 /** Un article alterne prose et énumérations. Les listes ne sont pas décoratives : sur les clauses

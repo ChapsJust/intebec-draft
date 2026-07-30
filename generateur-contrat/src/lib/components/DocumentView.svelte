@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { BrouillonMandat, RedactionIA } from '$domaine/types';
-	import { construireDocument } from '$lib/document/sections';
+	import { construireDocument } from '$document/sections';
 	// Logo provisoire : à remplacer par le fichier officiel d'Intébec.
-	import logo from '$lib/assets/logo-intebec.svg';
+	import logo from '$lib/ressources/logo-intebec.svg';
 	// Mise en page du document. Sortie du composant pour que les sous-composants ci-dessous la
 	// partagent : la portée automatique de Svelte s'arrêterait à la frontière de chacun.
 	import './document.css';

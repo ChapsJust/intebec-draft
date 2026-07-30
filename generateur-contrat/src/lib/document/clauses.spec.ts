@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clausesActives, type Article } from './clauses';
-import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
+import { nouveauMandat, nouvelleLigne } from '$domaine/fabriques';
 import type { BrouillonMandat } from '$domaine/types';
 
 function brouillon(modifier: (d: BrouillonMandat) => void = () => {}): BrouillonMandat {

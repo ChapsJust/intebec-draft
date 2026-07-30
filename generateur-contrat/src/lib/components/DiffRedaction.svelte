@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { BrouillonMandat, RedactionIA } from '$domaine/types';
-	import { comparerPassages, type Passage } from '$lib/document/diff';
-	import { preambuleParDefaut } from '$lib/document/sections';
-	import { libelleLigne } from '$lib/document/format';
+	import { comparerPassages, type Passage } from '$document/diff';
+	import { preambuleParDefaut } from '$document/sections';
+	import { libelleLigne } from '$document/format';
 	import Icon from './Icon.svelte';
 
 	// Ce que l'IA a changé, et ce qu'on en garde. Sans ce panneau, la rédaction remplaçait le document

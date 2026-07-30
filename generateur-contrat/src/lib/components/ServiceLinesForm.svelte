@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { LigneService, ModeTarification, StructureProjet } from '$domaine/types';
-	import { totalLigne, formatCad } from '$lib/montants';
-	import { nouvelleLigne } from '$lib/mandat';
-	import { libelleLigne } from '$lib/document/format';
-	import type { ErreurValidation } from '$lib/validation';
-	import { erreurDuChamp } from '$lib/validation';
+	import { totalLigne, formatCad } from '$domaine/montants';
+	import { nouvelleLigne } from '$domaine/fabriques';
+	import { libelleLigne } from '$document/format';
+	import type { ErreurValidation } from '$domaine/validation';
+	import { erreurDuChamp } from '$domaine/validation';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';
 	import AiAssistButton from './AiAssistButton.svelte';

@@ -10,9 +10,9 @@ import {
 	changerStatutMandat,
 	desarchiverMandat
 } from './db/mandats';
-import { verifierMandat } from '$lib/validation';
-import { empreinteProse } from '$lib/document/sections';
-import { dupliquerMandat } from '$lib/mandat';
+import { verifierMandat } from '$domaine/validation';
+import { empreinteProse } from '$document/sections';
+import { dupliquerMandat } from '$domaine/fabriques';
 import { SoumissionInvalideError, lireMandat, lireSoumissionMandat } from './mandatForm';
 import { idPoste } from './formulaire';
 import {

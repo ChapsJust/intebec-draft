@@ -5,8 +5,8 @@
 	import DiffRedaction from '$lib/components/DiffRedaction.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { formatDateLongue } from '$lib/document/format';
-	import { identiteIncomplete } from '$lib/config';
+	import { formatDateLongue } from '$document/format';
+	import { identiteIncomplete } from '$domaine/config';
 
 	const manques = identiteIncomplete();
 
@@ -132,7 +132,7 @@
 		>
 			<span>
 				Identité du prestataire incomplète : il manque {manques.join(' et ')}. À renseigner dans
-				<code>src/lib/config.ts</code> avant d'envoyer un document à un client.
+				<code>src/lib/domaine/config.ts</code> avant d'envoyer un document à un client.
 			</span>
 		</div>
 	{/if}

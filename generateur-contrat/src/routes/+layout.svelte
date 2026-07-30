@@ -1,6 +1,6 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/ressources/favicon.svg';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import AppFooter from '$lib/components/AppFooter.svelte';
 	import type { LayoutData } from './$types';

@@ -11,14 +11,14 @@ import type {
 	SuggestionClause,
 	SuggestionCondition
 } from '$domaine/types';
-import { libelleLigne } from '$lib/document/format';
-import { empreinteProse } from '$lib/document/sections';
+import { libelleLigne } from '$document/format';
+import { empreinteProse } from '$document/sections';
 import {
 	CLES_CLAUSES,
 	CLES_CONDITIONS,
 	LIBELLES_CLAUSES,
 	LIBELLES_CONDITIONS
-} from '$lib/document/catalogue';
+} from '$document/catalogue';
 
 const URL_PAR_DEFAUT = 'http://localhost:11434';
 const MODELE_PAR_DEFAUT = 'llama3.1:8b';

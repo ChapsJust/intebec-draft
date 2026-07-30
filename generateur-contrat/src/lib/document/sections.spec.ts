@@ -5,8 +5,8 @@ import {
 	preambuleParDefaut,
 	redactionCaduque
 } from './sections';
-import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
-import { formatCad, totalNet } from '$lib/montants';
+import { nouveauMandat, nouvelleLigne } from '$domaine/fabriques';
+import { formatCad, totalNet } from '$domaine/montants';
 import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
 
 function ligne(overrides: Partial<LigneService>): LigneService {

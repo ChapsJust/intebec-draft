@@ -4,7 +4,7 @@
 	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { formatCad } from '$lib/montants';
+	import { formatCad } from '$domaine/montants';
 	import type { MandatEnregistre } from '$domaine/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
