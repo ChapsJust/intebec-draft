@@ -1,4 +1,4 @@
-import type { LigneService } from './types';
+import type { LigneService } from '$domaine/types';
 
 export function totalLigne(line: LigneService): number {
 	if (line.pricingMode === 'forfaitaire') return line.montantForfaitaire;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { TypeDocument, StructureProjet } from '$lib/types';
+	import type { TypeDocument, StructureProjet } from '$domaine/types';
 	import type { ErreurValidation } from '$lib/validation';
 	import { erreurDuChamp } from '$lib/validation';
 	import FormSection from './FormSection.svelte';

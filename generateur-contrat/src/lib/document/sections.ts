@@ -1,4 +1,4 @@
-import type { BrouillonMandat, RedactionIA, LigneService } from '$lib/types';
+import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
 import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$lib/montants';
 import { PRESTATAIRE } from '$lib/config';
 import type { BlocArticle } from './clauses';

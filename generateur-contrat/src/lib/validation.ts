@@ -1,4 +1,4 @@
-import type { BrouillonMandat } from './types';
+import type { BrouillonMandat } from '$domaine/types';
 import { totalLigne } from './montants';
 
 export interface ErreurValidation {

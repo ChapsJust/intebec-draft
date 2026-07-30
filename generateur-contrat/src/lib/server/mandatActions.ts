@@ -22,7 +22,7 @@ import {
 	redigerDocument,
 	type CibleChamp
 } from './ollama';
-import type { StatutDocument, BrouillonMandat, MandatEnregistre } from '$lib/types';
+import type { StatutDocument, BrouillonMandat, MandatEnregistre } from '$domaine/types';
 
 /** Statuts qu'une requête a le droit de poser. `brouillon` n'y figure pas : on ne revient pas en
  * arrière sur un document déjà sorti. */

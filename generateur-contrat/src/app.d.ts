@@ -1,6 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import type { Utilisateur } from '$lib/types';
+import type { Utilisateur } from '$domaine/types';
 
 declare global {
 	namespace App {

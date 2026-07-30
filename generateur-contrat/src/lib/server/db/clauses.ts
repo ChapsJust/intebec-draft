@@ -1,7 +1,7 @@
 import { eq, and, isNull, isNotNull, asc } from 'drizzle-orm';
 import { db } from './index';
 import { clauseBibliotheque } from './schema';
-import type { ClauseBibliotheque } from '$lib/types';
+import type { ClauseBibliotheque } from '$domaine/types';
 import { estUuid } from '../formulaire';
 
 /** Champs qu'une requête entrante a le droit d'écrire sur une clause. Même raison que pour les fiches

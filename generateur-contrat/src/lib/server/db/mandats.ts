@@ -1,7 +1,7 @@
 import { eq, desc, and, isNull, isNotNull, type SQL } from 'drizzle-orm';
 import { db } from './index';
 import { mandat } from './schema';
-import type { BrouillonMandat, MandatEnregistre, StatutDocument, RedactionIA } from '$lib/types';
+import type { BrouillonMandat, MandatEnregistre, StatutDocument, RedactionIA } from '$domaine/types';
 import { totalNet } from '$lib/montants';
 import { estUuid } from '../formulaire';
 import { normaliserMandat } from '../mandatForm';

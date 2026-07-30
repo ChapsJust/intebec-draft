@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { LigneService, ModeTarification, StructureProjet } from '$lib/types';
+	import type { LigneService, ModeTarification, StructureProjet } from '$domaine/types';
 	import { totalLigne, formatCad } from '$lib/montants';
 	import { nouvelleLigne } from '$lib/mandat';
 	import { libelleLigne } from '$lib/document/format';

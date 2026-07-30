@@ -7,7 +7,7 @@ import {
 } from './sections';
 import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
 import { formatCad, totalNet } from '$lib/montants';
-import type { BrouillonMandat, RedactionIA, LigneService } from '$lib/types';
+import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
 
 function ligne(overrides: Partial<LigneService>): LigneService {
 	return { ...nouvelleLigne(), ...overrides };

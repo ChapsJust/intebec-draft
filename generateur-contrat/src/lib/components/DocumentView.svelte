@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { BrouillonMandat, RedactionIA } from '$lib/types';
+	import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 	import { construireDocument } from '$lib/document/sections';
 	// Logo provisoire : à remplacer par le fichier officiel d'Intébec.
 	import logo from '$lib/assets/logo-intebec.svg';

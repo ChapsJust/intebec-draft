@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { StatutDocument } from '$lib/types';
+	import type { StatutDocument } from '$domaine/types';
 
 	let { status }: { status: StatutDocument } = $props();
 

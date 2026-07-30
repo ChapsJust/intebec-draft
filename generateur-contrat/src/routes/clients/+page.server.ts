@@ -8,7 +8,7 @@ import {
 	supprimerClient
 } from '$lib/server/db/clients';
 import { idPoste } from '$lib/server/formulaire';
-import type { TypeClient } from '$lib/types';
+import type { TypeClient } from '$domaine/types';
 
 export const load: PageServerLoad = async () => {
 	const [clients, archives] = await Promise.all([

@@ -1,4 +1,4 @@
-import type { Utilisateur } from '$lib/types';
+import type { Utilisateur } from '$domaine/types';
 
 /** Identité de la personne qui consulte l'application, lue dans les en-têtes que `tailscale serve`
  * ajoute à chaque requête qu'il relaie.
@@ -15,7 +15,7 @@ import type { Utilisateur } from '$lib/types';
  *
  * Voir la section « Accès » du README pour la mise en service complète. */
 
-export type { Utilisateur } from '$lib/types';
+export type { Utilisateur } from '$domaine/types';
 
 /** Nom affichable, puis identifiant de connexion en repli : `Tailscale-User-Name` porte « Justin
  * Chaput » quand le compte a un nom complet, `Tailscale-User-Login` toujours le courriel. */

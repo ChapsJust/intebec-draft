@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ModalitesPaiement, AbonnementRecurrent } from '$lib/types';
+	import type { ModalitesPaiement, AbonnementRecurrent } from '$domaine/types';
 	import FormSection from './FormSection.svelte';
 
 	let {

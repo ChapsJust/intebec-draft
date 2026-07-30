@@ -3,7 +3,7 @@
 	import ConfirmAction from './ConfirmAction.svelte';
 	import Icon from './Icon.svelte';
 	import StatusBadge from './StatusBadge.svelte';
-	import type { ResumeDocument } from '$lib/types';
+	import type { ResumeDocument } from '$domaine/types';
 
 	let { doc }: { doc: ResumeDocument } = $props();
 

@@ -7,7 +7,7 @@
 		FicheClient,
 		BrouillonMandat,
 		PropositionClause
-	} from '$lib/types';
+	} from '$domaine/types';
 	import { verifierMandat } from '$lib/validation';
 	import MandatForm from './MandatForm.svelte';
 	import ClientForm from './ClientForm.svelte';

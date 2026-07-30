@@ -4,7 +4,7 @@
 	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import MandatEditor from '$lib/components/MandatEditor.svelte';
-	import type { BrouillonMandat } from '$lib/types';
+	import type { BrouillonMandat } from '$domaine/types';
 
 	let { data }: { data: PageData } = $props();
 

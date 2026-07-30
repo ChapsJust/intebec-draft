@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { LigneService } from '$lib/types';
+	import type { LigneService } from '$domaine/types';
 	import { sousTotal, montantRabais, totalNet, formatCad } from '$lib/montants';
 	import FormSection from './FormSection.svelte';
 

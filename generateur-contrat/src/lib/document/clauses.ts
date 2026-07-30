@@ -1,4 +1,4 @@
-import type { BrouillonMandat } from '$lib/types';
+import type { BrouillonMandat } from '$domaine/types';
 import { totalNet, formatCad } from '$lib/montants';
 import { PRESTATAIRE } from '$lib/config';
 import { elider, nombreContractuel } from './format';

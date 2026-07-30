@@ -4,7 +4,7 @@ import type {
 	TypeDocument,
 	BrouillonMandat,
 	LigneService
-} from './types';
+} from '$domaine/types';
 
 export function nouveauClient(): CoordonneesClient {
 	return {

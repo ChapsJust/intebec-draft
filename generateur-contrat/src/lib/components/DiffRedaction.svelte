@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { BrouillonMandat, RedactionIA } from '$lib/types';
+	import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 	import { comparerPassages, type Passage } from '$lib/document/diff';
 	import { preambuleParDefaut } from '$lib/document/sections';
 	import { libelleLigne } from '$lib/document/format';

@@ -2,7 +2,7 @@
 	import HeroWelcome from '$lib/components/HeroWelcome.svelte';
 	import RecentDocuments from '$lib/components/RecentDocuments.svelte';
 	import type { PageData } from './$types';
-	import type { ResumeDocument, MandatEnregistre } from '$lib/types';
+	import type { ResumeDocument, MandatEnregistre } from '$domaine/types';
 
 	let { data }: { data: PageData } = $props();
 

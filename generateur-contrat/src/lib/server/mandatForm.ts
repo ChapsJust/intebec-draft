@@ -7,7 +7,7 @@ import type {
 	ModalitesPaiement,
 	LigneQuantite,
 	LigneService
-} from '$lib/types';
+} from '$domaine/types';
 import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
 import { estUuid } from './formulaire';
 

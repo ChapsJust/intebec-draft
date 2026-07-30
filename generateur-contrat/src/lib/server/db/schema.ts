@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, numeric, jsonb } from 'drizzle-orm/pg-core';
-import type { BrouillonMandat, RedactionIA } from '$lib/types';
+import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 
 export const client = pgTable('client', {
 	id: uuid('id').primaryKey().defaultRandom(),

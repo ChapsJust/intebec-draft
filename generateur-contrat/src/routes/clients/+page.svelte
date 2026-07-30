@@ -4,7 +4,7 @@
 	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
 	import FormSection from '$lib/components/FormSection.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import type { FicheClientListee } from '$lib/types';
+	import type { FicheClientListee } from '$domaine/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 

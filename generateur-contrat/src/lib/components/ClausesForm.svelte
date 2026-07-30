@@ -7,7 +7,7 @@
 		ClauseBibliotheque,
 		ConditionsParticulieres,
 		PropositionClause
-	} from '$lib/types';
+	} from '$domaine/types';
 	import { CLES_CLAUSES, LIBELLES_CLAUSES, libelleSuggestion } from '$lib/document/catalogue';
 	import FormSection from './FormSection.svelte';
 	import Icon from './Icon.svelte';

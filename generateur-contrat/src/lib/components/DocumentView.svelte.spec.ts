@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import DocumentView from './DocumentView.svelte';
 import { nouveauMandat, nouvelleLigne } from '$lib/mandat';
-import type { BrouillonMandat, RedactionIA } from '$lib/types';
+import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 
 /** Filet de sécurité du rendu du document. Le composant ne calcule rien lui-même (tout vient de
  * `construireDocument`, couvert par sections.spec.ts) : ce qui est vérifié ici, c'est que chaque partie

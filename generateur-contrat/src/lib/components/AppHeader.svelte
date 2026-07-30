@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
 	import { APP_NAME } from '$lib/config';
-	import type { Utilisateur } from '$lib/types';
+	import type { Utilisateur } from '$domaine/types';
 
 	let { utilisateur = null }: { utilisateur?: Utilisateur | null } = $props();
 </script>

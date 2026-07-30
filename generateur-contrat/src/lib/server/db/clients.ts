@@ -1,7 +1,7 @@
 import { eq, and, isNull, isNotNull, asc, count } from 'drizzle-orm';
 import { db } from './index';
 import { client, mandat } from './schema';
-import type { CoordonneesClient, FicheClient, FicheClientListee } from '$lib/types';
+import type { CoordonneesClient, FicheClient, FicheClientListee } from '$domaine/types';
 import { estUuid } from '../formulaire';
 
 /** Champs qu'une requête entrante a le droit d'écrire sur une fiche client.

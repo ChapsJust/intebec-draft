@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CoordonneesClient, FicheClient } from '$lib/types';
+	import type { CoordonneesClient, FicheClient } from '$domaine/types';
 	import { nouveauClient, coordonneesDuClient } from '$lib/mandat';
 	import type { ErreurValidation } from '$lib/validation';
 	import { erreurDuChamp } from '$lib/validation';

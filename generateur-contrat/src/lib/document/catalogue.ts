@@ -1,4 +1,4 @@
-import type { ChampCondition, ClausesStandards } from '$lib/types';
+import type { ChampCondition, ClausesStandards } from '$domaine/types';
 
 /** Libellés du volet contractuel, partagés entre l'interface de saisie et le prompt d'audit.
  * Une seule source : si l'audit désigne une clause, l'utilisateur doit retrouver exactement le

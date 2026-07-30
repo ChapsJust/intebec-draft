@@ -10,7 +10,7 @@ import type {
 	SuggestionBibliotheque,
 	SuggestionClause,
 	SuggestionCondition
-} from '$lib/types';
+} from '$domaine/types';
 import { libelleLigne } from '$lib/document/format';
 import { empreinteProse } from '$lib/document/sections';
 import {
