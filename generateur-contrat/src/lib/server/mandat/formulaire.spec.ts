@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SoumissionInvalideError, lireMandat, normaliserMandat } from './mandatForm';
+import { SoumissionInvalideError, lireMandat, normaliserMandat } from './formulaire';
 import { nouveauMandat } from '$domaine/fabriques';
 import { totalNet } from '$domaine/montants';
 

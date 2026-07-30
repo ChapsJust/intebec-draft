@@ -2,7 +2,7 @@ import { eq, and, isNull, isNotNull, asc } from 'drizzle-orm';
 import { db } from './index';
 import { clauseBibliotheque } from './schema';
 import type { ClauseBibliotheque } from '$domaine/types';
-import { estUuid } from '../formulaire';
+import { estUuid } from '$serveur/formulaire';
 
 /** Champs qu'une requête entrante a le droit d'écrire sur une clause. Même raison que pour les fiches
  * clients : sans liste explicite, un `set({ ...data })` laisserait écrire `id` ou `creeLe`. */

@@ -13,7 +13,7 @@ import {
 import { verifierMandat } from '$domaine/validation';
 import { empreinteProse } from '$document/sections';
 import { dupliquerMandat } from '$domaine/fabriques';
-import { SoumissionInvalideError, lireMandat, lireSoumissionMandat } from './mandatForm';
+import { SoumissionInvalideError, lireMandat, lireSoumissionMandat } from './mandat/formulaire';
 import { idPoste } from './formulaire';
 import {
 	OllamaIndisponibleError,
@@ -21,7 +21,7 @@ import {
 	redigerChamp,
 	redigerDocument,
 	type CibleChamp
-} from './ollama';
+} from './ia';
 import type { StatutDocument, BrouillonMandat, MandatEnregistre } from '$domaine/types';
 
 /** Statuts qu'une requête a le droit de poser. `brouillon` n'y figure pas : on ne revient pas en

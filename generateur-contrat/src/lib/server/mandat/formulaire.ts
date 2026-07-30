@@ -9,7 +9,7 @@ import type {
 	LigneService
 } from '$domaine/types';
 import { nouveauMandat, nouvelleLigne } from '$domaine/fabriques';
-import { estUuid } from './formulaire';
+import { estUuid } from '$serveur/formulaire';
 
 export interface SoumissionMandat {
 	brouillon: BrouillonMandat;

@@ -306,7 +306,7 @@ const SEPARATEUR_EMPREINTE = String.fromCharCode(31);
 
 /** Empreinte de la saisie dont une rédaction est dérivée.
  *
- * Reprend ce que `contexte()` transmet au modèle dans `ollama.ts`, plus ce qui compose le préambule
+ * Reprend ce que `contexte()` transmet au modèle dans `server/ia/invites.ts`, plus ce qui compose le préambule
  * par défaut. Le critère n'est pas « ce que l'IA réécrit » mais « ce que l'IA a lu » : un nom de ligne
  * ou une puce « non inclus » ne sont pas réécrits, pourtant ils orientent la prose, donc les changer
  * la périme.

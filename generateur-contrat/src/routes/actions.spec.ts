@@ -105,7 +105,7 @@ function fichiersSvelte(dossier: string): string[] {
 
 /** Toutes les cibles `?/…` écrites dans les gabarits, avec le fichier où elles apparaissent.
  * On ne balaie que les `.svelte` : un `?/` dans un `.ts` est une expression régulière, pas une
- * action (`ollama.ts` en contient une). */
+ * action (`ia/transport.ts` en contient une). */
 function ciblesDesGabarits(): { cible: string; fichier: string }[] {
 	return fichiersSvelte(RACINE_SRC).flatMap((fichier) => {
 		const source = readFileSync(fichier, 'utf8');
