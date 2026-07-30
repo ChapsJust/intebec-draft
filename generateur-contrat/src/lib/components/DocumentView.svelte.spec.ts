@@ -76,7 +76,7 @@ describe('DocumentView', () => {
 		await expect.element(page.getByText('Sous-total')).toBeInTheDocument();
 		await expect.element(page.getByText(/Rabais/)).toBeInTheDocument();
 		await expect.element(page.getByText('client de longue date')).toBeInTheDocument();
-		// 8000 − 10 % = 7200
+		// 8000 − 10 % = 7200 (IA ne touche pas aux montants, elle ne rédige que le texte)
 		await expect.element(page.getByText(/7\s?200,00/).first()).toBeInTheDocument();
 	});
 
@@ -125,7 +125,6 @@ describe('DocumentView', () => {
 
 		expect(style.fontFamily.toLowerCase()).toContain('georgia');
 		expect(style.backgroundColor).toBe('rgb(255, 255, 255)');
-		// `max-width: 45rem` : la colonne de texte est contrainte, pas pleine largeur.
 		expect(parseFloat(style.maxWidth)).toBeGreaterThan(0);
 	});
 });

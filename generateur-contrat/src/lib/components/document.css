@@ -1,17 +1,7 @@
-/* Mise en page du document généré : soumission ou contrat.
- *
- * Ces styles vivaient dans le bloc <style> de DocumentView.svelte, qui atteignait 880 lignes dont
- * 650 de CSS. Les sortir rend le composant lisible, et permet aux sous-composants de rendu
- * (parties, sections, tableaux, signatures) de partager la même feuille : la portée automatique de
- * Svelte, elle, s'arrête à la frontière de chaque composant.
- *
- * En quittant le composant, le CSS perd cette portée. Tous les sélecteurs sont donc préfixés par
- * `.document`, qui n'existe qu'à la racine de DocumentView : des noms aussi génériques que
- * `.para`, `.note` ou `.section` n'ont rien à faire dans la portée globale. */
+/* Mise en page du document généré : soumission ou contrat. Générer en grande partie avec l'IA*/
 
 .document {
-	/* Le document a sa propre identité typographique : empattements pour la prose juridique,
-			sans-serif de la marque pour les titres, étiquettes et chiffres. */
+	/* Le document a sa propre identité typographique */
 	--doc-serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
 	--doc-sans: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
 	--doc-encre: #16233a;
@@ -20,9 +10,7 @@
 	--doc-filet: #d8dfe8;
 	--doc-filet-fort: #9fb0c4;
 
-	/* Échelle d'espacement pilotée par `densite`, calculée dans sections.ts à partir du volume
-			réel du document. Toutes les marges verticales en dépendent, donc un seul multiplicateur
-			resserre ou aère la mise en page entière. */
+	/* Échelle d'espacement qui contrôle l'espacement vertical du document */
 	--ec: 1;
 
 	background: #fff;
@@ -96,7 +84,7 @@
 	background: #f7f9fc;
 	border-left: 3px solid var(--doc-marine);
 	margin-bottom: calc(2.5rem * var(--ec));
-	break-inside: avoid;
+	break-inside: avoid; /* Empêche les parties de se scinder à l'intérieur d'une page */
 }
 
 /* « Entre » / « Et » : la charnière du préambule d'identification, dans la forme consacrée
