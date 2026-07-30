@@ -1,7 +1,7 @@
 <script lang="ts">
-	import DocumentRow from './DocumentRow.svelte';
-	import FormSection from './FormSection.svelte';
-	import Icon from './Icon.svelte';
+	import LigneDocument from './LigneDocument.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
 	import type { ResumeDocument } from '$domaine/types';
 
 	let { documents, archives = [] }: { documents: ResumeDocument[]; archives?: ResumeDocument[] } =
@@ -17,7 +17,7 @@
 				class="flex items-center gap-1 text-sm font-medium text-accent-500 hover:text-accent-600"
 			>
 				Clients
-				<Icon name="arrow-right" size={16} />
+				<Icone name="arrow-right" size={16} />
 			</a>
 		{/if}
 	</div>
@@ -28,7 +28,7 @@
 				<span
 					class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700"
 				>
-					<Icon name="document" size={24} />
+					<Icone name="document" size={24} />
 				</span>
 				<div>
 					<p class="font-medium text-ink">Aucun document pour l'instant</p>
@@ -40,7 +40,7 @@
 					href="/nouveau"
 					class="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
 				>
-					<Icon name="plus" size={16} />
+					<Icone name="plus" size={16} />
 					Nouveau document
 				</a>
 			</div>
@@ -48,7 +48,7 @@
 			<ul class="divide-y divide-border-subtle">
 				{#each documents as doc (doc.id)}
 					<li>
-						<DocumentRow {doc} />
+						<LigneDocument {doc} />
 					</li>
 				{/each}
 			</ul>
@@ -57,18 +57,22 @@
 
 	{#if archives.length > 0}
 		<div class="mt-6">
-			<FormSection title="Documents archivés ({archives.length})" collapsible defaultOpen={false}>
+			<SectionFormulaire
+				title="Documents archivés ({archives.length})"
+				collapsible
+				defaultOpen={false}
+			>
 				<p class="text-sm text-ink-muted">
 					Retirés des documents récents, mais conservés. Désarchivez pour les y remettre.
 				</p>
 				<ul class="divide-y divide-border-subtle opacity-75">
 					{#each archives as doc (doc.id)}
 						<li>
-							<DocumentRow {doc} />
+							<LigneDocument {doc} />
 						</li>
 					{/each}
 				</ul>
-			</FormSection>
+			</SectionFormulaire>
 		</div>
 	{/if}
 </section>

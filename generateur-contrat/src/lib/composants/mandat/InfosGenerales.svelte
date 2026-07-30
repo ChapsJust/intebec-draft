@@ -2,9 +2,9 @@
 	import type { TypeDocument, StructureProjet } from '$domaine/types';
 	import type { ErreurValidation } from '$domaine/validation';
 	import { erreurDuChamp } from '$domaine/validation';
-	import FormSection from './FormSection.svelte';
-	import Icon from './Icon.svelte';
-	import AiAssistButton from './AiAssistButton.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
+	import BoutonAssistance from '$composants/ia/BoutonAssistance.svelte';
 
 	let {
 		type = $bindable(),
@@ -61,7 +61,7 @@
 	];
 </script>
 
-<FormSection title="Mandat" description="Informations générales du document.">
+<SectionFormulaire title="Mandat" description="Informations générales du document.">
 	<div>
 		<span class="field-label">Type de document</span>
 		<div class="grid gap-3 sm:grid-cols-2">
@@ -75,7 +75,7 @@
 					<span
 						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
 					>
-						<Icon name={t.icon} size={20} />
+						<Icone name={t.icon} size={20} />
 					</span>
 					<span class="flex-1">
 						<span class="flex items-center gap-2 font-medium text-ink">
@@ -148,7 +148,7 @@
 		{/if}
 		{#if onRediger}
 			<div class="mt-2">
-				<AiAssistButton
+				<BoutonAssistance
 					champ="objet"
 					rediger={onRediger}
 					appliquer={(texte) => (objet = texte)}
@@ -157,4 +157,4 @@
 			</div>
 		{/if}
 	</div>
-</FormSection>
+</SectionFormulaire>

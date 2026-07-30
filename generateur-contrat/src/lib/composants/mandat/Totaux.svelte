@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { LigneService } from '$domaine/types';
 	import { sousTotal, montantRabais, totalNet, formatCad } from '$domaine/montants';
-	import FormSection from './FormSection.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
 
 	let {
 		lignes,
@@ -18,7 +18,7 @@
 	const total = $derived(totalNet(lignes, rabaisPct));
 </script>
 
-<FormSection title="Prix" description="Récapitulatif calculé à partir des lignes ci-dessus.">
+<SectionFormulaire title="Prix" description="Récapitulatif calculé à partir des lignes ci-dessus.">
 	<div class="rounded-lg bg-surface-muted p-4 text-sm">
 		<div class="flex justify-between py-1">
 			<span class="text-ink-muted">Sous-total</span>
@@ -61,4 +61,4 @@
 			/>
 		</div>
 	</div>
-</FormSection>
+</SectionFormulaire>

@@ -100,7 +100,7 @@ export function formatDateLongue(iso: string): string {
 }
 
 /** Libellé de l'entité tarifaire selon la structure du projet : partagé entre le formulaire de
- * saisie (ServiceLinesForm) et le document généré pour éviter toute divergence de vocabulaire. */
+ * saisie (LignesService) et le document généré pour éviter toute divergence de vocabulaire. */
 export function libelleLigne(structure: 'phases' | 'blocs' | 'recurrent'): string {
 	if (structure === 'phases') return 'Phase';
 	if (structure === 'blocs') return 'Bloc';

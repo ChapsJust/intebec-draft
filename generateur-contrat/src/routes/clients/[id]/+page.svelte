@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
-	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
-	import Icon from '$lib/components/Icon.svelte';
-	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import ConfirmationAction from '$composants/ui/ConfirmationAction.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
+	import EtiquetteStatut from '$composants/ui/EtiquetteStatut.svelte';
 	import { formatCad } from '$domaine/montants';
 	import type { MandatEnregistre } from '$domaine/types';
 
@@ -19,12 +19,12 @@
 			<span class="block truncate font-medium text-ink">{m.titre || 'Sans titre'}</span>
 			<span class="block text-sm text-ink-muted">{formatCad(m.totalNet)}</span>
 		</a>
-		<StatusBadge status={m.statut} />
+		<EtiquetteStatut status={m.statut} />
 		<a
 			href="/mandats/{m.id}/pdf"
 			class="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-surface-muted"
 		>
-			<Icon name="download" size={14} />
+			<Icone name="download" size={14} />
 			PDF
 		</a>
 		<form method="POST" action="?/dupliquer" use:enhance>
@@ -33,13 +33,13 @@
 				type="submit"
 				class="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-surface-muted"
 			>
-				<Icon name="copy" size={14} />
+				<Icone name="copy" size={14} />
 				Dupliquer
 			</button>
 		</form>
 
 		{#if m.archiveLe}
-			<ConfirmAction
+			<ConfirmationAction
 				action="?/desarchiverMandat"
 				id={m.id}
 				ton="neutre"
@@ -49,10 +49,10 @@
 				ariaLabel="Désarchiver ce mandat"
 				class="inline-flex items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 			>
-				<Icon name="archive-restore" size={16} />
-			</ConfirmAction>
+				<Icone name="archive-restore" size={16} />
+			</ConfirmationAction>
 		{:else}
-			<ConfirmAction
+			<ConfirmationAction
 				action="?/archiverMandat"
 				id={m.id}
 				ton="neutre"
@@ -63,11 +63,11 @@
 				ariaLabel="Archiver ce mandat"
 				class="inline-flex items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 			>
-				<Icon name="archive" size={16} />
-			</ConfirmAction>
+				<Icone name="archive" size={16} />
+			</ConfirmationAction>
 		{/if}
 
-		<ConfirmAction
+		<ConfirmationAction
 			action="?/supprimerMandat"
 			id={m.id}
 			titre="Supprimer ce mandat ?"
@@ -77,8 +77,8 @@
 			ariaLabel="Supprimer ce mandat"
 			class="inline-flex items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
 		>
-			<Icon name="trash" size={16} />
-		</ConfirmAction>
+			<Icone name="trash" size={16} />
+		</ConfirmationAction>
 	</li>
 {/snippet}
 
@@ -141,7 +141,7 @@
 
 		<div class="mt-6 flex flex-wrap gap-3 border-t border-border-subtle pt-4">
 			{#if data.client.archiveLe}
-				<ConfirmAction
+				<ConfirmationAction
 					action="?/desarchiver"
 					ton="neutre"
 					titre="Désarchiver {data.client.nom} ?"
@@ -149,11 +149,11 @@
 					confirmLabel="Désarchiver"
 					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
 				>
-					<Icon name="archive-restore" size={16} />
+					<Icone name="archive-restore" size={16} />
 					Désarchiver ce client
-				</ConfirmAction>
+				</ConfirmationAction>
 			{:else}
-				<ConfirmAction
+				<ConfirmationAction
 					action="?/archiver"
 					ton="neutre"
 					titre="Archiver {data.client.nom} ?"
@@ -161,12 +161,12 @@
 					confirmLabel="Archiver"
 					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
 				>
-					<Icon name="archive" size={16} />
+					<Icone name="archive" size={16} />
 					Archiver ce client
-				</ConfirmAction>
+				</ConfirmationAction>
 			{/if}
 
-			<ConfirmAction
+			<ConfirmationAction
 				action="?/supprimer"
 				motCle={data.client.nom}
 				titre="Supprimer {data.client.nom} ?"
@@ -174,9 +174,9 @@
 				confirmLabel="Supprimer définitivement"
 				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
 			>
-				<Icon name="trash" size={16} />
+				<Icone name="trash" size={16} />
 				Supprimer ce client
-			</ConfirmAction>
+			</ConfirmationAction>
 		</div>
 	</section>
 
@@ -187,7 +187,7 @@
 				href="/nouveau"
 				class="hover:text-accent-700 inline-flex items-center gap-1.5 text-sm font-medium text-accent-600"
 			>
-				<Icon name="plus" size={16} />
+				<Icone name="plus" size={16} />
 				Nouveau mandat
 			</a>
 		</div>

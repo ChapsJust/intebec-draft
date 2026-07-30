@@ -9,8 +9,8 @@
 		PropositionClause
 	} from '$domaine/types';
 	import { CLES_CLAUSES, LIBELLES_CLAUSES, libelleSuggestion } from '$document/catalogue';
-	import FormSection from './FormSection.svelte';
-	import Icon from './Icon.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
 
 	let {
 		conditions = $bindable(),
@@ -150,7 +150,7 @@
 			: ''}{/if}
 {/snippet}
 
-<FormSection
+<SectionFormulaire
 	title="Conditions"
 	description="Clauses standards et paramètres habituellement variables d'un contrat à l'autre."
 	collapsible
@@ -257,7 +257,7 @@
 								class="shrink-0 rounded-lg p-1.5 text-ink-muted transition hover:bg-surface hover:text-danger"
 								aria-label="Retirer la clause « {clause.titre} » de ce mandat"
 							>
-								<Icon name="trash" size={16} />
+								<Icone name="trash" size={16} />
 							</button>
 						</div>
 						<textarea
@@ -316,7 +316,7 @@
 					disabled={auditEnCours}
 					class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border-subtle px-3 py-1.5 text-xs font-medium text-ink transition hover:bg-surface-muted disabled:opacity-60"
 				>
-					<Icon name="sparkles" size={14} />
+					<Icone name="sparkles" size={14} />
 					{auditEnCours
 						? 'Relecture en cours…'
 						: audit
@@ -483,4 +483,4 @@
 			bind:value={conditions.notesAdditionnelles}
 			placeholder="Toute clause spécifique à ce mandat…"></textarea>
 	</div>
-</FormSection>
+</SectionFormulaire>

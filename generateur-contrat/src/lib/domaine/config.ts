@@ -6,7 +6,7 @@ export const APP_NAME = 'DocGen';
 export const APP_TAGLINE = 'Soumissions et contrats générés par IA locale';
 
 /** Coordonnées du prestataire, reprises telles quelles en en-tête et dans le bloc « Parties »
- * du document généré. Le représentant signataire, lui, reste saisi par mandat (SignatureForm).
+ * du document généré. Le représentant signataire, lui, reste saisi par mandat (Signature).
  *
  */
 export const PRESTATAIRE = {

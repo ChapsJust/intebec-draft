@@ -4,7 +4,7 @@
 	import { comparerPassages, type Passage } from '$document/diff';
 	import { preambuleParDefaut } from '$document/sections';
 	import { libelleLigne } from '$document/format';
-	import Icon from './Icon.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
 
 	// Ce que l'IA a changé, et ce qu'on en garde. Sans ce panneau, la rédaction remplaçait le document
 	// en silence : le gabarit s'affichait, l'IA finissait, la prose était échangée, et rien ne disait
@@ -63,7 +63,7 @@
 		open={nbRefuses > 0}
 	>
 		<summary class="group flex cursor-pointer items-center gap-2 p-3 text-sm text-ink">
-			<Icon name="sparkles" size={16} />
+			<Icone name="sparkles" size={16} />
 			<span class="font-medium">Modifications de l’IA</span>
 			<span class="text-ink-muted">
 				{pluriel(champs.length, 'champ')} · {pluriel(nbPassages, 'passage')}
@@ -71,7 +71,7 @@
 					· {nbRefuses} revenu{nbRefuses > 1 ? 's' : ''} à votre saisie
 				{/if}
 			</span>
-			<Icon
+			<Icone
 				name="chevron-down"
 				size={16}
 				class="ml-auto shrink-0 text-ink-muted transition group-open:rotate-180"

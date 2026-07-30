@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { APP_NAME } from '$domaine/config';
-	import FormSection from '$lib/components/FormSection.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
 </script>
 
 <svelte:head><title>Aide · {APP_NAME}</title></svelte:head>
@@ -13,7 +13,7 @@
 		</p>
 	</div>
 
-	<FormSection title="Produire un document" description="Le parcours complet, du brouillon au PDF.">
+	<SectionFormulaire title="Produire un document" description="Le parcours complet, du brouillon au PDF.">
 		<ol class="list-decimal space-y-3 pl-5 text-sm text-ink">
 			<li>
 				Depuis l'accueil, cliquez sur <strong>Nouveau document</strong> et choisissez soumission ou contrat.
@@ -40,9 +40,9 @@
 				choisissez <em>Enregistrer au format PDF</em> comme destination.
 			</li>
 		</ol>
-	</FormSection>
+	</SectionFormulaire>
 
-	<FormSection
+	<SectionFormulaire
 		title="Rédaction par l'IA locale"
 		description="Ce que l'IA écrit, et ce qu'elle n'écrit jamais."
 	>
@@ -70,13 +70,13 @@
 				de fonctionner normalement.
 			</p>
 		</div>
-	</FormSection>
+	</SectionFormulaire>
 
-	<FormSection title="Réutiliser un document" description="Pour les clients récurrents.">
+	<SectionFormulaire title="Réutiliser un document" description="Pour les clients récurrents.">
 		<p class="text-sm text-ink">
 			Depuis l'accueil ou la fiche d'un client, le bouton <strong>Dupliquer</strong> crée un nouveau brouillon
 			reprenant toute la structure du mandat d'origine, avec la date du jour. Rien n'est modifié dans
 			le document source.
 		</p>
-	</FormSection>
+	</SectionFormulaire>
 </div>

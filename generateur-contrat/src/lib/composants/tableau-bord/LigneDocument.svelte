@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import ConfirmAction from './ConfirmAction.svelte';
-	import Icon from './Icon.svelte';
-	import StatusBadge from './StatusBadge.svelte';
+	import ConfirmationAction from '$composants/ui/ConfirmationAction.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
+	import EtiquetteStatut from '$composants/ui/EtiquetteStatut.svelte';
 	import type { ResumeDocument } from '$domaine/types';
 
 	let { doc }: { doc: ResumeDocument } = $props();
@@ -21,14 +21,14 @@
 		<span
 			class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
 		>
-			<Icon name={doc.type === 'contrat' ? 'contract' : 'document'} size={18} />
+			<Icone name={doc.type === 'contrat' ? 'contract' : 'document'} size={18} />
 		</span>
 		<span class="min-w-0 flex-1">
 			<span class="block truncate font-medium text-ink">{doc.title}</span>
 			<span class="block truncate text-sm text-ink-muted">{doc.client}</span>
 		</span>
 	</a>
-	<StatusBadge status={doc.status} />
+	<EtiquetteStatut status={doc.status} />
 	<span class="hidden w-24 shrink-0 text-right text-sm text-ink-muted sm:block">
 		{formatted}
 	</span>
@@ -40,12 +40,12 @@
 			aria-label="Dupliquer ce mandat"
 			title="Dupliquer"
 		>
-			<Icon name="copy" size={14} />
+			<Icone name="copy" size={14} />
 		</button>
 	</form>
 
 	{#if doc.archived}
-		<ConfirmAction
+		<ConfirmationAction
 			action="?/desarchiver"
 			id={doc.id}
 			ton="neutre"
@@ -55,10 +55,10 @@
 			ariaLabel="Désarchiver ce mandat"
 			class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface hover:text-ink"
 		>
-			<Icon name="archive-restore" size={14} />
-		</ConfirmAction>
+			<Icone name="archive-restore" size={14} />
+		</ConfirmationAction>
 	{:else}
-		<ConfirmAction
+		<ConfirmationAction
 			action="?/archiver"
 			id={doc.id}
 			ton="neutre"
@@ -68,11 +68,11 @@
 			ariaLabel="Archiver ce mandat"
 			class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface hover:text-ink"
 		>
-			<Icon name="archive" size={14} />
-		</ConfirmAction>
+			<Icone name="archive" size={14} />
+		</ConfirmationAction>
 	{/if}
 
-	<ConfirmAction
+	<ConfirmationAction
 		action="?/supprimer"
 		id={doc.id}
 		titre="Supprimer ce document ?"
@@ -81,6 +81,6 @@
 		ariaLabel="Supprimer ce mandat"
 		class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
 	>
-		<Icon name="trash" size={14} />
-	</ConfirmAction>
+		<Icone name="trash" size={14} />
+	</ConfirmationAction>
 </div>

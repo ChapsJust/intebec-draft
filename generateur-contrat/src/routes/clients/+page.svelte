@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
-	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
-	import FormSection from '$lib/components/FormSection.svelte';
-	import Icon from '$lib/components/Icon.svelte';
+	import ConfirmationAction from '$composants/ui/ConfirmationAction.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
 	import type { FicheClientListee } from '$domaine/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -38,7 +38,7 @@
 
 {#snippet actionsClient(c: FicheClientListee)}
 	{#if c.archiveLe}
-		<ConfirmAction
+		<ConfirmationAction
 			action="?/desarchiver"
 			id={c.id}
 			ton="neutre"
@@ -48,10 +48,10 @@
 			ariaLabel="Désarchiver ce client"
 			class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 		>
-			<Icon name="archive-restore" size={16} />
-		</ConfirmAction>
+			<Icone name="archive-restore" size={16} />
+		</ConfirmationAction>
 	{:else}
-		<ConfirmAction
+		<ConfirmationAction
 			action="?/archiver"
 			id={c.id}
 			ton="neutre"
@@ -63,11 +63,11 @@
 			ariaLabel="Archiver ce client"
 			class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 		>
-			<Icon name="archive" size={16} />
-		</ConfirmAction>
+			<Icone name="archive" size={16} />
+		</ConfirmationAction>
 	{/if}
 
-	<ConfirmAction
+	<ConfirmationAction
 		action="?/supprimer"
 		id={c.id}
 		motCle={c.nom}
@@ -79,8 +79,8 @@
 		ariaLabel="Supprimer ce client"
 		class="inline-flex shrink-0 items-center justify-center rounded-lg border border-border-subtle p-2 text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
 	>
-		<Icon name="trash" size={16} />
-	</ConfirmAction>
+		<Icone name="trash" size={16} />
+	</ConfirmationAction>
 {/snippet}
 
 <div class="space-y-6">
@@ -102,7 +102,7 @@
 		</p>
 	{/if}
 
-	<FormSection title="Nouveau client" collapsible defaultOpen={data.clients.length === 0}>
+	<SectionFormulaire title="Nouveau client" collapsible defaultOpen={data.clients.length === 0}>
 		<form method="POST" action="?/creer" use:enhance class="space-y-5">
 			{#if form?.message}
 				<p class="text-sm text-warning">{form.message}</p>
@@ -181,7 +181,7 @@
 				Créer le client
 			</button>
 		</form>
-	</FormSection>
+	</SectionFormulaire>
 
 	{#if data.clients.length > 0}
 		<div class="flex items-center gap-3">
@@ -216,7 +216,7 @@
 							<span
 								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
 							>
-								<Icon name="user" size={18} />
+								<Icone name="user" size={18} />
 							</span>
 							<span class="min-w-0 flex-1">
 								<span class="block truncate font-medium text-ink">{c.nom}</span>
@@ -235,7 +235,7 @@
 	</div>
 
 	{#if archivesVisibles.length > 0}
-		<FormSection
+		<SectionFormulaire
 			title="Clients archivés ({archivesVisibles.length})"
 			collapsible
 			defaultOpen={false}
@@ -258,6 +258,6 @@
 					</li>
 				{/each}
 			</ul>
-		</FormSection>
+		</SectionFormulaire>
 	{/if}
 </div>

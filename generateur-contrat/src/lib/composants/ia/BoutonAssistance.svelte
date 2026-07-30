@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Icon from './Icon.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
 
 	// Aide ponctuelle à la rédaction d'un champ. La proposition n'est jamais appliquée d'office :
 	// l'utilisateur la lit, puis choisit de remplacer son texte ou de l'ignorer.
@@ -44,7 +44,7 @@
 	disabled={enCours}
 	class="inline-flex items-center gap-1.5 text-xs font-medium text-accent-600 transition hover:text-accent-500 disabled:opacity-60"
 >
-	<Icon name="sparkles" size={14} />
+	<Icone name="sparkles" size={14} />
 	{enCours ? 'Rédaction en cours…' : label}
 </button>
 

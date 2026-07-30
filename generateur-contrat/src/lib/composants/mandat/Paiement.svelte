@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ModalitesPaiement, AbonnementRecurrent } from '$domaine/types';
-	import FormSection from './FormSection.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
 
 	let {
 		modalitesPaiement = $bindable(),
@@ -74,7 +74,7 @@
 		: ''}
 {/snippet}
 
-<FormSection
+<SectionFormulaire
 	title="Modalités de paiement"
 	description="Moment du paiement, délai de règlement, et abonnement récurrent optionnel."
 	collapsible
@@ -207,4 +207,4 @@
 			</div>
 		{/if}
 	</div>
-</FormSection>
+</SectionFormulaire>

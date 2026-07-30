@@ -1,5 +1,5 @@
 <script lang="ts">
-	import FormSection from './FormSection.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
 
 	let {
 		dateSignature = $bindable(),
@@ -29,7 +29,7 @@
 		'Signataire à définir'}
 {/snippet}
 
-<FormSection title="Signature" collapsible defaultOpen={false} {summary}>
+<SectionFormulaire title="Signature" collapsible defaultOpen={false} {summary}>
 	<div class="grid gap-5 sm:grid-cols-2">
 		<div>
 			<label class="field-label" for="lieu-signature">Lieu</label>
@@ -58,4 +58,4 @@
 			/>
 		</div>
 	</div>
-</FormSection>
+</SectionFormulaire>

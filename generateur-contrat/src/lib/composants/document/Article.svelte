@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { SectionDocument } from '$document/sections';
-	import DocumentEcheancier from './DocumentEcheancier.svelte';
-	import DocumentHonoraires from './DocumentHonoraires.svelte';
-	import DocumentPortee from './DocumentPortee.svelte';
+	import Echeancier from './Echeancier.svelte';
+	import Honoraires from './Honoraires.svelte';
+	import Portee from './Portee.svelte';
 
 	let { section }: { section: SectionDocument } = $props();
 </script>
@@ -33,10 +33,10 @@
 			{/if}
 		{/each}
 	{:else if section.contenu.kind === 'portee'}
-		<DocumentPortee contenu={section.contenu} numero={section.numero} />
+		<Portee contenu={section.contenu} numero={section.numero} />
 	{:else if section.contenu.kind === 'honoraires'}
-		<DocumentHonoraires contenu={section.contenu} />
+		<Honoraires contenu={section.contenu} />
 	{:else}
-		<DocumentEcheancier contenu={section.contenu} />
+		<Echeancier contenu={section.contenu} />
 	{/if}
 </section>

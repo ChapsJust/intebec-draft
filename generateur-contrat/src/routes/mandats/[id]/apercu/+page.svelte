@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
-	import DocumentView from '$lib/components/DocumentView.svelte';
-	import DiffRedaction from '$lib/components/DiffRedaction.svelte';
-	import Icon from '$lib/components/Icon.svelte';
-	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import Rendu from '$composants/document/Rendu.svelte';
+	import RevueRedaction from '$composants/ia/RevueRedaction.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
+	import EtiquetteStatut from '$composants/ui/EtiquetteStatut.svelte';
 	import { formatDateLongue } from '$document/format';
 	import { identiteIncomplete } from '$domaine/config';
 
@@ -44,7 +44,7 @@
 			>
 				← Modifier le mandat
 			</a>
-			<StatusBadge status={mandat.statut} />
+			<EtiquetteStatut status={mandat.statut} />
 		</div>
 		<div class="flex flex-wrap gap-3">
 			<form
@@ -64,7 +64,7 @@
 					disabled={redactionEnCours}
 					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted disabled:opacity-60"
 				>
-					<Icon name="sparkles" size={16} />
+					<Icone name="sparkles" size={16} />
 					{redactionEnCours
 						? 'Rédaction en cours…'
 						: redaction
@@ -96,7 +96,7 @@
 					type="submit"
 					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 				>
-					<Icon name={mandat.statut === 'envoye' ? 'archive-restore' : 'send'} size={16} />
+					<Icone name={mandat.statut === 'envoye' ? 'archive-restore' : 'send'} size={16} />
 					{mandat.statut === 'envoye' ? 'Marquer comme non envoyé' : 'Marquer comme envoyé'}
 				</button>
 			</form>
@@ -107,7 +107,7 @@
 				href="/mandats/{mandat.id}/pdf"
 				class="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600"
 			>
-				<Icon name="download" size={16} />
+				<Icone name="download" size={16} />
 				Télécharger le PDF
 			</a>
 		</div>
@@ -117,7 +117,7 @@
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-card border border-accent-400/30 bg-accent-500/5 p-3 text-sm text-ink-muted print:hidden"
 		>
-			<Icon name="sparkles" size={16} />
+			<Icone name="sparkles" size={16} />
 			<span>
 				L’IA locale rédige le document. Cela prend de quelques secondes à quelques minutes selon que
 				le modèle doit être rechargé en mémoire. Le mandat est déjà enregistré : vous pouvez quitter
@@ -154,7 +154,7 @@
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"
 		>
-			<Icon name="sparkles" size={16} />
+			<Icone name="sparkles" size={16} />
 			<span>
 				Votre saisie a changé depuis cette rédaction : la prose affichée décrit la version
 				précédente du mandat. Relancez la rédaction pour la mettre à jour, ou revenez à votre
@@ -165,7 +165,7 @@
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-card border border-accent-400/30 bg-accent-500/5 p-3 text-sm text-ink-muted print:hidden"
 		>
-			<Icon name="sparkles" size={16} />
+			<Icone name="sparkles" size={16} />
 			<span>
 				La prose affichée a été rédigée par l’IA locale ({redaction.modele}) le
 				{formatDateLongue(redaction.genereLe)}. Les montants, dates et clauses restent ceux de votre
@@ -173,12 +173,12 @@
 			</span>
 		</div>
 
-		<DiffRedaction brouillon={mandat.brouillon} {redaction} />
+		<RevueRedaction brouillon={mandat.brouillon} {redaction} />
 	{/if}
 
 	<div
 		class="overflow-hidden rounded-card border border-border-subtle shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
 	>
-		<DocumentView brouillon={mandat.brouillon} {redaction} />
+		<Rendu brouillon={mandat.brouillon} {redaction} />
 	</div>
 </div>

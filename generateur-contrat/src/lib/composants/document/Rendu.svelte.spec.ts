@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import DocumentView from './DocumentView.svelte';
+import Rendu from './Rendu.svelte';
 import { nouveauMandat, nouvelleLigne } from '$domaine/fabriques';
 import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 
@@ -33,9 +33,9 @@ function mandatComplet(): BrouillonMandat {
 	return brouillon;
 }
 
-describe('DocumentView', () => {
+describe('Rendu', () => {
 	it('rend l’en-tête, les parties et leurs désignations', async () => {
-		const page = render(DocumentView, { brouillon: mandatComplet() });
+		const page = render(Rendu, { brouillon: mandatComplet() });
 
 		// `.first()` : la mention revient dans le bloc-marque du pied de document.
 		await expect.element(page.getByText('Contrat de services').first()).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('DocumentView', () => {
 	});
 
 	it('numérote les articles et rend la portée', async () => {
-		const page = render(DocumentView, { brouillon: mandatComplet() });
+		const page = render(Rendu, { brouillon: mandatComplet() });
 
 		await expect
 			.element(page.getByRole('heading', { name: /Objet du mandat/ }))
@@ -68,7 +68,7 @@ describe('DocumentView', () => {
 	});
 
 	it('rend le tableau des honoraires avec sous-total, rabais et total', async () => {
-		const page = render(DocumentView, { brouillon: mandatComplet() });
+		const page = render(Rendu, { brouillon: mandatComplet() });
 
 		await expect
 			.element(page.getByRole('columnheader', { name: 'Désignation' }))
@@ -81,7 +81,7 @@ describe('DocumentView', () => {
 	});
 
 	it('rend l’échéancier et les blocs de signature', async () => {
-		const page = render(DocumentView, { brouillon: mandatComplet() });
+		const page = render(Rendu, { brouillon: mandatComplet() });
 
 		await expect.element(page.getByRole('columnheader', { name: 'Échéance' })).toBeInTheDocument();
 		await expect.element(page.getByText(/Acompte/)).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe('DocumentView', () => {
 	});
 
 	it('rend les dispositions particulières quand elles sont saisies', async () => {
-		const page = render(DocumentView, { brouillon: mandatComplet() });
+		const page = render(Rendu, { brouillon: mandatComplet() });
 		await expect.element(page.getByText('Une disposition particulière.')).toBeInTheDocument();
 	});
 
@@ -105,7 +105,7 @@ describe('DocumentView', () => {
 			modele: 'gemma4:latest'
 		};
 
-		const page = render(DocumentView, { brouillon, redaction });
+		const page = render(Rendu, { brouillon, redaction });
 
 		await expect.element(page.getByText('Préambule rédigé par le modèle.')).toBeInTheDocument();
 		await expect.element(page.getByText('Description rédigée par le modèle.')).toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('DocumentView', () => {
 	it('applique le style du document, donc la feuille de styles est bien chargée', async () => {
 		// Garde-fou du découpage : si le CSS cessait de s'appliquer, le document resterait lisible
 		// mais perdrait toute sa mise en page, et aucune assertion de contenu ne le verrait.
-		const page = render(DocumentView, { brouillon: mandatComplet() });
+		const page = render(Rendu, { brouillon: mandatComplet() });
 
 		const article = page.getByRole('article');
 		await expect.element(article).toBeInTheDocument();

@@ -5,9 +5,9 @@
 	import { libelleLigne } from '$document/format';
 	import type { ErreurValidation } from '$domaine/validation';
 	import { erreurDuChamp } from '$domaine/validation';
-	import FormSection from './FormSection.svelte';
-	import Icon from './Icon.svelte';
-	import AiAssistButton from './AiAssistButton.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
+	import BoutonAssistance from '$composants/ia/BoutonAssistance.svelte';
 
 	let {
 		lignes = $bindable(),
@@ -58,7 +58,7 @@
 	];
 </script>
 
-<FormSection
+<SectionFormulaire
 	title="Portée et tarification"
 	description="Ajoutez une ligne par {lineLabel.toLowerCase()}. Le mode de tarification peut varier d'une ligne à l'autre."
 >
@@ -88,7 +88,7 @@
 							onclick={() => removeLigne(ligne.id)}
 							aria-label="Retirer cette ligne"
 						>
-							<Icon name="trash" size={18} />
+							<Icone name="trash" size={18} />
 						</button>
 					{/if}
 				</div>
@@ -102,7 +102,7 @@
 						bind:value={ligne.description}></textarea>
 					{#if onRediger}
 						<div class="mt-2">
-							<AiAssistButton
+							<BoutonAssistance
 								champ={ligne.id}
 								rediger={onRediger}
 								appliquer={(texte) => (ligne.description = texte)}
@@ -130,7 +130,7 @@
 										onclick={() => removeTexte(ligne, 'inclus', j)}
 										aria-label="Retirer"
 									>
-										<Icon name="close" size={16} />
+										<Icone name="close" size={16} />
 									</button>
 								</div>
 							{/each}
@@ -160,7 +160,7 @@
 										onclick={() => removeTexte(ligne, 'nonInclus', j)}
 										aria-label="Retirer"
 									>
-										<Icon name="close" size={16} />
+										<Icone name="close" size={16} />
 									</button>
 								</div>
 							{/each}
@@ -270,7 +270,7 @@
 										onclick={() => removeItem(ligne, item.id)}
 										aria-label="Retirer"
 									>
-										<Icon name="close" size={16} />
+										<Icone name="close" size={16} />
 									</button>
 								</div>
 							{/each}
@@ -311,11 +311,11 @@
 		class="inline-flex items-center gap-2 rounded-lg border border-dashed border-border-subtle px-4 py-2 text-sm font-medium text-ink-muted transition hover:border-accent-400 hover:text-accent-600"
 		onclick={addLigne}
 	>
-		<Icon name="plus" size={16} />
+		<Icone name="plus" size={16} />
 		Ajouter {structureProjet === 'phases'
 			? 'une phase'
 			: structureProjet === 'blocs'
 				? 'un bloc'
 				: 'un service'}
 	</button>
-</FormSection>
+</SectionFormulaire>

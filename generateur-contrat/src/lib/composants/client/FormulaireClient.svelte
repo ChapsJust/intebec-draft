@@ -3,8 +3,8 @@
 	import { nouveauClient, coordonneesDuClient } from '$domaine/fabriques';
 	import type { ErreurValidation } from '$domaine/validation';
 	import { erreurDuChamp } from '$domaine/validation';
-	import FormSection from './FormSection.svelte';
-	import ClientPicker from './ClientPicker.svelte';
+	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import SelecteurClient from './SelecteurClient.svelte';
 
 	let {
 		client = $bindable(),
@@ -53,9 +53,12 @@
 	}
 </script>
 
-<FormSection title="Client" description="Coordonnées de l'organisation et de son représentant.">
+<SectionFormulaire
+	title="Client"
+	description="Coordonnées de l'organisation et de son représentant."
+>
 	{#if mode === 'pick'}
-		<ClientPicker {clients} onselect={selectClient} onnew={startNewClient} />
+		<SelecteurClient {clients} onselect={selectClient} onnew={startNewClient} />
 	{:else}
 		{#if mode === 'view'}
 			<div
@@ -213,4 +216,4 @@
 			</div>
 		{/if}
 	{/if}
-</FormSection>
+</SectionFormulaire>

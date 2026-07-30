@@ -1,6 +1,6 @@
 <script lang="ts">
-	import HeroWelcome from '$lib/components/HeroWelcome.svelte';
-	import RecentDocuments from '$lib/components/RecentDocuments.svelte';
+	import BanniereAccueil from '$composants/app/BanniereAccueil.svelte';
+	import DocumentsRecents from '$composants/tableau-bord/DocumentsRecents.svelte';
 	import type { PageData } from './$types';
 	import type { ResumeDocument, MandatEnregistre } from '$domaine/types';
 
@@ -20,5 +20,5 @@
 	const archives = $derived(data.archives.map(resume));
 </script>
 
-<HeroWelcome />
-<RecentDocuments {documents} {archives} />
+<BanniereAccueil />
+<DocumentsRecents {documents} {archives} />

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
-	import ConfirmAction from '$lib/components/ConfirmAction.svelte';
-	import Icon from '$lib/components/Icon.svelte';
-	import MandatEditor from '$lib/components/MandatEditor.svelte';
+	import ConfirmationAction from '$composants/ui/ConfirmationAction.svelte';
+	import Icone from '$composants/ui/Icone.svelte';
+	import Editeur from '$composants/mandat/Editeur.svelte';
 	import type { BrouillonMandat } from '$domaine/types';
 
 	let { data }: { data: PageData } = $props();
@@ -41,7 +41,7 @@
 				Voir le document
 			</a>
 			{#if !data.mandat.archiveLe}
-				<ConfirmAction
+				<ConfirmationAction
 					action="?/archiver"
 					id={data.mandat.id}
 					ton="neutre"
@@ -51,11 +51,11 @@
 					confirmLabel="Archiver"
 					class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-muted"
 				>
-					<Icon name="archive" size={16} />
+					<Icone name="archive" size={16} />
 					Archiver
-				</ConfirmAction>
+				</ConfirmationAction>
 			{/if}
-			<ConfirmAction
+			<ConfirmationAction
 				action="?/supprimer"
 				id={data.mandat.id}
 				titre="Supprimer ce mandat ?"
@@ -64,9 +64,9 @@
 				confirmLabel="Supprimer définitivement"
 				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-ink-muted transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger"
 			>
-				<Icon name="trash" size={16} />
+				<Icone name="trash" size={16} />
 				Supprimer
-			</ConfirmAction>
+			</ConfirmationAction>
 		</div>
 	</div>
 
@@ -75,10 +75,10 @@
 			class="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border-subtle bg-surface px-4 py-3 text-sm text-ink-muted shadow-sm"
 		>
 			<span class="inline-flex items-center gap-2">
-				<Icon name="archive" size={16} />
+				<Icone name="archive" size={16} />
 				Ce mandat est archivé : il n'apparaît plus dans les listes courantes.
 			</span>
-			<ConfirmAction
+			<ConfirmationAction
 				action="?/desarchiver"
 				id={data.mandat.id}
 				ton="neutre"
@@ -87,13 +87,13 @@
 				confirmLabel="Désarchiver"
 				class="inline-flex items-center gap-2 rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-surface-muted"
 			>
-				<Icon name="archive-restore" size={16} />
+				<Icone name="archive-restore" size={16} />
 				Désarchiver
-			</ConfirmAction>
+			</ConfirmationAction>
 		</div>
 	{/if}
 
-	<MandatEditor
+	<Editeur
 		bind:brouillon
 		bind:clientId
 		bind:enregistrerNouveauClient

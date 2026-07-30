@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import Icon from './Icon.svelte';
+	import Icone from './Icone.svelte';
 
 	let {
 		title,
@@ -32,7 +32,7 @@
 				{#if summary}
 					<span class="hidden text-sm text-ink-muted sm:block">{@render summary()}</span>
 				{/if}
-				<Icon
+				<Icone
 					name="chevron-down"
 					size={18}
 					class="text-ink-muted transition group-open:rotate-180"

@@ -9,13 +9,13 @@
 		PropositionClause
 	} from '$domaine/types';
 	import { verifierMandat } from '$domaine/validation';
-	import MandatForm from './MandatForm.svelte';
-	import ClientForm from './ClientForm.svelte';
-	import ServiceLinesForm from './ServiceLinesForm.svelte';
-	import PricingTotals from './PricingTotals.svelte';
-	import PaymentTermsForm from './PaymentTermsForm.svelte';
-	import ClausesForm from './ClausesForm.svelte';
-	import SignatureForm from './SignatureForm.svelte';
+	import InfosGenerales from './InfosGenerales.svelte';
+	import FormulaireClient from '$composants/client/FormulaireClient.svelte';
+	import LignesService from './LignesService.svelte';
+	import Totaux from './Totaux.svelte';
+	import Paiement from './Paiement.svelte';
+	import Clauses from './Clauses.svelte';
+	import Signature from './Signature.svelte';
 
 	let {
 		brouillon = $bindable(),
@@ -189,7 +189,7 @@
 		</div>
 	{/if}
 
-	<MandatForm
+	<InfosGenerales
 		bind:type={brouillon.type}
 		bind:titre={brouillon.titre}
 		bind:structureProjet={brouillon.structureProjet}
@@ -198,7 +198,7 @@
 		onRediger={proposerTexte}
 	/>
 
-	<ClientForm
+	<FormulaireClient
 		bind:client={brouillon.client}
 		bind:clientId
 		bind:enregistrerNouveauClient
@@ -210,33 +210,33 @@
 		<p class="-mt-4 text-sm text-success">{messageMajClient}</p>
 	{/if}
 
-	<ServiceLinesForm
+	<LignesService
 		bind:lignes={brouillon.lignes}
 		structureProjet={brouillon.structureProjet}
 		erreurs={erreursVisibles}
 		onRediger={proposerTexte}
 	/>
 
-	<PricingTotals
+	<Totaux
 		lignes={brouillon.lignes}
 		bind:rabaisPct={brouillon.conditions.rabaisPct}
 		bind:rabaisMotif={brouillon.conditions.rabaisMotif}
 	/>
 
-	<PaymentTermsForm
+	<Paiement
 		bind:modalitesPaiement={brouillon.modalitesPaiement}
 		bind:abonnement={brouillon.abonnement}
 		enErreur={erreurPaiement}
 	/>
 
-	<ClausesForm
+	<Clauses
 		bind:conditions={brouillon.conditions}
 		{clausesBibliotheque}
 		onAuditer={auditerClauses}
 		onRetenirProposition={retenirProposition}
 	/>
 
-	<SignatureForm
+	<Signature
 		bind:dateSignature={brouillon.dateSignature}
 		bind:lieuSignature={brouillon.lieuSignature}
 		bind:representantIntebecNom={brouillon.representantIntebecNom}

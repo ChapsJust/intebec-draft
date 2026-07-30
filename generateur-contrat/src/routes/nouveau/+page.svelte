@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
 	import { nouveauMandat } from '$domaine/fabriques';
-	import MandatEditor from '$lib/components/MandatEditor.svelte';
+	import Editeur from '$composants/mandat/Editeur.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -26,7 +26,7 @@
 		</a>
 	</div>
 
-	<MandatEditor
+	<Editeur
 		bind:brouillon
 		bind:clientId
 		bind:enregistrerNouveauClient

@@ -6,9 +6,9 @@
 	// Mise en page du document. Sortie du composant pour que les sous-composants ci-dessous la
 	// partagent : la portée automatique de Svelte s'arrêterait à la frontière de chacun.
 	import './document.css';
-	import DocumentArticle from './DocumentArticle.svelte';
-	import DocumentParties from './DocumentParties.svelte';
-	import DocumentSignatures from './DocumentSignatures.svelte';
+	import Article from './Article.svelte';
+	import Parties from './Parties.svelte';
+	import Signatures from './Signatures.svelte';
 
 	let {
 		brouillon,
@@ -30,13 +30,13 @@
 		</p>
 	</header>
 
-	<DocumentParties parties={doc.parties} attendu={doc.attendu} />
+	<Parties parties={doc.parties} attendu={doc.attendu} />
 
 	{#each doc.sections as section (section.numero)}
-		<DocumentArticle {section} />
+		<Article {section} />
 	{/each}
 
-	<DocumentSignatures signatures={doc.signatures} enFoiDeQuoi={doc.enFoiDeQuoi} />
+	<Signatures signatures={doc.signatures} enFoiDeQuoi={doc.enFoiDeQuoi} />
 
 	<!-- Bloc-marque fermant le document, rendu une seule fois. Le bandeau répété à chaque page,
 		avec la numérotation « Page X sur Y », est produit par Chromium dans la marge lors de la

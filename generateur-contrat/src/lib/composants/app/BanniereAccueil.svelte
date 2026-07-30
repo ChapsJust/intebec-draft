@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ActionCard from './ActionCard.svelte';
+	import CarteAction from '$composants/ui/CarteAction.svelte';
 	import { APP_TAGLINE } from '$domaine/config';
 </script>
 
@@ -10,7 +10,7 @@
 	<p class="mt-2 max-w-2xl text-ink-muted">{APP_TAGLINE}</p>
 
 	<div class="mt-6">
-		<ActionCard
+		<CarteAction
 			href="/nouveau"
 			icon="sparkles"
 			title="Nouveau document"
