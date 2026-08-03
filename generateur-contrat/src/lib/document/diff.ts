@@ -73,17 +73,42 @@ function pointTrompeur(phrase: string): boolean {
 	return finitParAbreviation(phrase) || initialeIsolee.test(phrase);
 }
 
-/** Découpe la prose en phrases.
+/** Préfixe qui marque une phrase ouvrant un paragraphe : le « record separator » ASCII, absent de
+ * toute saisie. Sans lui, refuser un passage aplatissait le champ en un bloc, le découpage en phrases
+ * ayant perdu les sauts de ligne. Il ne sort jamais du module.
+ *
+ * Construit par `fromCharCode` : un octet de contrôle écrit tel quel rendrait le fichier binaire pour
+ * l'outillage. Même raison que `SEPARATEUR_EMPREINTE`. */
+const MARQUE_PARAGRAPHE = String.fromCharCode(30);
+
+/** Une phrase telle qu'on la montre, sans la marque interne. */
+function sansMarque(phrase: string): string {
+	return phrase.startsWith(MARQUE_PARAGRAPHE) ? phrase.slice(1) : phrase;
+}
+
+/** Recolle des phrases en rétablissant les paragraphes que leurs marques signalent. */
+function recoller(phrases: string[]): string {
+	let texte = '';
+	for (const phrase of phrases) {
+		if (!texte) texte = sansMarque(phrase);
+		else if (phrase.startsWith(MARQUE_PARAGRAPHE)) texte += '\n\n' + sansMarque(phrase);
+		else texte += ` ${phrase}`;
+	}
+	return texte;
+}
+
+/** Découpe la prose en phrases, la première de chaque paragraphe portant `MARQUE_PARAGRAPHE`.
  *
  * Le deux-points ne coupe pas : `nettoyerProse` en fabrique à partir des tirets cadratins du modèle,
  * et couper dessus donnerait des demi-phrases impossibles à refuser seules. Le saut de paragraphe,
  * lui, coupe toujours. */
-export function decouperPhrases(texte: string): string[] {
+function decouperPhrasesMarquees(texte: string): string[] {
 	const phrases: string[] = [];
 
 	for (const paragraphe of texte.split(/\n{2,}/)) {
 		const contenu = paragraphe.trim();
 		if (!contenu) continue;
+		const debutParagraphe = phrases.length;
 
 		// Le séparateur ne consomme pas la ponctuation, pour pouvoir recoller ensuite.
 		const candidats = contenu.split(/(?<=[.!?…])\s+/);
@@ -99,9 +124,20 @@ export function decouperPhrases(texte: string): string[] {
 
 		// Un paragraphe peut finir sans ponctuation.
 		if (courante.trim()) phrases.push(courante.trim());
+
+		// Marquer le tout premier paragraphe n'aurait pas de sens : la marque rouvre un paragraphe,
+		// elle n'en ouvre pas un avant le début du texte.
+		if (debutParagraphe > 0 && phrases.length > debutParagraphe) {
+			phrases[debutParagraphe] = MARQUE_PARAGRAPHE + phrases[debutParagraphe];
+		}
 	}
 
 	return phrases;
+}
+
+/** Découpe la prose en phrases. */
+export function decouperPhrases(texte: string): string[] {
+	return decouperPhrasesMarquees(texte).map(sansMarque);
 }
 
 /** Découpe en mots, espaces compris, pour que la concaténation redonne le texte exact. La ponctuation
@@ -173,7 +209,7 @@ const ACCENTS_DETACHES = /[̀-ͯ]/g;
 /** Clé de comparaison : casse, accents et espaces ignorés. Sans ça, une phrase réespacée par le
  * modèle passait pour réécrite et le diff signalait des changements invisibles à l'œil. */
 function clePhrase(phrase: string): string {
-	return phrase
+	return sansMarque(phrase)
 		.normalize('NFD')
 		.replace(ACCENTS_DETACHES, '')
 		.toLowerCase()
@@ -183,8 +219,8 @@ function clePhrase(phrase: string): string {
 
 /** Aligne les phrases des deux textes en segments communs et modifiés. */
 function aligner(avant: string, apres: string): Segment[] {
-	const phrasesAvant = decouperPhrases(avant);
-	const phrasesApres = decouperPhrases(apres);
+	const phrasesAvant = decouperPhrasesMarquees(avant);
+	const phrasesApres = decouperPhrasesMarquees(apres);
 	const communes = sousSequenceCommune(
 		phrasesAvant,
 		phrasesApres,
@@ -231,8 +267,8 @@ export function comparerPassages(avant: string, apres: string): Passage[] {
 	const passages: Passage[] = [];
 	for (const segment of aligner(avant.trim(), propose)) {
 		if (segment.kind !== 'change') continue;
-		const morceauAvant = segment.avant.join(' ').trim();
-		const morceauApres = segment.apres.join(' ').trim();
+		const morceauAvant = recoller(segment.avant).trim();
+		const morceauApres = recoller(segment.apres).trim();
 		passages.push({
 			index: passages.length,
 			avant: morceauAvant,
@@ -311,9 +347,7 @@ export function texteEffectif(
 		numeroPassage++;
 	}
 
-	return phrasesRetenues
-		.filter(Boolean)
-		.join(' ')
+	return recoller(phrasesRetenues.filter(Boolean))
 		.replace(/[ \t]+/g, ' ')
 		.trim();
 }

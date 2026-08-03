@@ -49,12 +49,6 @@ export async function listerClausesBibliotheque(options?: {
 	return rows.map(versEnregistrement);
 }
 
-export async function obtenirClauseBibliotheque(id: string): Promise<ClauseBibliotheque | null> {
-	if (!estUuid(id)) return null;
-	const [row] = await db.select().from(clauseBibliotheque).where(eq(clauseBibliotheque.id, id));
-	return row ? versEnregistrement(row) : null;
-}
-
 /** `origine` est la seule trace qu'un texte vient du modèle, et mérite donc une relecture juridique
  * avant d'être envoyé à un client. */
 export async function creerClauseBibliotheque(data: {

@@ -13,7 +13,8 @@
 		erreurNom,
 		erreurMontant,
 		onSupprimer,
-		onRediger
+		onRediger,
+		onProposerElements
 	}: {
 		ligne: LigneService;
 		/** Rang affiché, à partir de 1. */
@@ -25,7 +26,9 @@
 		erreurNom?: string;
 		erreurMontant?: string;
 		onSupprimer: () => void;
+		/** Absents tant que l'IA n'est pas configurée. */
 		onRediger?: (champ: string) => Promise<string>;
+		onProposerElements?: (ligneId: string, liste: 'inclus' | 'nonInclus') => Promise<string[]>;
 	} = $props();
 </script>
 
@@ -80,12 +83,14 @@
 			titre="Inclus"
 			placeholder="Ex. Sauvegarde automatique"
 			libelleAjout="+ Ajouter un élément inclus"
+			onProposer={onProposerElements && (() => onProposerElements(ligne.id, 'inclus'))}
 		/>
 		<ListeTextes
 			bind:valeurs={ligne.nonInclus}
 			titre="Non inclus (optionnel)"
 			placeholder="Ex. Rédaction des textes"
 			libelleAjout="+ Ajouter une exclusion"
+			onProposer={onProposerElements && (() => onProposerElements(ligne.id, 'nonInclus'))}
 		/>
 	</div>
 

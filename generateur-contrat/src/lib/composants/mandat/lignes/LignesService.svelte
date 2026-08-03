@@ -12,12 +12,14 @@
 		lignes = $bindable(),
 		structureProjet,
 		erreurs = [],
-		onRediger
+		onRediger,
+		onProposerElements
 	}: {
 		lignes: LigneService[];
 		structureProjet: StructureProjet;
 		erreurs?: ErreurValidation[];
 		onRediger?: (champ: string) => Promise<string>;
+		onProposerElements?: (ligneId: string, liste: 'inclus' | 'nonInclus') => Promise<string[]>;
 	} = $props();
 
 	// Même source que le document généré, pour que le vocabulaire ne diverge jamais entre la
@@ -53,6 +55,7 @@
 				erreurMontant={erreurDuChamp(erreurs, `lignes.${i}.montant`)}
 				onSupprimer={() => retirer(ligne.id)}
 				{onRediger}
+				{onProposerElements}
 			/>
 		{/each}
 	</div>

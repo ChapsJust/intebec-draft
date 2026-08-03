@@ -36,6 +36,32 @@ export interface AuditClauses {
 	modele: string;
 }
 
+/** Ce qui cloche dans le fond du mandat, par ordre décroissant de gravité.
+ *
+ * `incoherence` : deux endroits du mandat se contredisent. `manque` : la portée annonce quelque chose
+ * dont aucune ligne ne parle. `imprecision` : un texte trop vague pour être opposable. */
+export type GraviteAlerte = 'incoherence' | 'manque' | 'imprecision';
+
+/** Un constat de la revue du mandat. L'IA signale, elle ne corrige pas : c'est l'utilisateur qui
+ * sait ce qu'il a voulu écrire. */
+export interface AlerteMandat {
+	gravite: GraviteAlerte;
+	/** Où regarder : `objet`, `portee`, `general`, ou un `LigneService.id`. */
+	cible: string;
+	/** Ce qui cloche, en une phrase. */
+	constat: string;
+	/** Ce qu'on pourrait faire. Jamais appliqué d'office. */
+	suggestion: string;
+}
+
+/** Revue du fond du mandat, par opposition à `AuditClauses` qui ne regarde que le volet contractuel.
+ * Comme l'audit, elle n'est persistée nulle part : relancer repart d'une page blanche. */
+export interface RevueMandat {
+	alertes: AlerteMandat[];
+	genereLe: string;
+	modele: string;
+}
+
 /** Prose produite par l'IA, stockée à côté du brouillon et jamais à sa place : la saisie reste
  * intacte et la rédaction est rejouable. */
 export interface RedactionIA {

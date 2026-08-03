@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import * as accueil from './+page.server';
+import * as clauses from './clauses/+page.server';
 import * as clients from './clients/+page.server';
 import * as ficheClient from './clients/[id]/+page.server';
 import * as editeurMandat from './mandats/[id]/+page.server';
@@ -32,8 +33,10 @@ const ACTIONS_EDITEUR = [
 	'generer',
 	'modifierClient',
 	'auditerClauses',
+	'revoirMandat',
 	'retenirProposition',
-	'redigerChamp'
+	'redigerChamp',
+	'proposerPuces'
 ];
 
 const ROUTES: RouteTestee[] = [
@@ -51,6 +54,13 @@ const ROUTES: RouteTestee[] = [
 		chemin: '/clients',
 		module: clients,
 		actions: ['creer', 'archiver', 'desarchiver', 'supprimer']
+	},
+	{
+		chemin: '/clauses',
+		module: clauses,
+		// Pas de `supprimer` : une clause s'archive. Les mandats qui la citent en gardent une copie
+		// figée, donc la détruire n'affranchirait rien et ferait perdre l'historique.
+		actions: ['creer', 'modifier', 'archiver', 'desarchiver']
 	},
 	{
 		chemin: '/clients/[id]',

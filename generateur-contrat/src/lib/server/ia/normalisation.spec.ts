@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { normaliser, nettoyerProse, normaliserAudit, titreNormalise } from './normalisation';
+import {
+	listeDePuces,
+	normaliser,
+	nettoyerProse,
+	normaliserAudit,
+	normaliserRevue,
+	titreDeProjet,
+	titreNormalise
+} from './normalisation';
 import { nouveauMandat } from '$domaine/fabriques';
 import type { BrouillonMandat, ClauseBibliotheque } from '$domaine/types';
 
@@ -409,5 +417,177 @@ describe('titreNormalise', () => {
 
 	it('rend identiques deux écritures du même titre', () => {
 		expect(titreNormalise('Pénalité de retard')).toBe(titreNormalise('PENALITE DE RETARD'));
+	});
+});
+
+describe('normaliserRevue', () => {
+	function mandat(): BrouillonMandat {
+		const brouillon = nouveauMandat();
+		brouillon.lignes[0].nom = 'Développement';
+		return brouillon;
+	}
+
+	const alerte = (extra: Record<string, unknown> = {}) => ({
+		gravite: 'incoherence',
+		cible: 'objet',
+		constat: 'Le mandat annonce une migration que rien ne couvre.',
+		suggestion: 'Ajouter une phase, ou retirer la mention.',
+		...extra
+	});
+
+	it('garde une alerte bien formée', () => {
+		const revue = normaliserRevue({ alertes: [alerte()] }, mandat());
+		expect(revue.alertes).toHaveLength(1);
+		expect(revue.alertes[0].gravite).toBe('incoherence');
+		expect(revue.alertes[0].cible).toBe('objet');
+	});
+
+	it('accepte l’identifiant d’une ligne réelle comme cible', () => {
+		const brouillon = mandat();
+		const id = brouillon.lignes[0].id;
+		const revue = normaliserRevue({ alertes: [alerte({ cible: id })] }, brouillon);
+		expect(revue.alertes[0].cible).toBe(id);
+	});
+
+	it('écarte une cible que le modèle a inventée', () => {
+		// Le cas le plus courant : le modèle renvoie « phase 2 » ou un UUID de son cru.
+		expect(normaliserRevue({ alertes: [alerte({ cible: 'phase 2' })] }, mandat()).alertes).toEqual(
+			[]
+		);
+	});
+
+	it('écarte une gravité hors du vocabulaire', () => {
+		expect(normaliserRevue({ alertes: [alerte({ gravite: 'grave' })] }, mandat()).alertes).toEqual(
+			[]
+		);
+	});
+
+	it('écarte une alerte sans constat', () => {
+		expect(normaliserRevue({ alertes: [alerte({ constat: '  ' })] }, mandat()).alertes).toEqual([]);
+	});
+
+	it('dédoublonne le même constat répété sous deux formulations', () => {
+		const revue = normaliserRevue(
+			{
+				alertes: [
+					alerte(),
+					alerte({ constat: 'LE MANDAT ANNONCE UNE MIGRATION QUE RIEN NE COUVRE.' })
+				]
+			},
+			mandat()
+		);
+		expect(revue.alertes).toHaveLength(1);
+	});
+
+	it('trie par gravité : une incohérence ne doit pas être enterrée', () => {
+		const revue = normaliserRevue(
+			{
+				alertes: [
+					alerte({ gravite: 'imprecision', constat: 'Trop vague.' }),
+					alerte({ gravite: 'manque', constat: 'Non couvert.' }),
+					alerte({ gravite: 'incoherence', constat: 'Se contredit.' })
+				]
+			},
+			mandat()
+		);
+		expect(revue.alertes.map((a) => a.gravite)).toEqual(['incoherence', 'manque', 'imprecision']);
+	});
+
+	it('plafonne à six alertes', () => {
+		const alertes = Array.from({ length: 12 }, (_, i) => alerte({ constat: `Problème ${i}.` }));
+		expect(normaliserRevue({ alertes }, mandat()).alertes).toHaveLength(6);
+	});
+
+	it('rend une revue vide plutôt que d’échouer sur une réponse mal formée', () => {
+		expect(normaliserRevue(null, mandat()).alertes).toEqual([]);
+		expect(normaliserRevue({ alertes: 'aucune' }, mandat()).alertes).toEqual([]);
+		expect(normaliserRevue({ alertes: [null, 42] }, mandat()).alertes).toEqual([]);
+	});
+});
+
+describe('titreDeProjet', () => {
+	it('garde un titre déjà propre', () => {
+		expect(titreDeProjet('Refonte du site vitrine')).toBe('Refonte du site vitrine');
+	});
+
+	it('retire les guillemets dont le modèle encadre sa réponse', () => {
+		expect(titreDeProjet('« Refonte du site vitrine »')).toBe('Refonte du site vitrine');
+		expect(titreDeProjet('"Refonte du site vitrine"')).toBe('Refonte du site vitrine');
+	});
+
+	it('retire la ponctuation finale : un titre n’est pas une phrase', () => {
+		expect(titreDeProjet('Refonte du site vitrine.')).toBe('Refonte du site vitrine');
+	});
+
+	it('ne garde que la première ligne quand le modèle en propose plusieurs', () => {
+		expect(titreDeProjet('Refonte du site vitrine\nModernisation numérique')).toBe(
+			'Refonte du site vitrine'
+		);
+	});
+
+	it('retire l’étiquette dont le modèle préfixe sa réponse', () => {
+		expect(titreDeProjet('Titre : Refonte du site vitrine')).toBe('Refonte du site vitrine');
+	});
+
+	it('refuse une phrase qui présente le document au lieu de le nommer', () => {
+		// Le cas observé en vrai : le modèle répondait un début de préambule, que la troncature
+		// coupait au milieu d'un mot. Une chaîne vide vaut mieux, `redigerChamp` la signale.
+		expect(
+			titreDeProjet(
+				"Ce contrat de services concerne la refonte complète d'une application existante développée par Elitas Visuals Inc., pour"
+			)
+		).toBe('');
+		expect(titreDeProjet('Le présent document décrit la refonte du site')).toBe('');
+	});
+
+	it('plafonne en mots, jamais au milieu d’un mot', () => {
+		const bavard = 'Refonte complète de la plateforme de réservation en ligne pour les partenaires';
+		expect(titreDeProjet(bavard).split(' ')).toHaveLength(10);
+		expect(bavard).toContain(titreDeProjet(bavard));
+	});
+
+	it('rend une chaîne vide sur une réponse inexploitable', () => {
+		expect(titreDeProjet(null)).toBe('');
+		expect(titreDeProjet(42)).toBe('');
+		expect(titreDeProjet('   ')).toBe('');
+	});
+});
+
+describe('listeDePuces', () => {
+	it('garde les éléments proposés, dans l’ordre', () => {
+		expect(listeDePuces({ items: ['Hébergement', 'Sauvegardes'] })).toEqual([
+			'Hébergement',
+			'Sauvegardes'
+		]);
+	});
+
+	it('écarte ce qui est déjà saisi, malgré la casse et les accents', () => {
+		// Le prompt montre au modèle ce qui est déjà là, mais la consigne ne se fait pas toujours obéir.
+		expect(listeDePuces({ items: ['hebergement', 'Support'] }, ['Hébergement'])).toEqual([
+			'Support'
+		]);
+	});
+
+	it('dédoublonne les propositions entre elles', () => {
+		expect(listeDePuces({ items: ['Support', 'support'] })).toEqual(['Support']);
+	});
+
+	it('retire la puce Markdown que le modèle laisse traîner', () => {
+		expect(listeDePuces({ items: ['- Hébergement', '• Support'] })).toEqual([
+			'Hébergement',
+			'Support'
+		]);
+	});
+
+	it('plafonne à cinq éléments', () => {
+		const items = ['un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept'];
+		expect(listeDePuces({ items })).toHaveLength(5);
+	});
+
+	it('rend une liste vide plutôt que d’échouer sur une réponse mal formée', () => {
+		expect(listeDePuces(null)).toEqual([]);
+		expect(listeDePuces({})).toEqual([]);
+		expect(listeDePuces({ items: 'Hébergement' })).toEqual([]);
+		expect(listeDePuces({ items: [42, null, '', '   '] })).toEqual([]);
 	});
 });

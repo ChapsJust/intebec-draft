@@ -8,8 +8,10 @@ import { SoumissionInvalideError, lireMandat } from '$serveur/mandat/formulaire'
 import {
 	OllamaIndisponibleError,
 	auditerClauses,
+	proposerPuces,
 	redigerChamp,
 	redigerDocument,
+	revoirMandat,
 	type CibleChamp
 } from '$serveur/ia';
 import type { BrouillonMandat } from '$domaine/types';
@@ -17,6 +19,16 @@ import { ID_MANQUANT, INTROUVABLE, REQUETE_INVALIDE } from './messages';
 
 /** Même plafond que celui appliqué au brouillon : le titre d'une clause devient un titre d'article. */
 const MAX_TITRE_CLAUSE = 200;
+
+/** Les champs de prose se désignent par un mot-clé, les lignes par leur identifiant. Aucun conflit
+ * possible : un identifiant de ligne est un UUID. */
+function cibleDuChamp(champ: string): CibleChamp {
+	if (champ === 'titre') return { kind: 'titre' };
+	if (champ === 'objet') return { kind: 'objet' };
+	if (champ === 'couverture') return { kind: 'couverture' };
+	if (champ === 'notes') return { kind: 'notes' };
+	return { kind: 'ligne', id: champ };
+}
 
 /** Actions déclenchées depuis l'éditeur pendant la saisie. Aucune ne persiste le mandat : elles
  * renvoient une proposition que l'utilisateur applique ou non. */
@@ -39,6 +51,31 @@ export const actionsIaEditeur: Actions = {
 		try {
 			const bibliotheque = await listerClausesBibliotheque();
 			return { ok: true, audit: await auditerClauses(brouillon, bibliotheque), message: '' };
+		} catch (err) {
+			if (err instanceof OllamaIndisponibleError) {
+				return fail(503, { ok: false, message: err.message });
+			}
+			throw err;
+		}
+	},
+
+	/** Relit le fond du mandat et renvoie ce qui ne se tient pas. Ne persiste rien : l'utilisateur
+	 * corrige lui-même, l'IA n'ayant aucun moyen de savoir ce qu'il a voulu écrire. */
+	revoirMandat: async ({ request }) => {
+		const data = await request.formData();
+
+		let brouillon: BrouillonMandat;
+		try {
+			brouillon = lireMandat(data.get('payload'));
+		} catch (err) {
+			if (err instanceof SoumissionInvalideError) {
+				return fail(400, { ok: false, message: err.message });
+			}
+			throw err;
+		}
+
+		try {
+			return { ok: true, revue: await revoirMandat(brouillon), message: '' };
 		} catch (err) {
 			if (err instanceof OllamaIndisponibleError) {
 				return fail(503, { ok: false, message: err.message });
@@ -87,14 +124,47 @@ export const actionsIaEditeur: Actions = {
 			throw err;
 		}
 
-		const cible: CibleChamp = champ === 'objet' ? { kind: 'objet' } : { kind: 'ligne', id: champ };
-
 		try {
-			const texte = await redigerChamp(brouillon, cible);
+			const texte = await redigerChamp(brouillon, cibleDuChamp(champ));
 			return { ok: true, champ, texte, message: '' };
 		} catch (err) {
 			if (err instanceof OllamaIndisponibleError) {
 				return fail(503, { ok: false, champ, message: err.message });
+			}
+			throw err;
+		}
+	},
+
+	/** Complète une liste d'inclus ou d'exclusions. Renvoie des éléments à cocher, pas un texte : la
+	 * décision reste puce par puce. */
+	proposerPuces: async ({ request }) => {
+		const data = await request.formData();
+		const champ = data.get('champ');
+		const liste = data.get('liste');
+
+		if (typeof champ !== 'string' || !champ) {
+			return fail(400, { ok: false, champ: '', items: [], message: REQUETE_INVALIDE });
+		}
+		if (liste !== 'inclus' && liste !== 'nonInclus') {
+			return fail(400, { ok: false, champ, items: [], message: REQUETE_INVALIDE });
+		}
+
+		let brouillon: BrouillonMandat;
+		try {
+			brouillon = lireMandat(data.get('payload'));
+		} catch (err) {
+			if (err instanceof SoumissionInvalideError) {
+				return fail(400, { ok: false, champ, items: [], message: err.message });
+			}
+			throw err;
+		}
+
+		try {
+			const items = await proposerPuces(brouillon, { kind: liste, id: champ });
+			return { ok: true, champ, items, message: '' };
+		} catch (err) {
+			if (err instanceof OllamaIndisponibleError) {
+				return fail(503, { ok: false, champ, items: [], message: err.message });
 			}
 			throw err;
 		}

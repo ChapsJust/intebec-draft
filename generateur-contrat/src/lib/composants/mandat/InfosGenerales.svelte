@@ -107,6 +107,18 @@
 		{#if erreurDuChamp(erreurs, 'titre')}
 			<p class="mt-1 text-xs text-warning">{erreurDuChamp(erreurs, 'titre')}</p>
 		{/if}
+		<!-- Le titre est le champ le plus court du formulaire, et souvent le dernier à venir : l'IA le
+			déduit de la portée déjà saisie plutôt que d'attendre l'inspiration. -->
+		{#if onRediger}
+			<div class="mt-2">
+				<BoutonAssistance
+					champ="titre"
+					rediger={onRediger}
+					appliquer={(texte) => (titre = texte)}
+					label="Proposer un titre"
+				/>
+			</div>
+		{/if}
 	</div>
 
 	<div>

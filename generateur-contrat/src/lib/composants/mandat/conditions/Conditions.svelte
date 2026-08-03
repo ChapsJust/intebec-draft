@@ -7,6 +7,7 @@
 	} from '$domaine/types';
 	import { CLES_CLAUSES } from '$document/catalogue';
 	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import BoutonAssistance from '$composants/ia/BoutonAssistance.svelte';
 	import ChampsChiffres from './ChampsChiffres.svelte';
 	import Catalogue from './Catalogue.svelte';
 	import Personnalisees from './Personnalisees.svelte';
@@ -16,14 +17,16 @@
 		conditions = $bindable(),
 		clausesBibliotheque = [],
 		onAuditer,
-		onRetenirProposition
+		onRetenirProposition,
+		onRediger
 	}: {
 		conditions: ConditionsParticulieres;
 		/** Clauses hors catalogue déjà connues, réutilisables sur ce mandat. */
 		clausesBibliotheque?: ClauseBibliotheque[];
-		/** Absent tant que l'IA n'est pas configurée : le formulaire reste alors utilisable seul. */
+		/** Absents tant que l'IA n'est pas configurée : le formulaire reste alors utilisable seul. */
 		onAuditer?: () => Promise<AuditClauses>;
 		onRetenirProposition?: (proposition: PropositionClause) => Promise<ClauseBibliotheque>;
+		onRediger?: (champ: string) => Promise<string>;
 	} = $props();
 
 	const clausesActives = $derived(CLES_CLAUSES.filter((cle) => conditions.clauses[cle]).length);
@@ -65,5 +68,15 @@
 			rows="3"
 			bind:value={conditions.notesAdditionnelles}
 			placeholder="Toute clause spécifique à ce mandat…"></textarea>
+		{#if onRediger}
+			<div class="mt-2">
+				<BoutonAssistance
+					champ="notes"
+					rediger={onRediger}
+					appliquer={(texte) => (conditions.notesAdditionnelles = texte)}
+					label="Proposer à partir du mandat"
+				/>
+			</div>
+		{/if}
 	</div>
 </SectionFormulaire>

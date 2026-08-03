@@ -5,7 +5,8 @@ import type {
 	AuditClauses,
 	BrouillonMandat,
 	ClauseBibliotheque,
-	PropositionClause
+	PropositionClause,
+	RevueMandat
 } from '$domaine/types';
 import { messageDechec, posterAction } from './action-distante';
 
@@ -21,6 +22,18 @@ export async function auditerClauses(brouillon: BrouillonMandat): Promise<AuditC
 
 	if (result.type === 'success' && result.data?.audit) {
 		return result.data.audit as AuditClauses;
+	}
+	throw new Error(messageDechec(result, PAS_DE_REPONSE));
+}
+
+/** Fait relire le fond du mandat : contradictions, promesses non couvertes, textes trop vagues. */
+export async function revoirMandat(brouillon: BrouillonMandat): Promise<RevueMandat> {
+	const body = new FormData();
+	body.set('payload', JSON.stringify(brouillon));
+	const result = await posterAction('?/revoirMandat', body);
+
+	if (result.type === 'success' && result.data?.revue) {
+		return result.data.revue as RevueMandat;
 	}
 	throw new Error(messageDechec(result, PAS_DE_REPONSE));
 }
@@ -50,6 +63,25 @@ export async function proposerTexte(brouillon: BrouillonMandat, champ: string): 
 
 	if (result.type === 'success' && typeof result.data?.texte === 'string') {
 		return result.data.texte;
+	}
+	throw new Error(messageDechec(result, PAS_DE_REPONSE));
+}
+
+/** Demande des éléments à ajouter à une liste d'inclus ou d'exclusions. Un tableau vide est une
+ * réponse valable : le modèle n'a rien de pertinent à ajouter. */
+export async function proposerElements(
+	brouillon: BrouillonMandat,
+	ligneId: string,
+	liste: 'inclus' | 'nonInclus'
+): Promise<string[]> {
+	const body = new FormData();
+	body.set('payload', JSON.stringify(brouillon));
+	body.set('champ', ligneId);
+	body.set('liste', liste);
+	const result = await posterAction('?/proposerPuces', body);
+
+	if (result.type === 'success' && Array.isArray(result.data?.items)) {
+		return result.data.items as string[];
 	}
 	throw new Error(messageDechec(result, PAS_DE_REPONSE));
 }

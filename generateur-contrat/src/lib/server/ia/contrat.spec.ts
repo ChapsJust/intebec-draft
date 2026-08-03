@@ -12,13 +12,28 @@ import * as normalisation from './normalisation';
 
 /** Ce que les actions de formulaire appellent. Rien d'autre du dossier `ia/` ne doit être importé
  * depuis l'extérieur. */
-const API_PUBLIQUE = ['redigerDocument', 'auditerClauses', 'redigerChamp', 'modeleActif'];
+const API_PUBLIQUE = [
+	'redigerDocument',
+	'auditerClauses',
+	'revoirMandat',
+	'redigerChamp',
+	'proposerPuces',
+	'modeleActif'
+];
 
 /** Fonctions pures exposées uniquement pour être testées unitairement. Elles restent au contrat :
  * les deplacer sans deplacer leurs tests laisserait des trous silencieux. */
 const HELPERS = {
 	transport: ['analyserBlocSse', 'extraireJson'],
-	normalisation: ['nettoyerProse', 'normaliser', 'normaliserAudit', 'titreNormalise']
+	normalisation: [
+		'nettoyerProse',
+		'normaliser',
+		'normaliserAudit',
+		'normaliserRevue',
+		'listeDePuces',
+		'titreDeProjet',
+		'titreNormalise'
+	]
 };
 
 describe('surface publique du client IA', () => {

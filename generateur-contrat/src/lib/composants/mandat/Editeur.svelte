@@ -6,7 +6,8 @@
 		ClauseBibliotheque,
 		FicheClient,
 		BrouillonMandat,
-		PropositionClause
+		PropositionClause,
+		RevueMandat
 	} from '$domaine/types';
 	import { verifierMandat } from '$domaine/validation';
 	import { posterAction } from './action-distante';
@@ -18,6 +19,7 @@
 	import Paiement from './Paiement.svelte';
 	import Conditions from './conditions/Conditions.svelte';
 	import Signature from './Signature.svelte';
+	import RevueMandatPanneau from '$composants/ia/RevueMandat.svelte';
 
 	let {
 		brouillon = $bindable(),
@@ -79,7 +81,12 @@
 
 	const auditerClauses = (): Promise<AuditClauses> => ia.auditerClauses(brouillon);
 
+	const revoirMandat = (): Promise<RevueMandat> => ia.revoirMandat(brouillon);
+
 	const proposerTexte = (champ: string): Promise<string> => ia.proposerTexte(brouillon, champ);
+
+	const proposerElements = (ligneId: string, liste: 'inclus' | 'nonInclus'): Promise<string[]> =>
+		ia.proposerElements(brouillon, ligneId, liste);
 
 	/** La bibliothèque locale est complétée au passage : sans ça, la clause n'apparaîtrait dans
 	 * « Ajouter depuis la bibliothèque » qu'après un rechargement. */
@@ -144,6 +151,7 @@
 		structureProjet={brouillon.structureProjet}
 		erreurs={erreursVisibles}
 		onRediger={proposerTexte}
+		onProposerElements={proposerElements}
 	/>
 
 	<Totaux
@@ -156,6 +164,7 @@
 		bind:modalitesPaiement={brouillon.modalitesPaiement}
 		bind:abonnement={brouillon.abonnement}
 		enErreur={erreurPaiement}
+		onRediger={proposerTexte}
 	/>
 
 	<Conditions
@@ -163,6 +172,7 @@
 		{clausesBibliotheque}
 		onAuditer={auditerClauses}
 		onRetenirProposition={retenirProposition}
+		onRediger={proposerTexte}
 	/>
 
 	<Signature
@@ -171,6 +181,10 @@
 		bind:representantIntebecNom={brouillon.representantIntebecNom}
 		bind:representantIntebecTitre={brouillon.representantIntebecTitre}
 	/>
+
+	<!-- En dernier, juste avant « Générer » : la revue porte sur le mandat entier, elle n'a de sens
+		qu'une fois le formulaire rempli. -->
+	<RevueMandatPanneau {brouillon} onRevoir={revoirMandat} />
 
 	{#if generationTentee && erreurs.length > 0}
 		<div class="rounded-card border border-warning/30 bg-warning/5 p-4 text-sm text-warning">

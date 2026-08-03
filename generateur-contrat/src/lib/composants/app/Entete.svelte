@@ -26,6 +26,13 @@
 				<span class="hidden sm:inline">Clients</span>
 			</a>
 			<a
+				href="/clauses"
+				class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-surface-muted hover:text-ink"
+			>
+				<Icone name="contract" size={18} />
+				<span class="hidden sm:inline">Clauses</span>
+			</a>
+			<a
 				href="/aide"
 				class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-ink-muted transition hover:bg-surface-muted hover:text-ink"
 			>

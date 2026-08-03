@@ -15,7 +15,6 @@ import {
 	desarchiverMandat
 } from '$serveur/db/mandats';
 import { verifierMandat } from '$domaine/validation';
-import { empreinteProse } from '$document/empreinte';
 import { dupliquerMandat } from '$domaine/fabriques';
 import { SoumissionInvalideError, lireSoumissionMandat } from '$serveur/mandat/formulaire';
 import { idPoste } from '$serveur/formulaire';
@@ -90,13 +89,10 @@ export const actionsMandat: Actions = {
 		);
 		if (!record) return fail(404, { message: INTROUVABLE });
 
-		// On ne garde la rédaction que si l'empreinte prouve qu'elle correspond encore à la saisie.
-		// Régénérer un mandat inchangé conserve donc les passages déjà arbitrés ; une rédaction sans
-		// empreinte est antérieure au mécanisme, sa fraîcheur est indémontrable, on la refait.
-		const redactionAJour = record.redaction?.empreinte === empreinteProse(record.brouillon);
-		if (record.redaction && !redactionAJour) {
-			await enregistrerRedaction(record.id, null);
-		}
+		// « Générer » refait toujours la prose, même sur un mandat inchangé : c'est ce que le bouton
+		// annonce, et pour seulement relire le document il y a « Voir le document ». Les passages déjà
+		// arbitrés partent avec, leurs index ne désignant plus le même texte.
+		if (record.redaction) await enregistrerRedaction(record.id, null);
 
 		// La rédaction est déclenchée par l'aperçu, dans sa propre requête : jusqu'à quatre minutes,
 		// pendant lesquelles l'enregistrement du mandat ne doit pas rester suspendu.

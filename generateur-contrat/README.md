@@ -212,6 +212,7 @@ src/
     mandats/[id]/apercu/      # document mis en page à l'écran
     mandats/[id]/pdf/         # endpoint de téléchargement du PDF
     clients/                  # CRUD clients (liste, fiche, archivage)
+    clauses/                  # bibliothèque de clauses (liste, édition, archivage)
     aide/                     # mode d'emploi
     actions.spec.ts           # fige les clés d'actions de chaque route (voir plus bas)
   lib/
@@ -220,6 +221,7 @@ src/
       fabriques.ts            # objets vides : nouveauMandat, nouvelleLigne, dupliquerMandat
       montants.ts             # calculs monétaires : source de vérité unique
       validation.ts           # règles qui bloquent la génération, partagées client et serveur
+      coherence.ts            # incohérences qui ne bloquent pas, mais font un document bancal
       config.ts               # PRESTATAIRE : à renseigner avant le premier envoi client
       titres.ts               # normalisation des titres de clause, partagée avec le serveur
     document/                 # génération du document, sans DOM ni base
@@ -242,8 +244,35 @@ src/
       db/                     # schéma Drizzle et accès aux données
       mandat/formulaire.ts    # lecture et normalisation du mandat reçu du formulaire
       ia/                     # transport, invites, normalisation ; index.ts = API publique
-      actions/                # form actions : mandat.ts, ia.ts, client.ts
+      actions/                # form actions : mandat.ts, ia.ts, client.ts, clause.ts
 ```
+
+### Parcours de lecture
+
+L'arborescence dit **où** vivent les fichiers ; ce parcours dit **dans quel ordre** les lire. Un seul
+clic — « Générer le document » — traverse toutes les couches :
+
+| #   | Fichier                                            | Ce qui s'y passe                                           |
+| --- | -------------------------------------------------- | ---------------------------------------------------------- |
+| 1   | `composants/mandat/Editeur.svelte`                 | Le bouton. `verifierMandat` bloque côté client.            |
+| 2   | `server/actions/mandat.ts` → `generer`             | La form action.                                            |
+| 3   | `server/mandat/formulaire.ts` → `normaliserMandat` | **Frontière de confiance** : on repart d'un mandat vide.   |
+| 4   | `domaine/validation.ts` → `verifierMandat`         | Rejoué côté serveur : le client ne fait pas foi.           |
+| 5   | `server/db/mandats.ts` → `enregistrerMandat`       | En base, colonne `jsonb`.                                  |
+| 6   | `routes/mandats/[id]/apercu/`                      | Redirection. La rédaction part dans **sa propre requête**. |
+| 7   | `server/ia/invites.ts`                             | Le prompt. Aucun montant n'y figure.                       |
+| 8   | `server/ia/transport.ts`                           | L'aller-retour, en SSE.                                    |
+| 9   | `server/ia/normalisation.ts`                       | **Ce que l'application accepte** du modèle.                |
+| 10  | `document/sections.ts` → `construireDocument`      | Le modèle de vue. Aucun montant recalculé.                 |
+| 11  | `document/diff.ts` → `texteEffectif`               | Recompose saisie et prose selon les passages refusés.      |
+| 12  | `composants/document/Rendu.svelte`                 | L'affichage, puis `server/pdf.ts` pour le PDF.             |
+
+Deux invariants se lisent le long de ce chemin, et ce sont les seuls qu'il faut retenir :
+
+- **Ce qui entre est reconstruit, jamais recopié** (étape 3), et les règles qui bloquent sont
+  rejouées côté serveur (étape 4).
+- **L'IA n'écrit que de la prose.** Les montants ne lui sont pas transmis (7), ce qu'elle renvoie est
+  filtré (9), et les chiffres sont rendus par le gabarit (10).
 
 ### Où ranger un fichier
 
@@ -320,20 +349,85 @@ telles quelles pour que les mandats déjà enregistrés continuent de se relire.
 4. **Export PDF** : `Télécharger le PDF` produit le fichier côté serveur, avec la numérotation
    `Page X sur Y` et un nom de fichier dérivé du mandat. `Imprimer` reste disponible pour un tirage
    direct depuis le navigateur.
-5. **Rédaction assistée** (optionnelle) : `Étoffer avec l'IA` propose un texte pour un champ pendant
-   la saisie ; `Rédiger avec l'IA` refait la prose du document entier depuis l'aperçu. `Générer`
-   enchaîne sur cette passe automatiquement, mais dans une requête distincte : l'appel au modèle peut
-   durer quelques minutes, et l'enregistrement du mandat ne doit pas en dépendre.
-6. **Duplication** : repartir d'un mandat existant pour un client récurrent.
-7. **Suivi** : `Marquer comme envoyé` fait passer le document au statut `envoyé`, et l'opération se
+5. **Rédaction assistée** (optionnelle) : l'aide est offerte là où elle a du sens, sous la forme que
+   le champ appelle — un bouton uniforme sur chaque champ alourdirait le formulaire sans rien
+   apporter.
+
+   | Endroit                                  | Forme de l'aide                                             |
+   | ---------------------------------------- | ----------------------------------------------------------- |
+   | Titre du projet                          | `Proposer un titre` : déduit de la portée déjà saisie       |
+   | Objet du mandat, description d'une ligne | `Étoffer avec l'IA` : un paragraphe, à prendre ou à laisser |
+   | `Inclus` / `Non inclus` d'une ligne      | `Proposer avec l'IA` : des éléments à cocher un par un      |
+   | Couverture de l'abonnement               | `Déduire de la portée`                                      |
+   | Conditions additionnelles                | `Proposer à partir du mandat`                               |
+   | Fond du mandat                           | `Relire mon mandat` : ce qui se contredit ou manque         |
+   | Volet contractuel                        | `Vérifier les clauses` : la relecture complète              |
+   | Document entier, depuis l'aperçu         | `Rédiger avec l'IA`                                         |
+
+   **Chaque appel reçoit le mandat entier**, volet contractuel compris, jamais le seul champ visé :
+   une description de ligne tient donc compte du reste du projet. Rien n'est appliqué sans un geste.
+
+   `Générer` refait **toujours** la prose, y compris sur un mandat inchangé — c'est ce que le bouton
+   annonce, et pour seulement relire le document il y a `Voir le document`. La passe part dans une
+   requête distincte de l'enregistrement : elle peut durer quelques minutes, et le mandat ne doit pas
+   rester suspendu à sa durée.
+
+6. **Bibliothèque de clauses** : les clauses hors catalogue, réutilisables d'un mandat à l'autre.
+   Elles s'ajoutent à la main depuis `/clauses`, ou entrent d'elles-mêmes quand on accepte une
+   proposition de la relecture. Ce qu'un mandat retient en est une **copie figée** : corriger une
+   clause dans la bibliothèque ne réécrit aucun document déjà rédigé. Une clause s'archive plutôt que
+   de se supprimer.
+7. **Duplication** : repartir d'un mandat existant pour un client récurrent.
+8. **Suivi** : `Marquer comme envoyé` fait passer le document au statut `envoyé`, et l'opération se
    défait. Le statut est déclaratif : l'application n'envoie rien elle-même, elle note que vous
    l'avez fait.
 
 ### Ce que l'IA écrit, et ce qu'elle n'écrit pas
 
-L'IA ne produit que de la **prose** : préambule, objet du mandat, descriptions des lignes de service.
-Les montants, pourcentages, dates, échéanciers et textes de clauses sont calculés et rendus par
-l'application à partir de la saisie, et ne peuvent pas être modifiés par le modèle.
+L'IA ne produit que du **texte** : titre, préambule, objet, descriptions de lignes, puces incluses ou
+exclues, couverture d'abonnement, conditions additionnelles. Les montants, pourcentages, dates,
+durées et échéanciers sont calculés et rendus par l'application à partir de la saisie, et ne peuvent
+pas être modifiés par le modèle.
+
+### Ce que le code vérifie tout seul
+
+`domaine/coherence.ts` compare ce qui se compare, sans modèle : le même élément inclus quelque part
+et exclu ailleurs, un doublon dans une liste, deux lignes homonymes, un montant sans travail décrit,
+un abonnement dont on ne dit pas ce qu'il couvre, un rabais sans motif. C'est instantané, hors ligne,
+et **exhaustif sur ce qu'il couvre** — là où la relecture par l'IA trouve une contradiction sur deux.
+
+Ces avertissements s'affichent en continu pendant la saisie, sans clic, au-dessus des alertes de
+l'IA et sous une étiquette distincte. L'ordre n'est pas cosmétique : mélanger « prouvé » et
+« soupçonné » laisserait croire que les deux se valent.
+
+Le partage est là : **le code vérifie ce qui se prouve, l'IA garde ce qui demande du jugement.**
+Chaque règle déterministe ajoutée ici est une chose de moins à espérer du modèle.
+
+### Deux relectures, et ce qu'elles valent
+
+`Vérifier les clauses` regarde le **volet contractuel** : quelle protection manque, quelle condition
+est restée à zéro. `Relire mon mandat` regarde le **fond** : l'objet promet-il un travail qu'aucune
+ligne ne réalise, une même chose est-elle incluse ici et exclue là, une description resterait-elle
+ambiguë en cas de désaccord.
+
+Les deux **signalent sans corriger**. L'IA n'a aucun moyen de savoir ce que vous avez voulu écrire :
+elle pointe l'endroit, vous tranchez. Rien n'est persisté, relancer repart d'une page blanche.
+
+**Ce que la revue du fond attrape, et ce qu'elle rate.** Mesuré sur un mandat où une contradiction
+était plantée exprès — l'objet annonçait une migration de données que la seule phase excluait
+explicitement — le modèle actuel la repère **environ une fois sur deux**. Les autres fois, il signale
+des écarts réels mais différents. La revue est donc un filet, pas une garantie : elle trouve souvent
+quelque chose d'utile, jamais tout. Le test `en-direct.spec.ts` n'assure pour cette raison que la
+forme des alertes, avec le détail du raisonnement en commentaire.
+
+Un modèle plus gros via `AI_MODEL` améliorerait le taux. Rien dans le code ne peut le faire.
+
+### Ce que l'IA n'écrit pas
+
+L'invariant tient en trois points, vérifiables dans le code : les montants **ne sont pas transmis**
+au modèle (`server/ia/invites.ts`), ce qu'il renvoie est **filtré contre la structure attendue**
+(`server/ia/normalisation.ts`), et les chiffres sont **rendus par le gabarit** (`document/sections.ts`).
+L'IA ne crée jamais une ligne de service non plus : elle complète ce que vous avez commencé.
 
 La prose générée est stockée dans une colonne `redaction` distincte du brouillon : la saisie reste
 intacte, la rédaction est rejouable autant de fois que voulu, et `Revenir à ma saisie` la supprime.
@@ -347,6 +441,7 @@ npm run check        # svelte-check (types + a11y)
 npm run lint         # prettier --check
 npm run format       # prettier --write
 npm run test         # vitest : unitaires (node) + rendu du document (chromium)
+npm run test:ia      # joint vraiment le modèle ; lit .env, ne tourne pas sans passerelle
 npm run db:generate  # générer une migration après modification du schéma
 npm run db:migrate   # appliquer les migrations
 npm run db:studio    # explorateur de base de données
@@ -356,6 +451,30 @@ Les tests couvrent la génération du document (clauses, sections, formatage, mo
 la normalisation de ce qui entre en base, la lecture de l'identité Tailscale, et le rendu du document
 dans un vrai navigateur — dont une assertion sur le style calculé, pour qu'un découpage de composants ne puisse pas
 faire perdre la mise en page sans être vu.
+
+### Tester du code qui parle à une IA
+
+Un modèle ne rend jamais deux fois la même réponse : on ne peut pas assurer son contenu. Ce qu'on
+peut assurer, ce sont les trois choses autour, et le projet a un niveau de test pour chacune.
+
+| Ce qu'on vérifie                           | Où                      | Déterministe |
+| ------------------------------------------ | ----------------------- | ------------ |
+| Ce que l'application **accepte** du modèle | `normalisation.spec.ts` | oui          |
+| Ce que l'application **envoie** au modèle  | `appariement.spec.ts`   | oui          |
+| Ce que le modèle **renvoie vraiment**      | `en-direct.spec.ts`     | non          |
+
+`appariement.spec.ts` intercepte l'appel réseau et vérifie l'appariement entre une demande et ses
+consignes système. Il existe parce que la contradiction a eu lieu : un titre était demandé sous des
+consignes qui ordonnent « produis uniquement des paragraphes de texte courant », et le modèle,
+obéissant, renvoyait un début de préambule. Une chaîne de caractères contredisait une autre chaîne de
+caractères, et rien dans le typage ne pouvait le voir.
+
+`en-direct.spec.ts` est un **canari**, pas un test unitaire. Il ne tourne que si `AI_API_URL` et
+`AI_API_KEY` sont présentes, se déclare _skipped_ sinon, et n'assure que la **forme** de la réponse :
+un titre fait moins de dix mots et ne finit pas par un point, une puce ne contient pas de montant.
+Assurer les mots exacts le rendrait rouge une fois sur deux. Il attrape ce qu'aucun autre test ne
+voit : un modèle remplacé qui n'obéit plus, ou un prompt qu'on croit clair et que le modèle lit
+autrement.
 
 ## À venir
 
@@ -369,3 +488,5 @@ faire perdre la mise en page sans être vu.
 - Historique et versions des documents générés.
 - Pagination de l'accueil : la liste est bornée à huit documents par la requête, mais il n'existe pas
   encore d'écran « tous les mandats ».
+
+README Générer par l'ia en grande partie

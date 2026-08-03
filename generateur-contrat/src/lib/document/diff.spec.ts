@@ -213,6 +213,24 @@ describe('texteEffectif', () => {
 		expect(texteEffectif('', 'Paragraphe rédigé de toutes pièces.', [0])).toBe('');
 	});
 
+	it('rétablit les sauts de paragraphe malgré un refus', () => {
+		// Le découpage en phrases perd les `\n\n` : sans marque interne, refuser un seul passage
+		// aplatissait tout le champ en un bloc, y compris les paragraphes que l'IA n'avait pas touchés.
+		const avant = 'Premier saisi.\n\nSecond stable.';
+		const apres = 'Premier réécrit.\n\nSecond stable.';
+
+		expect(texteEffectif(avant, apres, [0])).toBe('Premier saisi.\n\nSecond stable.');
+		expect(texteEffectif(avant, apres, [])).toBe(apres);
+	});
+
+	it('rend un paragraphe ajouté par l’IA quand il est conservé', () => {
+		const avant = 'Un seul paragraphe.';
+		const apres = 'Un seul paragraphe.\n\nUn second, ajouté.';
+
+		expect(texteEffectif(avant, apres, [])).toBe(apres);
+		expect(texteEffectif(avant, apres, [0])).toBe(avant);
+	});
+
 	it('ignore un index hors bornes plutôt que d’empêcher l’affichage du document', () => {
 		// Le cas arrive si le brouillon est modifié après un refus : le découpage change sous les index
 		// déjà stockés. Retomber sur la prose de l'IA est préférable à une page en erreur.

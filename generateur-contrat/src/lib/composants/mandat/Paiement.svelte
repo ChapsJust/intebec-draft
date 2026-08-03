@@ -1,15 +1,20 @@
 <script lang="ts">
 	import type { ModalitesPaiement, AbonnementRecurrent } from '$domaine/types';
 	import SectionFormulaire from '$composants/ui/SectionFormulaire.svelte';
+	import BoutonAssistance from '$composants/ia/BoutonAssistance.svelte';
 
 	let {
 		modalitesPaiement = $bindable(),
 		abonnement = $bindable(),
-		enErreur = false
+		enErreur = false,
+		onRediger
 	}: {
 		modalitesPaiement: ModalitesPaiement;
 		abonnement: AbonnementRecurrent;
 		enErreur?: boolean;
+		/** Absent tant que l'IA n'est pas configurée. Ne sert qu'à la couverture de l'abonnement : les
+		 * pourcentages et les montants ne se devinent pas. */
+		onRediger?: (champ: string) => Promise<string>;
 	} = $props();
 
 	// Le solde complète toujours l'acompte à 100 % : un split incohérent ne doit pas être représentable.
@@ -191,6 +196,16 @@
 						bind:value={abonnement.couverture}
 						placeholder="Ex. Hébergement, maintenance, sauvegardes, support technique de base"
 					></textarea>
+					{#if onRediger}
+						<div class="mt-2">
+							<BoutonAssistance
+								champ="couverture"
+								rediger={onRediger}
+								appliquer={(texte) => (abonnement.couverture = texte)}
+								label="Déduire de la portée"
+							/>
+						</div>
+					{/if}
 				</div>
 				<div>
 					<label class="field-label" for="abo-periode-offerte"
