@@ -17,21 +17,17 @@ export interface SoumissionMandat {
 	enregistrerNouveauClient: boolean;
 }
 
-/** Erreur de forme d'une soumission de formulaire : le contenu reçu n'est pas exploitable.
- * Distincte d'une erreur inattendue, pour que les form actions puissent répondre 400 plutôt que
- * de laisser remonter une page 500. */
+/** Contenu reçu inexploitable. Distincte d'une erreur inattendue, pour répondre 400 plutôt que 500. */
 export class SoumissionInvalideError extends Error {}
 
-/** Plafonds sur les collections. Ils n'existent pas pour brider l'utilisateur — un mandat réel
- * compte quelques lignes — mais pour qu'une requête forgée ne puisse pas faire enregistrer un
- * document de plusieurs mégaoctets, ni rendre l'aperçu impossible à ouvrir ensuite. */
+/** Plafonds sur les collections : pas pour brider l'utilisateur, mais pour qu'une requête forgée ne
+ * fasse pas enregistrer un document de plusieurs mégaoctets. */
 const MAX_LIGNES = 60;
 const MAX_ITEMS = 60;
 const MAX_PUCES = 40;
 const MAX_TEXTE = 20_000;
 const MAX_CLAUSES = 20;
-/** Le titre d'une clause devient un titre d'article : au-delà, il déborde la mise en page du
- * document au lieu de la renseigner. */
+/** Le titre d'une clause devient un titre d'article : au-delà, il déborde la mise en page. */
 const MAX_TITRE = 200;
 
 function texte(valeur: unknown, defaut = ''): string {
@@ -39,10 +35,9 @@ function texte(valeur: unknown, defaut = ''): string {
 	return valeur.slice(0, MAX_TEXTE);
 }
 
-/** Nombre fini borné. Les valeurs hors bornes sont ramenées dans l'intervalle plutôt que refusées :
- * l'éditeur les empêche déjà côté saisie, et un rabais à 300 % doit devenir 100 %, pas casser
- * l'enregistrement. `NaN` et `Infinity` retombent sur le défaut, sans quoi ils se propageraient
- * dans tous les calculs de montants. */
+/** Nombre fini borné. Hors bornes, la valeur est ramenée dans l'intervalle : un rabais à 300 % doit
+ * devenir 100 %, pas casser l'enregistrement. `NaN` et `Infinity` retombent sur le défaut, sinon ils
+ * se propagent dans tous les calculs de montants. */
 function nombre(valeur: unknown, defaut: number, min = 0, max = Number.MAX_SAFE_INTEGER): number {
 	const n = typeof valeur === 'number' ? valeur : Number(valeur);
 	if (!Number.isFinite(n)) return defaut;
@@ -59,16 +54,14 @@ function parmi<T extends string>(valeur: unknown, permises: readonly T[], defaut
 		: defaut;
 }
 
-/** Liste de puces : on ne garde que des chaînes, et on borne la longueur. Les entrées vides sont
- * conservées ici parce que l'éditeur s'en sert comme champ en attente de saisie ; c'est le rendu
- * du document qui les élimine (`nettoyerListe`). */
+/** Liste de puces. Les entrées vides sont gardées : l'éditeur s'en sert comme champ en attente, et
+ * c'est le rendu du document qui les élimine (`nettoyerListe`). */
 function liste(valeur: unknown): string[] {
 	if (!Array.isArray(valeur)) return [];
 	return valeur.slice(0, MAX_PUCES).map((v) => texte(v));
 }
 
-/** Date au format `YYYY-MM-DD`. Tout le document en dépend : `formatDateLongue` la découpe à la
- * main, et le nom du fichier PDF en dérive. */
+/** Date au format `YYYY-MM-DD`. `formatDateLongue` la découpe à la main et le nom du PDF en dérive. */
 function dateIso(valeur: unknown, defaut: string): string {
 	return typeof valeur === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valeur) ? valeur : defaut;
 }
@@ -121,9 +114,8 @@ function normaliserClient(brut: unknown, defaut: CoordonneesClient): Coordonnees
 	};
 }
 
-/** L'acompte est la seule valeur retenue : le solde en est déduit, exactement comme le fait
- * l'éditeur. Accepter un solde posté séparément permettrait d'enregistrer un échéancier de
- * 50 % + 90 %, que le document afficherait tel quel. */
+/** Seul l'acompte est lu, le solde en est déduit. Accepter un solde posté séparément permettrait un
+ * échéancier de 50 % + 90 %, que le document afficherait tel quel. */
 function normaliserPaiement(brut: unknown, defaut: ModalitesPaiement): ModalitesPaiement {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const acomptePct = nombre(source.acomptePct, defaut.acomptePct, 0, 100);
@@ -145,9 +137,9 @@ function normaliserAbonnement(brut: unknown, defaut: AbonnementRecurrent): Abonn
 	};
 }
 
-/** Clauses hors catalogue retenues pour le mandat. À la différence des puces, les entrées vides sont
- * écartées : un titre sans corps, ou l'inverse, ne peut produire aucun article, et le garder ferait
- * réapparaître une ligne fantôme dans l'éditeur à chaque rechargement. */
+/** Clauses hors catalogue. Contrairement aux puces, les entrées vides sont écartées : un titre sans
+ * corps ne produit aucun article, et le garder ferait réapparaître une ligne fantôme à chaque
+ * rechargement. */
 function normaliserClausesRetenues(brut: unknown): ClauseRetenue[] {
 	if (!Array.isArray(brut)) return [];
 
@@ -157,8 +149,8 @@ function normaliserClausesRetenues(brut: unknown): ClauseRetenue[] {
 		const titre = texte(source.titre).slice(0, MAX_TITRE).trim();
 		const corps = texte(source.corps).trim();
 		if (!titre || !corps) continue;
-		// L'identifiant ne sert qu'à la traçabilité : une valeur qui n'est pas un UUID est ramenée à
-		// vide plutôt que recopiée, sans quoi elle irait ensuite se comparer aux ids de la bibliothèque.
+		// L'identifiant ne sert qu'à la traçabilité : ce qui n'est pas un UUID est ramené à vide, sans
+		// quoi il irait se comparer aux ids de la bibliothèque.
 		const idBibliotheque = texte(source.idBibliotheque);
 		retenues.push({
 			idBibliotheque: estUuid(idBibliotheque) ? idBibliotheque : '',
@@ -182,8 +174,7 @@ function normaliserConditions(
 		dureeSupportMois: nombre(source.dureeSupportMois, 0, 0, 600),
 		tauxHoraireHorsPerimetre: nombre(source.tauxHoraireHorsPerimetre, 0),
 		preavisResiliationJours: nombre(source.preavisResiliationJours, 0, 0, 3650),
-		// Un rabais supérieur à 100 % produisait un total négatif, donc un contrat où le client
-		// serait payé pour recevoir les travaux.
+		// Au-delà de 100 %, le total devient négatif : un contrat où le client serait payé.
 		rabaisPct: nombre(source.rabaisPct, 0, 0, 100),
 		rabaisMotif: texte(source.rabaisMotif),
 		clauses: {
@@ -204,17 +195,13 @@ function normaliserConditions(
 	};
 }
 
-/** Reconstruit un mandat sûr à partir de données arbitraires.
+/** Reconstruit un mandat sûr à partir de données arbitraires : on part d'un brouillon vide et on n'y
+ * recopie que ce qui a la forme attendue, plutôt que de faire confiance à l'objet reçu. La colonne
+ * `jsonb` ne contraint rien, donc un `lignes` qui n'est pas un tableau s'enregistre sans broncher et
+ * casse l'affichage à chaque visite suivante.
  *
- * Le principe est de partir d'un brouillon vide et de n'y recopier que ce qui a la forme attendue,
- * plutôt que de faire confiance à l'objet reçu. Le brouillon est stocké tel quel en base, dans une
- * colonne `jsonb` que rien ne contraint : un `lignes` qui n'était pas un tableau s'enregistrait
- * sans broncher, puis faisait échouer l'affichage du mandat à *chaque* visite suivante. Un
- * brouillon abîmé était donc définitif.
- *
- * On normalise au lieu de refuser : les écarts viennent presque toujours d'un champ laissé vide,
- * pas d'une attaque, et perdre une saisie complète pour un nombre mal formé serait pire que de le
- * ramener à zéro. */
+ * On normalise au lieu de refuser : l'écart vient presque toujours d'un champ vide, et perdre une
+ * saisie complète pour un nombre mal formé serait pire que de le ramener à zéro. */
 export function normaliserMandat(brut: unknown): BrouillonMandat {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const defaut = nouveauMandat();
@@ -232,9 +219,7 @@ export function normaliserMandat(brut: unknown): BrouillonMandat {
 		),
 		objet: texte(source.objet),
 		client: normaliserClient(source.client, defaut.client),
-		// Un mandat sans aucune ligne n'est pas représentable dans l'éditeur, qui en affiche
-		// toujours au moins une : on rétablit la ligne vide plutôt que de rendre le mandat
-		// inéditable.
+		// L'éditeur affiche toujours au moins une ligne : sans ça le mandat devient inéditable.
 		lignes: lignes.length > 0 ? lignes : defaut.lignes,
 		modalitesPaiement: normaliserPaiement(source.modalitesPaiement, defaut.modalitesPaiement),
 		abonnement: normaliserAbonnement(source.abonnement, defaut.abonnement),
@@ -246,8 +231,7 @@ export function normaliserMandat(brut: unknown): BrouillonMandat {
 	};
 }
 
-/** Lit un brouillon depuis une chaîne JSON. Le `try` n'est pas décoratif : `JSON.parse` sur un
- * corps tronqué levait une erreur que personne n'attrapait, donc une page 500. */
+/** Lit un brouillon depuis une chaîne JSON. Sans le `try`, un corps tronqué donne une page 500. */
 export function lireMandat(payload: unknown): BrouillonMandat {
 	if (typeof payload !== 'string') {
 		throw new SoumissionInvalideError('Le contenu du formulaire est absent.');

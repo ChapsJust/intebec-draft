@@ -1,13 +1,11 @@
 /** Test de contrat sur les actions de formulaire.
  *
- * Les gabarits postent vers `?/nomAction` : des chaînes de caractères, que ni TypeScript ni
- * `svelte-check` ne rapprochent jamais des clés réellement exportées par le `+page.server.ts` en
- * face. Perdre une action au fil d'un déplacement de fichier ne casse donc aucune compilation ; ça
- * ne se voit qu'en cliquant sur le bouton, où SvelteKit répond « No action with name ... ».
+ * Les gabarits postent vers `?/nomAction` : des chaînes que ni TypeScript ni `svelte-check` ne
+ * rapprochent des clés exportées par le `+page.server.ts` en face. Perdre une action ne casse donc
+ * aucune compilation, ça ne se voit qu'en cliquant sur le bouton.
  *
- * D'où ce fichier : il fige la surface exacte de chaque route, et vérifie que toute cible `?/…`
- * écrite dans un gabarit atterrit quelque part. C'est l'oracle des réorganisations de
- * `lib/server/` — la seule couche de l'application qu'aucun autre test n'exécute.
+ * Ce fichier fige la surface exacte de chaque route et vérifie que toute cible `?/…` atterrit
+ * quelque part. C'est l'oracle des réorganisations de `lib/server/`.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -28,8 +26,7 @@ interface RouteTestee {
 	actions: string[];
 }
 
-/** Actions partagées par /nouveau et /mandats/[id] : les deux routes étalent le même objet
- * `actionsMandat` et `actionsIaEditeur`, la seule différence entre créer et éditer étant la présence de `params.id`. */
+/** Actions partagées par /nouveau et /mandats/[id], qui étalent les mêmes objets. */
 const ACTIONS_EDITEUR = [
 	'enregistrer',
 	'generer',
@@ -103,9 +100,8 @@ function fichiersSvelte(dossier: string): string[] {
 	});
 }
 
-/** Toutes les cibles `?/…` écrites dans les gabarits, avec le fichier où elles apparaissent.
- * On ne balaie que les `.svelte` : un `?/` dans un `.ts` est une expression régulière, pas une
- * action (`ia/transport.ts` en contient une). */
+/** Toutes les cibles `?/…` des gabarits. On ne balaie que les `.svelte` : un `?/` dans un `.ts` est
+ * une expression régulière, pas une action. */
 function ciblesDesGabarits(): { cible: string; fichier: string }[] {
 	return fichiersSvelte(RACINE_SRC).flatMap((fichier) => {
 		const source = readFileSync(fichier, 'utf8');

@@ -6,10 +6,8 @@
 	import { libelleLigne } from '$document/format';
 	import Icone from '$composants/ui/Icone.svelte';
 
-	// Ce que l'IA a changé, et ce qu'on en garde. Sans ce panneau, la rédaction remplaçait le document
-	// en silence : le gabarit s'affichait, l'IA finissait, la prose était échangée, et rien ne disait
-	// où. Le diff est mot par mot pour la lecture, mais la décision se prend par passage, la plus
-	// petite tranche de prose qui tienne debout seule.
+	// Ce que l'IA a changé, et ce qu'on en garde. Sans ce panneau, la prose était échangée en silence
+	// et rien ne disait où. Le diff est mot par mot pour la lecture, la décision se prend par passage.
 	let { brouillon, redaction }: { brouillon: BrouillonMandat; redaction: RedactionIA } = $props();
 
 	interface ChampRevu {
@@ -113,8 +111,8 @@
 									{/each}
 								</p>
 
-								<!-- Un formulaire progressif par bouton, comme le reste de l'aperçu : la décision
-									est persistée, donc elle survit au rechargement et le PDF la suit. -->
+								<!-- Un formulaire par bouton : la décision est persistée, donc elle survit au
+									rechargement et le PDF la suit. -->
 								<form
 									method="POST"
 									action="?/basculerPassage"

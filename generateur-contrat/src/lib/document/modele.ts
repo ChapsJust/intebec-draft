@@ -1,8 +1,6 @@
-/** Le modele de vue d'un document rendu.
- *
- * Ces types decrivent ce que les composants de `composants/document/` recoivent, pas ce que
- * l'utilisateur saisit : la saisie, c'est `BrouillonMandat`. Les separer evite au rendu de
- * recalculer quoi que ce soit, et rend visible la frontiere entre le metier et l'affichage.
+/** Le modèle de vue d'un document rendu : ce que les composants de `composants/document/` reçoivent,
+ * par opposition à `BrouillonMandat`, qui est la saisie. Les séparer évite au rendu de recalculer
+ * quoi que ce soit.
  */
 import type { BlocArticle } from './clauses';
 
@@ -13,9 +11,8 @@ export interface Partie {
 	nom: string;
 	lignes: string[];
 	representant: string;
-	/** Désignation abrégée employée dans tout le reste du contrat. La mention « (ci-après … ) »
-	 * n'est pas décorative : c'est elle qui définit le terme, sans quoi les articles renvoient
-	 * à une désignation qui n'a jamais été établie. */
+	/** Désignation abrégée employée dans tout le reste du contrat. C'est la mention « (ci-après … ) »
+	 * qui définit le terme, sans quoi les articles renvoient à un mot jamais établi. */
 	designation: string;
 }
 
@@ -53,8 +50,8 @@ export interface BlocSignature {
 	titre: string;
 }
 
-/** Chaque section rend un type de contenu différent : l'union discriminée évite au composant de
- * rendu de deviner ce qu'il manipule, et garde toute la logique métier ici. */
+/** Chaque section rend un type de contenu différent : l'union discriminée évite au rendu de deviner
+ * ce qu'il manipule. */
 export type ContenuSection =
 	| { kind: 'paragraphes'; textes: string[] }
 	| { kind: 'portee'; entrees: PorteeEntree[] }
@@ -74,9 +71,8 @@ export interface SectionDocument {
 	contenu: ContenuSection;
 }
 
-/** Réglage d'espacement appliqué au document entier.
- * `aere` étire une soumission courte pour qu'elle ne flotte pas en haut d'une page vide ;
- * `compact` resserre un contrat chargé pour éviter les pages qui débordent de trois lignes. */
+/** Espacement du document entier : `aere` étire une soumission courte pour qu'elle ne flotte pas en
+ * haut d'une page vide, `compact` resserre un contrat qui déborderait de trois lignes. */
 export type Densite = 'aere' | 'normal' | 'compact';
 
 export interface ModeleDocument {

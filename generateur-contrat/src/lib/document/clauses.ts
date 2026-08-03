@@ -3,9 +3,8 @@ import { totalNet, formatCad } from '$domaine/montants';
 import { PRESTATAIRE } from '$domaine/config';
 import { elider, nombreContractuel } from './format';
 
-/** Un article alterne prose et énumérations. Les listes ne sont pas décoratives : sur les clauses
- * qui énumèrent des engagements ou des exclusions, elles rendent chaque item opposable
- * individuellement, et cassent le mur de prose qui rendait les conditions illisibles. */
+/** Un article alterne prose et énumérations. Les listes ne sont pas décoratives : sur une clause qui
+ * énumère des engagements, elles rendent chaque item opposable individuellement. */
 export type BlocArticle =
 	{ kind: 'p'; texte: string } | { kind: 'liste'; intro: string; items: string[] };
 
@@ -17,9 +16,8 @@ export interface Article {
 const p = (texte: string): BlocArticle => ({ kind: 'p', texte });
 const liste = (intro: string, items: string[]): BlocArticle => ({ kind: 'liste', intro, items });
 
-/** Les clauses ne sont que des booléens dans `ClausesStandards`, c'est ici qu'elles reçoivent
- * leur corps juridique. Chaque clause consomme les valeurs saisies dans le mandat plutôt que du
- * texte figé, pour que le document reflète réellement les conditions convenues. */
+/** Les clauses ne sont que des booléens dans `ClausesStandards` : c'est ici qu'elles reçoivent leur
+ * corps juridique, qui consomme les valeurs du mandat plutôt que du texte figé. */
 
 function confidentialite(brouillon: BrouillonMandat): Article {
 	const corps: BlocArticle[] = [
@@ -99,8 +97,8 @@ function propriete(brouillon: BrouillonMandat): Article {
 	return { titre: 'Propriété intellectuelle', corps };
 }
 
-/** Engagements réciproques. Systématiquement présent : c'est l'article qui rend le mandat
- * exécutoire de part et d'autre, et sa forme énumérée est celle des contrats Intébec existants. */
+/** Engagements réciproques. Systématiquement présent : c'est l'article qui rend le mandat exécutoire
+ * de part et d'autre. */
 function engagements(brouillon: BrouillonMandat): Article {
 	const engagementsClient = [
 		`fournir les informations, contenus et accès nécessaires dans des délais raisonnables`,
@@ -155,8 +153,8 @@ function signatureElectronique(): Article {
 	};
 }
 
-/** Les conditions particulières chiffrées deviennent des articles à part entière, mais
- * uniquement lorsqu'une valeur a réellement été saisie : un « 0 » ne produit pas d'article vide. */
+/** Les conditions chiffrées deviennent des articles, mais seulement si une valeur a été saisie : un
+ * « 0 » ne produit pas d'article vide. */
 function conditionsParticulieres(brouillon: BrouillonMandat): Article[] {
 	const { conditions } = brouillon;
 	const articles: Article[] = [];
@@ -236,10 +234,9 @@ function conditionsParticulieres(brouillon: BrouillonMandat): Article[] {
 	return articles;
 }
 
-/** Une clause de la bibliothèque n'est que de la prose : contrairement aux clauses du catalogue, elle
- * ne consomme aucune valeur du mandat. Les paragraphes deviennent des blocs `p`, ce qui suffit à la
- * rendre comme un article ordinaire. Les puces éventuelles sont laissées telles quelles dans le
- * paragraphe : décider qu'un tiret en début de ligne fait une énumération opposable serait deviner. */
+/** Une clause de bibliothèque n'est que de la prose : chaque paragraphe devient un bloc `p`. Les
+ * puces restent dans le paragraphe — décider qu'un tiret fait une énumération opposable serait
+ * deviner. */
 export function blocsDepuisTexte(corps: string): BlocArticle[] {
 	return corps
 		.split(/\n{2,}/)
@@ -248,8 +245,8 @@ export function blocsDepuisTexte(corps: string): BlocArticle[] {
 		.map(p);
 }
 
-/** Clauses hors catalogue retenues pour ce mandat, dans l'ordre de saisie. Une clause au corps vide
- * ne produit pas d'article : un titre seul donnerait un article numéroté sans contenu. */
+/** Clauses hors catalogue, dans l'ordre de saisie. Un titre sans corps donnerait un article numéroté
+ * et vide : on l'écarte. */
 function clausesRetenues(brouillon: BrouillonMandat): Article[] {
 	return brouillon.conditions.clausesRetenues
 		.map((clause) => ({
@@ -259,12 +256,10 @@ function clausesRetenues(brouillon: BrouillonMandat): Article[] {
 		.filter((article) => article.titre && article.corps.length > 0);
 }
 
-/** Articles du contrat : clauses standards cochées, engagements réciproques, conditions particulières
- * chiffrées, puis clauses retenues hors catalogue. L'ordre est stable, il détermine la numérotation
- * dans le document.
+/** Articles du contrat, dans l'ordre. **Cet ordre détermine la numérotation du document.**
  *
- * Les clauses retenues se placent avant les litiges et la signature électronique : ces deux-là sont
- * les articles de clôture d'usage, et les voir précéder une clause de fond se lirait comme un oubli. */
+ * Litiges et signature électronique ferment la marche : ce sont les articles de clôture d'usage, et
+ * les voir précéder une clause de fond se lirait comme un oubli. */
 export function clausesActives(brouillon: BrouillonMandat): Article[] {
 	const { clauses } = brouillon.conditions;
 	const articles: Article[] = [];

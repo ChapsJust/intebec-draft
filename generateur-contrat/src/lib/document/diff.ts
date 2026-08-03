@@ -1,42 +1,32 @@
-/** Comparaison entre la saisie et la prose de l'IA, au service d'une seule question : qu'est-ce que
- * l'IA a changé, et qu'est-ce que j'en garde ?
+/** Compare la saisie et la prose de l'IA : qu'est-ce qui a changé, et qu'est-ce qu'on en garde ?
  *
- * Deux échelles, parce qu'elles ne servent pas à la même chose. Les **phrases** définissent l'unité
- * qu'on garde ou qu'on rejette : une phrase est la plus petite tranche de prose qui se tienne encore
- * debout seule, alors qu'accepter la moitié d'une phrase réécrite produit du charabia. Les **mots**
- * ne servent qu'à la lecture, pour montrer d'un coup d'œil ce qui bouge à l'intérieur d'un passage.
- *
- * Module pur, sans dépendance : un LCS sur quelques centaines de mots tient en trente lignes, et le
- * projet n'embarque aucune librairie utilitaire. */
+ * Deux échelles : la phrase est l'unité qu'on garde ou qu'on rejette, le mot ne sert qu'au
+ * surlignage. Un LCS suffit, le projet n'embarque aucune librairie de diff.
+ * (Fait grandement grâce à l'aide de l'IA pour cette feature)
+ */
 
 export type MotDiff = { kind: 'egal' | 'ajout' | 'suppression'; texte: string };
 
-/** Phrases contiguës modifiées, regroupées : l'unité que l'utilisateur garde ou rejette.
- *
- * Le regroupement est ce qui évite de choisir entre « par phrase » et « par paragraphe ». Un passage
- * vaut une phrase quand l'IA n'a retouché qu'une phrase, et le paragraphe entier quand elle l'a
- * réécrit de bout en bout, sans qu'aucune granularité fixe ait à trancher d'avance. C'est le hunk de
+/** Phrases modifiées contiguës, regroupées : l'unité que l'utilisateur garde ou rejette. Un passage
+ * vaut une phrase ou tout un paragraphe selon ce que l'IA a retouché, comme un hunk de
  * `git add -p`. */
 export interface Passage {
-	/** Position dans la liste des passages du champ. C'est la clé stockée dans `RedactionIA.refuses`. */
+	/** Clé stockée dans `RedactionIA.refuses`. */
 	index: number;
-	/** Côté saisie. Vide lorsque l'IA a ajouté du texte là où il n'y en avait pas. */
+	/** Côté saisie. Vide si l'IA a ajouté du texte là où il n'y en avait pas. */
 	avant: string;
-	/** Côté IA. Vide lorsque l'IA a retiré du texte présent dans la saisie. */
+	/** Côté IA. Vide si l'IA a retiré du texte. */
 	apres: string;
-	/** Surlignage mot par mot, pour la lecture à l'intérieur du passage. */
 	mots: MotDiff[];
 }
 
-/** Alignement complet des deux textes : ce qui est commun, et ce qui diffère. `comparerPassages` n'en
- * expose que les tranches modifiées, mais `texteEffectif` a besoin des deux pour recomposer le texte
- * dans l'ordre. Les faire dériver du même alignement est ce qui garantit que les index des passages
- * désignent la même chose de part et d'autre. */
+/** Alignement des deux textes. `comparerPassages` n'expose que les tranches modifiées, `texteEffectif`
+ * a besoin des deux : les faire dériver du même alignement est ce qui garantit que les index
+ * désignent la même chose des deux côtés. */
 type Segment =
 	{ kind: 'egal'; phrases: string[] } | { kind: 'change'; avant: string[]; apres: string[] };
 
-/** Abréviations dont le point ne termine pas une phrase. La liste est courte à dessein : elle ne
- * couvre que ce qui paraît réellement dans un mandat de services. */
+/** Abréviations dont le point ne termine pas une phrase. */
 const ABREVIATIONS = [
 	'inc',
 	'ltée',
@@ -61,25 +51,33 @@ const ABREVIATIONS = [
 	'ref'
 ];
 
-/** Vrai si le texte se termine sur une abréviation connue, point exclu. */
-function finitParAbreviation(morceau: string): boolean {
-	const mot = morceau
-		.slice(0, -1)
-		.toLowerCase()
-		.replace(/[^\p{L}\p{N}. -]/gu, '');
+/** Retiré avant comparaison. Le point, l'espace et le tiret restent : « p. ex », « c.-à-d ». */
+const PONCTUATION_PARASITE = /[^\p{L}\p{N}. -]/gu;
+
+/** Vrai si le texte finit sur une abréviation connue, point exclu. */
+function finitParAbreviation(phrase: string): boolean {
+	const sansPoint = phrase.slice(0, -1).toLowerCase().replace(PONCTUATION_PARASITE, '');
+
 	return ABREVIATIONS.some(
-		(abr) => mot === abr || mot.endsWith(` ${abr}`) || mot.endsWith(`-${abr}`)
+		(abreviation) =>
+			sansPoint === abreviation ||
+			sansPoint.endsWith(` ${abreviation}`) ||
+			sansPoint.endsWith(`-${abreviation}`)
 	);
 }
 
-/** Découpe de la prose en phrases.
+/** Un point qui ne ferme pas la phrase : abréviation, ou initiale isolée (« J. Chaput »). */
+function pointTrompeur(phrase: string): boolean {
+	if (!phrase.endsWith('.')) return false;
+	const initialeIsolee = /(?:^|\s)\p{Lu}\.$/u;
+	return finitParAbreviation(phrase) || initialeIsolee.test(phrase);
+}
+
+/** Découpe la prose en phrases.
  *
- * Le deux-points ne coupe **pas**, et ce n'est pas un détail : `nettoyerProse` remplace les tirets
- * cadratins du modèle par des deux-points, donc la prose de l'IA en est truffée. Couper dessus
- * aurait produit des demi-phrases qu'on ne peut ni lire ni refuser séparément.
- *
- * Les sauts de paragraphe, eux, sont des frontières franches : deux paragraphes ne se fondent jamais
- * en une phrase, même quand le premier ne se termine par aucune ponctuation. */
+ * Le deux-points ne coupe pas : `nettoyerProse` en fabrique à partir des tirets cadratins du modèle,
+ * et couper dessus donnerait des demi-phrases impossibles à refuser seules. Le saut de paragraphe,
+ * lui, coupe toujours. */
 export function decouperPhrases(texte: string): string[] {
 	const phrases: string[] = [];
 
@@ -87,83 +85,103 @@ export function decouperPhrases(texte: string): string[] {
 		const contenu = paragraphe.trim();
 		if (!contenu) continue;
 
-		// Chaque candidat garde sa ponctuation finale : on recolle ensuite ceux qui n'auraient pas dû
-		// être séparés, ce qui serait impossible si le point avait été consommé par le séparateur.
-		const morceaux = contenu.split(/(?<=[.!?…])\s+/);
+		// Le séparateur ne consomme pas la ponctuation, pour pouvoir recoller ensuite.
+		const candidats = contenu.split(/(?<=[.!?…])\s+/);
+
 		let courante = '';
-
-		for (const morceau of morceaux) {
-			courante = courante ? `${courante} ${morceau}` : morceau;
-
-			// Un point d'abréviation, ou une initiale isolée, ne ferme pas la phrase : on continue
-			// d'accumuler jusqu'à une fin crédible.
-			if (courante.endsWith('.') && finitParAbreviation(courante)) continue;
-			if (/(?:^|\s)\p{Lu}\.$/u.test(courante)) continue;
+		for (const candidat of candidats) {
+			courante = courante ? `${courante} ${candidat}` : candidat;
+			if (pointTrompeur(courante)) continue;
 
 			phrases.push(courante.trim());
 			courante = '';
 		}
 
+		// Un paragraphe peut finir sans ponctuation.
 		if (courante.trim()) phrases.push(courante.trim());
 	}
 
 	return phrases;
 }
 
-/** Découpe en mots en conservant les espaces qui les séparent, pour que le texte se recompose à
- * l'identique par simple concaténation. La ponctuation reste collée à son mot : la déplacer dans un
- * jeton à part remplirait le surlignage de virgules « ajoutées » qui n'apprennent rien. */
+/** Découpe en mots, espaces compris, pour que la concaténation redonne le texte exact. La ponctuation
+ * reste collée à son mot : l'isoler remplirait le surlignage de virgules « ajoutées ». */
 function decouperMots(texte: string): string[] {
 	return texte.split(/(\s+)/).filter((jeton) => jeton !== '');
 }
 
-/** Plus longue sous-séquence commune, sous la forme des paires d'index conservées.
- *
- * Table pleine plutôt qu'algorithme de Myers : on compare des paragraphes, donc quelques centaines
- * de jetons de part et d'autre, et la version lisible suffit largement. */
+/** `longueurs[i][j]` = nombre d'éléments communs entre `gauche` à partir de `i` et `droite` à partir
+ * de `j`. Rempli à rebours, chaque case se déduisant de ses voisines, qui portent sur des restes plus
+ * courts. `[0][0]` donne la réponse pour les listes entières. */
+function tableDesLongueurs<T>(
+	gauche: T[],
+	droite: T[],
+	egaux: (a: T, b: T) => boolean
+): number[][] {
+	// La rangée et la colonne en trop restent à zéro et servent de bord au calcul.
+	const longueurs: number[][] = [];
+	for (let i = 0; i <= gauche.length; i++) {
+		longueurs.push(new Array<number>(droite.length + 1).fill(0));
+	}
+
+	for (let i = gauche.length - 1; i >= 0; i--) {
+		for (let j = droite.length - 1; j >= 0; j--) {
+			longueurs[i][j] = egaux(gauche[i], droite[j])
+				? longueurs[i + 1][j + 1] + 1 // les deux se correspondent
+				: Math.max(longueurs[i + 1][j], longueurs[i][j + 1]); // il faut en sacrifier un
+		}
+	}
+
+	return longueurs;
+}
+
+/** Plus longue sous-séquence commune, rendue comme les paires d'index conservées : entre « A B C D »
+ * et « A X C », la suite commune est « A C », donc `[[0, 0], [2, 2]]`. Le reste a été ajouté ou
+ * supprimé. Table pleine plutôt que Myers : quelques centaines de jetons, la version lisible suffit. */
 function sousSequenceCommune<T>(
 	gauche: T[],
 	droite: T[],
 	egaux: (a: T, b: T) => boolean
 ): Array<[number, number]> {
-	const table: number[][] = Array.from({ length: gauche.length + 1 }, () =>
-		new Array<number>(droite.length + 1).fill(0)
-	);
+	const longueurs = tableDesLongueurs(gauche, droite, egaux);
 
-	for (let i = gauche.length - 1; i >= 0; i--) {
-		for (let j = droite.length - 1; j >= 0; j--) {
-			table[i][j] = egaux(gauche[i], droite[j])
-				? table[i + 1][j + 1] + 1
-				: Math.max(table[i + 1][j], table[i][j + 1]);
-		}
-	}
-
+	// On avance en suivant le meilleur score. La table décrit les fins de listes, donc le parcours va
+	// du début vers la fin et les paires sortent déjà dans l'ordre.
 	const paires: Array<[number, number]> = [];
-	let i = 0;
-	let j = 0;
-	while (i < gauche.length && j < droite.length) {
-		if (egaux(gauche[i], droite[j])) {
-			paires.push([i, j]);
-			i++;
-			j++;
-		} else if (table[i + 1][j] >= table[i][j + 1]) {
-			i++;
+	let indexGauche = 0;
+	let indexDroite = 0;
+
+	while (indexGauche < gauche.length && indexDroite < droite.length) {
+		if (egaux(gauche[indexGauche], droite[indexDroite])) {
+			paires.push([indexGauche, indexDroite]);
+			indexGauche++;
+			indexDroite++;
+		} else if (longueurs[indexGauche + 1][indexDroite] >= longueurs[indexGauche][indexDroite + 1]) {
+			// Sauter à gauche promet au moins autant : cet élément n'a pas de correspondant.
+			indexGauche++;
 		} else {
-			j++;
+			indexDroite++;
 		}
 	}
 
 	return paires;
 }
 
-/** Normalise une phrase pour l'alignement : espaces uniformisés, casse et accents ignorés. Sans
- * cela, une phrase reprise à la lettre près par le modèle mais réespacée passait pour réécrite, et
- * le diff signalait des changements invisibles à l'œil. */
+/** Les accents, une fois détachés de leur lettre par `normalize('NFD')`. */
+const ACCENTS_DETACHES = /[̀-ͯ]/g;
+
+/** Clé de comparaison : casse, accents et espaces ignorés. Sans ça, une phrase réespacée par le
+ * modèle passait pour réécrite et le diff signalait des changements invisibles à l'œil. */
 function clePhrase(phrase: string): string {
-	return phrase.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+	return phrase
+		.normalize('NFD')
+		.replace(ACCENTS_DETACHES, '')
+		.toLowerCase()
+		.replace(/\s+/g, ' ')
+		.trim();
 }
 
-/** Aligne les phrases des deux textes en une suite de segments communs et modifiés. */
+/** Aligne les phrases des deux textes en segments communs et modifiés. */
 function aligner(avant: string, apres: string): Segment[] {
 	const phrasesAvant = decouperPhrases(avant);
 	const phrasesApres = decouperPhrases(apres);
@@ -174,36 +192,38 @@ function aligner(avant: string, apres: string): Segment[] {
 	);
 
 	const segments: Segment[] = [];
-	let i = 0;
-	let j = 0;
+	let curseurAvant = 0;
+	let curseurApres = 0;
 
-	const clore = (finAvant: number, finApres: number) => {
-		const trancheAvant = phrasesAvant.slice(i, finAvant);
-		const trancheApres = phrasesApres.slice(j, finApres);
+	/** Range en segment « change » ce qui sépare les curseurs de la prochaine phrase commune. */
+	const ajouterCeQuiPrecede = (finAvant: number, finApres: number) => {
+		const trancheAvant = phrasesAvant.slice(curseurAvant, finAvant);
+		const trancheApres = phrasesApres.slice(curseurApres, finApres);
 		if (trancheAvant.length === 0 && trancheApres.length === 0) return;
 		segments.push({ kind: 'change', avant: trancheAvant, apres: trancheApres });
 	};
 
-	for (const [ia, ja] of communes) {
-		clore(ia, ja);
-		const dernier = segments[segments.length - 1];
+	for (const [indexAvant, indexApres] of communes) {
+		ajouterCeQuiPrecede(indexAvant, indexApres);
+
 		// Les phrases communes consécutives se regroupent, pour que `texteEffectif` n'ait pas à
 		// recoller des segments d'une phrase chacun.
-		if (dernier && dernier.kind === 'egal') dernier.phrases.push(phrasesApres[ja]);
-		else segments.push({ kind: 'egal', phrases: [phrasesApres[ja]] });
-		i = ia + 1;
-		j = ja + 1;
+		const dernier = segments[segments.length - 1];
+		if (dernier && dernier.kind === 'egal') dernier.phrases.push(phrasesApres[indexApres]);
+		else segments.push({ kind: 'egal', phrases: [phrasesApres[indexApres]] });
+
+		curseurAvant = indexAvant + 1;
+		curseurApres = indexApres + 1;
 	}
-	clore(phrasesAvant.length, phrasesApres.length);
+
+	// Ce qui traîne après la dernière phrase commune.
+	ajouterCeQuiPrecede(phrasesAvant.length, phrasesApres.length);
 
 	return segments;
 }
 
-/** Compare deux textes et renvoie les passages réécrits, les parties identiques étant tues.
- *
- * Un `apres` vide signifie que l'IA n'a rien produit pour ce champ : il n'y a alors rien à trancher,
- * la saisie tient toute seule, et on renvoie une liste vide plutôt qu'un passage « tout supprimé »
- * qui laisserait croire à une intervention du modèle. */
+/** Les passages réécrits, les parties identiques étant tues. Un `apres` vide veut dire que l'IA n'a
+ * rien produit : liste vide, plutôt qu'un passage « tout supprimé » qu'elle n'a pas fait. */
 export function comparerPassages(avant: string, apres: string): Passage[] {
 	const propose = apres.trim();
 	if (!propose) return [];
@@ -224,48 +244,47 @@ export function comparerPassages(avant: string, apres: string): Passage[] {
 	return passages;
 }
 
-/** Surlignage mot par mot entre deux fragments. Les mots communs sortent en `egal`, ce qui permet au
- * rendu de reconstituer le texte entier avec les ajouts et les suppressions en place. */
+/** Surlignage mot par mot. Les mots communs sortent en `egal`, pour que le rendu reconstitue le texte
+ * entier avec les ajouts et les suppressions en place. */
 export function comparerMots(avant: string, apres: string): MotDiff[] {
 	const motsAvant = decouperMots(avant);
 	const motsApres = decouperMots(apres);
 	const communs = sousSequenceCommune(motsAvant, motsApres, (a, b) => a === b);
 
 	const segments: MotDiff[] = [];
-	/** Fusionne les jetons de même nature : le rendu produit un élément par segment, et un mot par
-	 * élément noierait le texte dans les balises. */
-	const pousser = (kind: MotDiff['kind'], texte: string) => {
+
+	/** Fusionne avec le segment précédent s'il est de même nature : un élément HTML par mot noierait
+	 * le texte dans les balises. */
+	const ajouter = (kind: MotDiff['kind'], texte: string) => {
 		if (!texte) return;
 		const dernier = segments[segments.length - 1];
 		if (dernier && dernier.kind === kind) dernier.texte += texte;
 		else segments.push({ kind, texte });
 	};
 
-	let i = 0;
-	let j = 0;
-	for (const [ia, ja] of communs) {
-		pousser('suppression', motsAvant.slice(i, ia).join(''));
-		pousser('ajout', motsApres.slice(j, ja).join(''));
-		pousser('egal', motsApres[ja]);
-		i = ia + 1;
-		j = ja + 1;
+	let curseurAvant = 0;
+	let curseurApres = 0;
+
+	for (const [indexAvant, indexApres] of communs) {
+		// Avant chaque mot commun : ce que la saisie avait là, puis ce que l'IA a mis à la place.
+		ajouter('suppression', motsAvant.slice(curseurAvant, indexAvant).join(''));
+		ajouter('ajout', motsApres.slice(curseurApres, indexApres).join(''));
+		ajouter('egal', motsApres[indexApres]);
+		curseurAvant = indexAvant + 1;
+		curseurApres = indexApres + 1;
 	}
-	pousser('suppression', motsAvant.slice(i).join(''));
-	pousser('ajout', motsApres.slice(j).join(''));
+
+	ajouter('suppression', motsAvant.slice(curseurAvant).join(''));
+	ajouter('ajout', motsApres.slice(curseurApres).join(''));
 
 	return segments;
 }
 
-/** Texte réellement affiché dans le document, compte tenu des passages refusés.
+/** Texte réellement affiché, compte tenu des passages refusés.
  *
- * Recomposition plutôt que choix binaire entre les deux versions : refuser un passage doit rendre la
- * phrase saisie **à cet endroit-là**, sans faire perdre les autres réécritures du même champ. Le
- * parcours suit le même alignement que `comparerPassages`, donc les index désignent bien le même
- * passage des deux côtés.
- *
- * Un index hors bornes est ignoré. Le cas se produit si le brouillon est modifié après un refus,
- * puisque le découpage change alors sous les index déjà stockés ; mieux vaut retomber sur la prose de
- * l'IA que refuser d'afficher le document. */
+ * On recompose au lieu de choisir entre les deux versions : refuser un passage rend la saisie à cet
+ * endroit-là sans faire perdre les autres réécritures du champ. Un index hors bornes est ignoré — le
+ * brouillon a changé depuis le refus, et mieux vaut la prose de l'IA qu'une page en erreur. */
 export function texteEffectif(
 	avant: string,
 	apres: string | undefined,
@@ -277,20 +296,22 @@ export function texteEffectif(
 	if (refuses.length === 0) return propose;
 
 	const rejetes = new Set(refuses);
-	const morceaux: string[] = [];
-	let index = 0;
+	const phrasesRetenues: string[] = [];
+	// Même parcours que `comparerPassages`, donc même numérotation.
+	let numeroPassage = 0;
 
 	for (const segment of aligner(saisie, propose)) {
 		if (segment.kind === 'egal') {
-			morceaux.push(...segment.phrases);
+			phrasesRetenues.push(...segment.phrases);
 			continue;
 		}
-		const retenu = rejetes.has(index) ? segment.avant : segment.apres;
-		morceaux.push(...retenu);
-		index++;
+
+		const retenu = rejetes.has(numeroPassage) ? segment.avant : segment.apres;
+		phrasesRetenues.push(...retenu);
+		numeroPassage++;
 	}
 
-	return morceaux
+	return phrasesRetenues
 		.filter(Boolean)
 		.join(' ')
 		.replace(/[ \t]+/g, ' ')

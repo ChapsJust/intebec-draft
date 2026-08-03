@@ -5,20 +5,15 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	server: {
-		// Pas de `host: true` ici : le conteneur reçoit déjà `--host 0.0.0.0` dans le CMD de
-		// Dockerfile.dev, où c'est indispensable pour que l'hôte joigne le serveur. En dehors du
-		// conteneur, l'écoute reste sur la boucle locale — un `npm run dev` lancé directement sur
-		// le Mac ne s'expose donc pas au réseau local.
+		// Pas de `host: true` : le conteneur reçoit déjà `--host 0.0.0.0` dans Dockerfile.dev, et hors
+		// conteneur l'écoute doit rester sur la boucle locale.
 		//
-		// Noms d'hôtes acceptés. Vite refuse par défaut les `Host` qu'il ne connaît pas ; derrière
-		// `tailscale serve`, l'en-tête porte le nom `.ts.net` de la machine et la réponse serait
-		// « Blocked request. This host is not allowed. » plutôt que l'application.
+		// Vite refuse par défaut les `Host` inconnus. Derrière `tailscale serve`, l'en-tête porte le
+		// nom `.ts.net` et la réponse serait « Blocked request » plutôt que l'application.
 		allowedHosts: ['.ts.net'],
-		// Le polling permet au hot reload de fonctionner à travers le bind mount Docker (Windows) :
-		// les événements inotify ne traversent pas la frontière entre l'hôte et le conteneur.
-		// Sans intervalle explicite, chokidar interroge le disque toutes les 100 ms, ce qui
-		// consommait 19 % de CPU en continu, machine au repos. À 800 ms le hot reload reste
-		// imperceptiblement plus lent et la charge devient négligeable.
+		// Le polling fait marcher le hot reload à travers le bind mount Docker sous Windows : inotify
+		// ne traverse pas la frontière hôte/conteneur. L'intervalle est explicite parce que le défaut
+		// de 100 ms consommait 19 % de CPU en continu, machine au repos.
 		watch: process.env.VITE_USE_POLLING
 			? {
 					usePolling: true,
@@ -28,9 +23,8 @@ export default defineConfig({
 				}
 			: undefined
 	},
-	// Adaptateur, alias et options du compilateur vivent dans `svelte.config.js`, que le plugin lit
-	// tout seul : c'est là que les outils tiers (svelte-check, prettier-plugin-svelte, l'extension
-	// VS Code) vont les chercher.
+	// Adaptateur, alias et options du compilateur vivent dans `svelte.config.js` : c'est là que les
+	// outils tiers (svelte-check, prettier, l'extension VS Code) vont les chercher.
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },

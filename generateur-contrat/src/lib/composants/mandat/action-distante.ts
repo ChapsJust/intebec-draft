@@ -1,15 +1,11 @@
-/** Appeler une form action sans quitter la page.
- *
- * L'éditeur en a besoin pour tout ce qui ne doit pas naviguer : la relecture par l'IA, la mise à
- * jour de la fiche client, les propositions de texte. Isolé du composant parce que c'est de la
- * plomberie HTTP, et qu'elle a ses propres pièges — voir l'en-tête ci-dessous.
+/** Appeler une form action sans quitter la page : la relecture par l'IA, la mise à jour de la fiche
+ * client, les propositions de texte.
  */
 import { deserialize } from '$app/forms';
 import type { ActionResult } from '@sveltejs/kit';
 
-/** Appelle une form action et rend son résultat désérialisé. L'en-tête `x-sveltekit-action` est
- * indispensable : sans lui SvelteKit traite la requête comme une soumission classique et répond
- * par une redirection HTML, que `deserialize()` ne sait pas lire. */
+/** L'en-tête `x-sveltekit-action` est indispensable : sans lui SvelteKit répond par une redirection
+ * HTML, que `deserialize()` ne sait pas lire. */
 export async function posterAction(action: string, body: FormData): Promise<ActionResult> {
 	const response = await fetch(action, {
 		method: 'POST',
@@ -20,12 +16,9 @@ export async function posterAction(action: string, body: FormData): Promise<Acti
 	try {
 		return deserialize(texte);
 	} catch {
-		// Arrive quand la réponse n'est pas un résultat d'action, donc une erreur d'infrastructure
-		// renvoyée en HTML. Le message brut ne veut rien dire pour l'utilisateur.
-		//
-		// Le 403 mérite son propre message : c'est le refus d'origine croisée de SvelteKit, et il
-		// signale presque toujours un `ORIGIN` qui ne correspond pas à l'adresse publique du
-		// proxy. Voir la section « Accès » du README.
+		// La réponse n'est pas un résultat d'action : erreur d'infrastructure renvoyée en HTML. Le 403
+		// mérite son propre message, c'est le refus d'origine croisée de SvelteKit et il signale
+		// presque toujours un `ORIGIN` mal réglé. Voir la section « Accès » du README.
 		throw new Error(
 			response.status === 403
 				? "Le serveur a refusé l'enregistrement (origine non reconnue). Prévenez l'administrateur : la variable ORIGIN est probablement mal réglée."

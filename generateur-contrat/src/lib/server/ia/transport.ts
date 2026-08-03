@@ -1,6 +1,4 @@
-/** Comment on joint le modèle, et comment on ramène sa réponse.
- *
- * Ce module ne sait rien du contenu : ni ce qu'on demande, ni ce qu'on fait du résultat. Il connaît
+/** Comment on joint le modèle, et comment on ramène sa réponse. Ce module ne sait rien du contenu :
  * deux endpoints, un format de flux, et la liste des façons dont un appel peut échouer.
  */
 import { env } from '$env/dynamic/private';
@@ -9,15 +7,14 @@ const URL_PAR_DEFAUT = 'http://localhost:11434';
 const MODELE_PAR_DEFAUT = 'llama3.1:8b';
 const MODELE_PASSERELLE_PAR_DEFAUT = 'gemma4:latest';
 const TIMEOUT_MS = 120_000;
-/** En mode passerelle on streame : le heartbeat SSE tient la connexion pendant le chargement du
- * modèle, donc le plafond utile n'est plus le réseau mais la patience de l'utilisateur. */
+/** En mode passerelle, le heartbeat SSE tient la connexion pendant le chargement du modèle : le
+ * plafond utile n'est plus le réseau mais la patience de l'utilisateur. */
 const TIMEOUT_PASSERELLE_MS = 240_000;
 
 export class OllamaIndisponibleError extends Error {}
 
-/** Deux façons de joindre le modèle : la passerelle authentifiée de production (Mac Studio derrière
- * Tailscale) dès que `AI_API_URL` et `AI_API_KEY` sont fournies, sinon Ollama en direct, qui reste
- * le mode pratique en développement local. */
+/** La passerelle authentifiée dès que `AI_API_URL` et `AI_API_KEY` sont fournies, sinon Ollama en
+ * direct, qui reste le mode pratique en développement local. */
 type ModeIa = { kind: 'passerelle'; base: string; cle: string } | { kind: 'ollama'; base: string };
 
 function modeIa(): ModeIa {
@@ -27,8 +24,8 @@ function modeIa(): ModeIa {
 	return { kind: 'ollama', base: (env.OLLAMA_URL || URL_PAR_DEFAUT).replace(/\/$/, '') };
 }
 
-/** Le modèle est toujours envoyé explicitement, y compris à la passerelle : elle a son propre
- * défaut, mais le nom retenu est horodaté dans le document et doit correspondre au vrai. */
+/** Le modèle est toujours envoyé explicitement : son nom est horodaté dans le document, il doit donc
+ * correspondre à celui qui a réellement répondu. */
 export function modeleActif(): string {
 	if (modeIa().kind === 'passerelle') return env.AI_MODEL || MODELE_PASSERELLE_PAR_DEFAUT;
 	return env.OLLAMA_MODEL || MODELE_PAR_DEFAUT;
@@ -38,8 +35,8 @@ interface ReponseOllama {
 	message?: { content?: string };
 }
 
-/** Envoie une invite et rend l'objet JSON obtenu. Les consignes système sont passées par l'appelant :
- * elles relèvent de ce qu'on demande, pas de la façon de le demander. */
+/** Envoie une invite et rend l'objet JSON obtenu. Les consignes viennent de l'appelant : elles
+ * relèvent de ce qu'on demande, pas de la façon de le demander. */
 export async function appeler(prompt: string, consignes: string): Promise<unknown> {
 	const mode = modeIa();
 	const contenu =
@@ -59,8 +56,8 @@ export async function appeler(prompt: string, consignes: string): Promise<unknow
 	}
 }
 
-/** Appel direct au démon Ollama. `format: 'json'` contraint la sortie côté serveur : c'est le mode
- * le plus fiable, mais il suppose un accès sans authentification au port 11434. */
+/** Appel direct au démon Ollama. `format: 'json'` contraint la sortie côté serveur, le mode le plus
+ * fiable, mais suppose un accès sans authentification au port 11434. */
 async function appelerOllama(base: string, prompt: string, consignes: string): Promise<string> {
 	let reponse: Response;
 	try {
@@ -97,9 +94,8 @@ async function appelerOllama(base: string, prompt: string, consignes: string): P
 }
 
 /** Appel à la passerelle authentifiée. On streame systématiquement : elle plafonne le mode
- * non-streamé à 90 s, et une passe de rédaction complète sur un gros modèle dépasse ce seuil dès
- * que le modèle doit être rechargé en mémoire. Le flux n'est pas affiché au fil de l'eau, il est
- * seulement réassemblé ici, puisque la réponse attendue est un objet JSON complet. */
+ * non-streamé à 90 s, qu'une passe de rédaction dépasse dès que le modèle doit être rechargé. Le
+ * flux n'est pas affiché au fil de l'eau, seulement réassemblé. */
 async function appelerPasserelle(
 	mode: { base: string; cle: string },
 	prompt: string,
@@ -130,8 +126,16 @@ async function appelerPasserelle(
 		throw new OllamaIndisponibleError(await messagePasserelle(reponse));
 	}
 
-	const lecteur = reponse.body.getReader();
+	return lireFluxSse(reponse.body);
+}
+
+/** Réassemble le texte d'un flux SSE. Les morceaux réseau ne tombent pas sur les frontières des
+ * événements, d'où le tampon qui garde ce qui est incomplet jusqu'à la suite. */
+async function lireFluxSse(corps: ReadableStream<Uint8Array>): Promise<string> {
+	const lecteur = corps.getReader();
+	// `stream: true` met en réserve un caractère UTF-8 coupé entre deux morceaux.
 	const decodeur = new TextDecoder();
+
 	let tampon = '';
 	let contenu = '';
 
@@ -140,18 +144,21 @@ async function appelerPasserelle(
 		if (done) break;
 
 		tampon += decodeur.decode(value, { stream: true });
+
+		// Une ligne vide sépare les événements. Le dernier morceau est presque toujours incomplet :
+		// il repart dans le tampon.
 		const blocs = tampon.split('\n\n');
 		tampon = blocs.pop() ?? '';
 
 		for (const bloc of blocs) {
-			const evt = analyserBlocSse(bloc);
-			if (!evt) continue;
-			if (evt.type === 'error') {
+			const evenement = analyserBlocSse(bloc);
+			if (!evenement) continue;
+			if (evenement.type === 'error') {
 				throw new OllamaIndisponibleError(
-					evt.error || 'La passerelle IA a signalé une erreur pendant la génération.'
+					evenement.error || 'La passerelle IA a signalé une erreur pendant la génération.'
 				);
 			}
-			if (evt.type === 'delta' && evt.content) contenu += evt.content;
+			if (evenement.type === 'delta' && evenement.content) contenu += evenement.content;
 		}
 	}
 
@@ -159,7 +166,7 @@ async function appelerPasserelle(
 }
 
 /** Traduit un refus de la passerelle en message actionnable. Le `request_id` est repris tel quel :
- * c'est la clé pour retrouver la trace côté Mac (`docker compose logs | grep <id>`). */
+ * c'est la clé pour retrouver la trace côté Mac. */
 async function messagePasserelle(reponse: Response): Promise<string> {
 	let detail = '';
 	let requete = '';
@@ -191,9 +198,8 @@ interface EvenementSse {
 	error?: string;
 }
 
-/** Isole l'événement d'un bloc SSE. Renvoie `null` pour ce qui ne porte pas de donnée : les
- * commentaires de heartbeat qui tiennent la connexion ouverte, le marqueur de fin, et tout bloc
- * illisible, qu'il vaut mieux ignorer que laisser casser une génération déjà à moitié reçue. */
+/** Isole l'événement d'un bloc SSE. `null` pour ce qui ne porte pas de donnée : heartbeat, marqueur
+ * de fin, et tout bloc illisible — mieux vaut l'ignorer que casser une génération à moitié reçue. */
 export function analyserBlocSse(bloc: string): EvenementSse | null {
 	const ligne = bloc.split('\n').find((l) => l.startsWith('data:'));
 	if (!ligne) return null;
@@ -209,9 +215,8 @@ export function analyserBlocSse(bloc: string): EvenementSse | null {
 	}
 }
 
-/** La passerelle n'expose pas le mode JSON natif d'Ollama : la consigne « réponds uniquement avec
- * du JSON » suffit la plupart du temps, mais le modèle encadre volontiers son objet d'un bloc de
- * code ou d'une phrase d'introduction. On isole donc l'objet avant de parser. */
+/** La passerelle n'expose pas le mode JSON natif d'Ollama, et le modèle encadre volontiers son objet
+ * d'un bloc de code ou d'une phrase d'introduction. On l'isole avant de parser. */
 export function extraireJson(brut: string): unknown {
 	const sansBlocs = brut.replace(/```(?:json)?/gi, '').trim();
 	const debut = sansBlocs.indexOf('{');

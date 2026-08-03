@@ -1,8 +1,5 @@
-/** Ce qu'on garde de la réponse du modèle.
- *
- * Un modèle hallucine des clés, des identifiants de lignes et des clauses déjà en place. Tout ce
- * qui sort d'ici a donc été confronté à la structure attendue et au mandat réel : ce module est la
- * frontière entre « le modèle a dit » et « l'application accepte ».
+/** Ce qu'on garde de la réponse du modèle : la frontière entre « le modèle a dit » et « l'application
+ * accepte ». Tout ce qui sort d'ici a été confronté à la structure attendue et au mandat réel.
  */
 import type {
 	AuditClauses,
@@ -20,14 +17,13 @@ import { CLES_CLAUSES, CLES_CONDITIONS } from '$document/catalogue';
 import { titreNormalise } from '$domaine/titres';
 import { modeleActif } from './transport';
 
-// Réexporté parce que la normalisation est ce qui s'en sert le plus, et que les tests du
-// dédoublonnage vivent ici. L'implémentation, elle, est partagée avec l'éditeur.
+// Réexporté ici parce que c'est la normalisation qui s'en sert le plus ; l'implémentation est
+// partagée avec l'éditeur.
 export { titreNormalise };
 
-/** Le tiret cadratin est la ponctuation qui trahit le plus vite un texte généré, et les modèles
- * continuent d'en produire malgré la consigne. On le remplace donc systématiquement :
- * en incise (« mot — mot — mot ») par des virgules, en apposition finale par un deux-points.
- * Nettoie au passage les puces et le gras Markdown, qui n'ont rien à faire dans un contrat. */
+/** Le tiret cadratin trahit un texte généré, et les modèles en produisent malgré la consigne. On le
+ * remplace : en incise par des virgules, en apposition finale par un deux-points. Nettoie au passage
+ * les puces et le gras Markdown. */
 export function nettoyerProse(brut: string): string {
 	return (
 		brut
@@ -50,8 +46,7 @@ function texte(valeur: unknown): string {
 	return typeof valeur === 'string' ? nettoyerProse(valeur) : '';
 }
 
-/** Le modèle peut halluciner des clés ou des identifiants de lignes : on ne conserve que ce
- * qui correspond à la structure attendue et aux lignes réellement présentes dans le mandat. */
+/** Le modèle hallucine des identifiants de lignes : on ne garde que ceux qui existent vraiment. */
 export function normaliser(brut: unknown, idsConnus: Set<string>, empreinte = ''): RedactionIA {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const lignesBrutes = (source.lignes ?? {}) as Record<string, unknown>;
@@ -67,8 +62,7 @@ export function normaliser(brut: unknown, idsConnus: Set<string>, empreinte = ''
 		preambule: texte(source.preambule),
 		objet: texte(source.objet),
 		lignes,
-		// Une nouvelle rédaction repart sans refus : les passages ne sont plus les mêmes, donc des
-		// index hérités de la précédente désigneraient un texte qui n'existe plus.
+		// Une nouvelle rédaction repart sans refus : les index hérités désigneraient un autre texte.
 		refuses: {},
 		empreinte,
 		genereLe: new Date().toISOString(),
@@ -76,9 +70,9 @@ export function normaliser(brut: unknown, idsConnus: Set<string>, empreinte = ''
 	};
 }
 
-/** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un
- * objet là où un tableau est attendu. On ne garde que ce qui désigne une case réellement
- * décochée : une suggestion sans effet est du bruit qui décrédibilise l'audit entier. */
+/** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un objet
+ * là où un tableau est attendu. On ne garde que ce qui désigne une case réellement décochée : une
+ * suggestion sans effet décrédibilise l'audit entier. */
 export function normaliserAudit(
 	brut: unknown,
 	brouillon: BrouillonMandat,
@@ -112,9 +106,8 @@ export function normaliserAudit(
 		conditions.push({ champ, raison: texte(entree.raison) });
 	}
 
-	// Une clause de la bibliothèque n'est proposée que si elle existe vraiment, n'est pas archivée, et
-	// n'est pas déjà retenue ici. Le modèle désigne volontiers un id qu'il a lu ailleurs dans le
-	// prompt, ou recommande de retenir ce qui l'est déjà.
+	// Le modèle désigne volontiers un id lu ailleurs dans le prompt : la clause doit exister, ne pas
+	// être archivée, et ne pas être déjà retenue.
 	const suggestionsBibliotheque: SuggestionBibliotheque[] = [];
 	for (const entree of tableau(source.bibliotheque)) {
 		const id = texte(entree.id);
@@ -125,9 +118,8 @@ export function normaliserAudit(
 		suggestionsBibliotheque.push({ id, raison: texte(entree.raison) });
 	}
 
-	// C'est ici que se joue le « sinon recrée » : la consigne du prompt ne se fait pas obéir, et une
-	// proposition qui redit une clause déjà en bibliothèque la ferait entrer une seconde fois, sous un
-	// titre à peine différent. Les titres déjà connus sont donc écartés d'office.
+	// La consigne « ne réécris pas ce qui existe » ne se fait pas obéir : une proposition qui redit une
+	// clause déjà en bibliothèque la ferait entrer deux fois, sous un titre à peine différent.
 	const titresConnus = new Set([
 		...titresRetenus,
 		...bibliotheque.filter((c) => !c.archiveLe).map((c) => titreNormalise(c.titre))
@@ -153,6 +145,5 @@ export function normaliserAudit(
 	};
 }
 
-/** Le texte d'un champ unique, tel que renvoyé par `redigerChamp`. Exporté pour que `index.ts`
- * applique le même nettoyage que partout ailleurs. */
+/** Le texte d'un champ unique. Exporté pour que `index.ts` applique le même nettoyage. */
 export const proseDuChamp = texte;

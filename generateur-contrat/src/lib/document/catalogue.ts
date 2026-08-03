@@ -1,8 +1,7 @@
 import type { ChampCondition, ClausesStandards } from '$domaine/types';
 
-/** Libellés du volet contractuel, partagés entre l'interface de saisie et le prompt d'audit.
- * Une seule source : si l'audit désigne une clause, l'utilisateur doit retrouver exactement le
- * même intitulé sur sa case à cocher, sinon la suggestion devient une devinette. */
+/** Libellés partagés entre l'interface de saisie et le prompt d'audit : si l'audit désigne une
+ * clause, l'utilisateur doit retrouver le même intitulé sur sa case à cocher. */
 
 export const LIBELLES_CLAUSES: Record<keyof ClausesStandards, string> = {
 	confidentialite: 'Confidentialité et protection des données (Loi 25, hébergement Canada)',
@@ -12,8 +11,8 @@ export const LIBELLES_CLAUSES: Record<keyof ClausesStandards, string> = {
 	signatureElectronique: 'Reconnaissance de la signature électronique'
 };
 
-/** Chaque condition chiffrée fait naître un article lorsqu'elle dépasse zéro : le rappeler ici
- * permet à l'audit d'expliquer ce que l'oubli coûte réellement au contrat. */
+/** L'article que chaque condition fait naître est nommé dans le libellé : c'est ce qui permet à
+ * l'audit de dire ce que l'oubli coûte au contrat. */
 export const LIBELLES_CONDITIONS: Record<ChampCondition, string> = {
 	heuresFormationIncluses: 'Heures de formation incluses (article « Formation »)',
 	dureeGarantieJours: 'Garantie en jours (article « Garantie »)',

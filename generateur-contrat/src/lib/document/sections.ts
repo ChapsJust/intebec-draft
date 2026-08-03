@@ -1,7 +1,5 @@
-/** Assemble le modèle de vue d'un document à partir d'un brouillon.
- *
- * Le seul endroit qui décide de ce qui figure au contrat et dans quel ordre. Les types du résultat
- * sont dans `modele.ts`, l'empreinte de fraîcheur dans `empreinte.ts`.
+/** Assemble le modèle de vue d'un document : le seul endroit qui décide de ce qui figure au contrat
+ * et dans quel ordre. Types du résultat dans `modele.ts`, empreinte de fraîcheur dans `empreinte.ts`.
  */
 import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
 import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$domaine/montants';
@@ -105,11 +103,8 @@ function construireEcheancier(brouillon: BrouillonMandat): ContenuSection {
 	const { acomptePct, soldePct, delaiJoursSolde } = brouillon.modalitesPaiement;
 	const versements: Versement[] = [];
 
-	// Un seul versement quand l’acompte est nul ou couvre tout : parler de « solde » suppose
-	// qu’un acompte l’a précédé, et « Solde (100 %) » se lirait comme une erreur de saisie sur
-	// un mandat payable en entier à la livraison.
-	// Espace insécable avant le %, conformément à la typographie française : le libellé ne doit
-	// jamais se couper entre le nombre et son symbole.
+	// Un seul versement quand l'acompte est nul ou couvre tout : « Solde (100 %) » supposerait qu'un
+	// acompte l'a précédé. Espace insécable avant le %, typographie française.
 	if (acomptePct <= 0) {
 		versements.push({
 			libelle: `Paiement intégral (100 %)`,
@@ -199,8 +194,7 @@ function construireParties(brouillon: BrouillonMandat): Partie[] {
 }
 
 /** Phrase liminaire produite par le gabarit, sans l'IA. Exportée parce qu'elle est le côté « avant »
- * du diff : le panneau de revue doit pouvoir la comparer à ce que le modèle a écrit, et elle
- * n'existait nulle part ailleurs qu'au fond d'une branche `else`. */
+ * du diff, que le panneau de revue compare à ce que le modèle a écrit. */
 export function preambuleParDefaut(brouillon: BrouillonMandat): string {
 	const designation = designationClient(brouillon.client.typeClient);
 	const nomClient = brouillon.client.nom.trim() || 'le Client';
@@ -209,8 +203,8 @@ export function preambuleParDefaut(brouillon: BrouillonMandat): string {
 		: `La présente soumission présente à ${designation} ${nomClient} la portée, les honoraires et les conditions proposés par ${PRESTATAIRE.nom} pour la réalisation du mandat décrit aux présentes.`;
 }
 
-/** Passages refusés pour un champ. Tolère l'absence de `refuses` : les rédactions enregistrées avant
- * l'arrivée de la revue passage par passage n'ont pas la clé. */
+/** Passages refusés pour un champ. Tolère l'absence de `refuses`, que les rédactions antérieures à la
+ * revue passage par passage n'ont pas. */
 function refusesDuChamp(redaction: RedactionIA | null | undefined, champ: string): number[] {
 	return redaction?.refuses?.[champ] ?? [];
 }
@@ -235,8 +229,8 @@ function construirePreambule(brouillon: BrouillonMandat, redaction?: RedactionIA
 	return textes;
 }
 
-/** Compte les caractères de prose et les blocs d'une section, pour estimer la place qu'elle
- * occupera. Les tableaux pèsent plus que leur texte : chaque rangée est une ligne à part. */
+/** Estime la place qu'une section occupera. Les tableaux pèsent plus que leur texte : chaque rangée
+ * est une ligne à part. */
 function poidsSection(section: SectionDocument): number {
 	const c = section.contenu;
 	switch (c.kind) {
@@ -264,9 +258,8 @@ function poidsSection(section: SectionDocument): number {
 	}
 }
 
-/** Choisit l'espacement en fonction du volume réel du document, plutôt que d'imposer une valeur
- * fixe qui convient à un contrat de dix pages mais laisse une soumission d'une page à moitié
- * vide. Les seuils correspondent grossièrement à une et à trois pages de texte. */
+/** Espacement choisi selon le volume réel : une valeur fixe qui va à un contrat de dix pages laisse
+ * une soumission d'une page à moitié vide. Les seuils valent grossièrement une et trois pages. */
 export function calculerDensite(sections: SectionDocument[]): Densite {
 	const poids = sections.reduce((n, s) => n + poidsSection(s), 0);
 	if (poids < 2200) return 'aere';
@@ -274,9 +267,8 @@ export function calculerDensite(sections: SectionDocument[]): Densite {
 	return 'compact';
 }
 
-/** Transforme un mandat en modèle de document prêt à rendre.
- * Fonction pure : aucune valeur monétaire n'est recalculée ici, tout passe par `montants.ts`,
- * seule source de vérité des montants (la même que celle affichée dans l'éditeur). */
+/** Transforme un mandat en modèle prêt à rendre. Fonction pure : aucun montant n'est recalculé ici,
+ * tout passe par `montants.ts`, la même source que l'éditeur. */
 export function construireDocument(
 	brouillon: BrouillonMandat,
 	redaction?: RedactionIA | null

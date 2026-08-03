@@ -1,8 +1,6 @@
-/** Les trois choses que l'application demande à l'IA locale.
- *
- * Chacune suit la même chaîne : une invite construite dans `invites.ts`, un aller-retour par
- * `transport.ts`, un passage obligé par `normalisation.ts`. Rien d'autre du dossier `ia/` n'a
- * vocation à être importé d'ailleurs.
+/** Les trois choses que l'application demande à l'IA locale. Chacune suit la même chaîne : une invite
+ * (`invites.ts`), un aller-retour (`transport.ts`), une normalisation (`normalisation.ts`). Rien
+ * d'autre du dossier `ia/` n'a vocation à être importé d'ailleurs.
  */
 import type {
 	AuditClauses,
@@ -32,8 +30,8 @@ export async function redigerDocument(brouillon: BrouillonMandat): Promise<Redac
 	return normaliser(brut, idsConnus, empreinteProse(brouillon));
 }
 
-/** Relit le mandat et signale ce qui manque au volet contractuel. Ne modifie rien : l'utilisateur
- * reste seul à décider d'activer une clause, et les brouillons partent en révision, pas au document. */
+/** Relit le mandat et signale ce qui manque. Ne modifie rien : les brouillons partent en révision,
+ * pas au document. */
 export async function auditerClauses(
 	brouillon: BrouillonMandat,
 	bibliotheque: ClauseBibliotheque[] = []

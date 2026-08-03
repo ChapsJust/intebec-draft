@@ -1,9 +1,5 @@
-/** Les trois demandes que l'éditeur adresse à l'IA locale pendant la saisie.
- *
- * Aucune ne persiste le mandat : elles renvoient une proposition que l'utilisateur applique ou
- * ignore. Séparées du composant parce que ce sont trois allers-retours réseau à la forme
- * identique, et que les lire à la suite ici est plus parlant que dispersés dans 300 lignes de
- * gabarit.
+/** Les trois demandes que l'éditeur adresse à l'IA locale pendant la saisie. Aucune ne persiste le
+ * mandat : elles renvoient une proposition que l'utilisateur applique ou ignore.
  */
 import type {
 	AuditClauses,
@@ -16,8 +12,8 @@ import { messageDechec, posterAction } from './action-distante';
 const PAS_DE_REPONSE = "L'IA locale n'a pas répondu.";
 const CLAUSE_NON_ENREGISTREE = 'La clause n’a pas pu être enregistrée.';
 
-/** Fait relire le volet contractuel. Le résultat est purement consultatif : il remonte au
- * formulaire de conditions, qui laisse l'utilisateur activer ou ignorer chaque suggestion. */
+/** Fait relire le volet contractuel. Résultat purement consultatif : rien n'est appliqué sans un
+ * geste de l'utilisateur. */
 export async function auditerClauses(brouillon: BrouillonMandat): Promise<AuditClauses> {
 	const body = new FormData();
 	body.set('payload', JSON.stringify(brouillon));
@@ -45,8 +41,7 @@ export async function enregistrerClause(
 	throw new Error(messageDechec(result, CLAUSE_NON_ENREGISTREE));
 }
 
-/** Demande une proposition de texte pour un champ précis. Rien n'est persisté : la proposition
- * remonte au bouton, qui laisse l'utilisateur l'accepter ou l'ignorer. */
+/** Demande une proposition de texte pour un champ précis. */
 export async function proposerTexte(brouillon: BrouillonMandat, champ: string): Promise<string> {
 	const body = new FormData();
 	body.set('payload', JSON.stringify(brouillon));

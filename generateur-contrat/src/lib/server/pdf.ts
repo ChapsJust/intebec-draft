@@ -12,18 +12,13 @@ async function obtenirNavigateur(): Promise<Browser> {
 	const enConteneur = Boolean(env.CHROMIUM_PATH);
 
 	navigateur = await chromium.launch({
-		// En conteneur Alpine, Chromium vient du gestionnaire de paquets : les binaires téléchargés
-		// par Playwright sont liés à la glibc et ne démarrent pas sur musl. Hors conteneur, la
-		// variable est absente et Playwright utilise son propre navigateur.
+		// En conteneur Alpine, Chromium vient du gestionnaire de paquets : les binaires de Playwright
+		// sont liés à la glibc et ne démarrent pas sur musl.
 		executablePath: env.CHROMIUM_PATH || undefined,
-		args: enConteneur
-			? // Le bac à sable de Chromium a besoin de capacités que le conteneur n'accorde pas ; il
-				// faut donc le désactiver là, et seulement là. `/dev/shm` y est aussi trop petit par
-				// défaut, ce qui fait planter le rendu des documents longs.
-				['--no-sandbox', '--disable-dev-shm-usage']
-			: // Hors conteneur, on garde le bac à sable actif : c'est la protection qui contient
-				// Chromium si la page imprimée déclenche une faille du moteur de rendu.
-				[]
+		// Le bac à sable a besoin de capacités que le conteneur n'accorde pas, et `/dev/shm` y est
+		// trop petit pour les documents longs. Ailleurs on le garde actif : c'est lui qui contient
+		// Chromium si la page imprimée déclenche une faille du moteur de rendu.
+		args: enConteneur ? ['--no-sandbox', '--disable-dev-shm-usage'] : []
 	});
 	return navigateur;
 }
@@ -78,19 +73,15 @@ export async function genererPdf({ url, mention }: OptionsPdf): Promise<Uint8Arr
 	}
 }
 
-/** Origine à utiliser pour la navigation interne de Chromium. En conteneur, `localhost` désigne
- * le conteneur lui-même, ce qui est correct ici puisque l'app et Chromium y cohabitent.
- *
- * `PDF_ORIGIN` cesse d'être facultative dès qu'un proxy est devant l'application : l'origine de la
- * requête entrante serait alors le nom public `.ts.net`, que Chromium devrait résoudre depuis Docker
- * avant de ressortir par le proxy pour revenir au même conteneur. `compose.yaml` la renseigne. */
+/** Origine que Chromium visite pour imprimer. `PDF_ORIGIN` cesse d'être facultative dès qu'un proxy
+ * est devant l'application : l'origine entrante serait le nom public `.ts.net`, que Chromium devrait
+ * résoudre depuis Docker pour ressortir par le proxy et revenir au même conteneur. */
 export function origineInterne(fallback: string): string {
 	return env.PDF_ORIGIN || fallback;
 }
 
-/** Transforme un mandat en nom de fichier sûr : sans accents, sans ponctuation, en minuscules.
- * La date subit le même nettoyage que le titre. Elle vient du brouillon, donc de la saisie de
- * l'utilisateur, et un guillemet ou un retour à la ligne qui s'y glisserait casserait l'en-tête
+/** Nom de fichier sûr : sans accents, sans ponctuation, en minuscules. La date passe par le même
+ * nettoyage que le titre — elle vient de la saisie, et un guillemet y casserait l'en-tête
  * `Content-Disposition` dans lequel ce nom est inséré. */
 export function nomFichier(type: string, titre: string, date: string): string {
 	const nettoyer = (valeur: string) =>

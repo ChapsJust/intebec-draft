@@ -29,30 +29,36 @@ const DIZAINES: Record<number, string> = {
 	6: 'soixante'
 };
 
+/** 0 à 19. Au-delà de seize, le français recompose : dix-sept, dix-huit, dix-neuf. */
 function sousVingt(n: number): string {
 	if (n <= 16) return SOUS_SEIZE[n];
 	return `dix-${SOUS_SEIZE[n - 10]}`;
 }
 
+/** 0 à 99, en trois régimes parce que le français en a trois. */
 function sousCent(n: number): string {
 	if (n < 20) return sousVingt(n);
 
-	// 70-79 et 90-99 se construisent sur la dizaine inférieure : soixante-dix, quatre-vingt-dix.
+	// 20 à 69 : dizaine + unité, avec le « et » de vingt-et-un pour seule exception.
 	if (n < 70) {
-		const d = Math.floor(n / 10);
-		const r = n % 10;
-		if (r === 0) return DIZAINES[d];
-		if (r === 1) return `${DIZAINES[d]}-et-un`;
-		return `${DIZAINES[d]}-${SOUS_SEIZE[r]}`;
+		const dizaine = DIZAINES[Math.floor(n / 10)];
+		const unite = n % 10;
+		if (unite === 0) return dizaine;
+		if (unite === 1) return `${dizaine}-et-un`;
+		return `${dizaine}-${SOUS_SEIZE[unite]}`;
 	}
+
+	// 70 à 79 : pas de « septante », mais soixante + un nombre de 10 à 19.
 	if (n < 80) {
-		const r = n - 60;
-		if (r === 11) return 'soixante-et-onze';
-		return `soixante-${sousVingt(r)}`;
+		const reste = n - 60;
+		if (reste === 11) return 'soixante-et-onze';
+		return `soixante-${sousVingt(reste)}`;
 	}
-	const r = n - 80;
-	if (r === 0) return 'quatre-vingts';
-	return `quatre-vingt-${sousVingt(r)}`;
+
+	// 80 à 99 : le « s » ne tient que sur le compte rond, quatre-vingts mais quatre-vingt-un.
+	const reste = n - 80;
+	if (reste === 0) return 'quatre-vingts';
+	return `quatre-vingt-${sousVingt(reste)}`;
 }
 
 /** Écrit un entier en toutes lettres (0-999). Au-delà, retourne les chiffres tels quels. */
@@ -60,11 +66,13 @@ export function enLettres(n: number): string {
 	if (!Number.isInteger(n) || n < 0 || n > 999) return String(n);
 	if (n < 100) return sousCent(n);
 
-	const c = Math.floor(n / 100);
-	const r = n % 100;
-	const prefixe = c === 1 ? 'cent' : `${SOUS_SEIZE[c]}-cent`;
-	if (r === 0) return c === 1 ? 'cent' : `${SOUS_SEIZE[c]}-cents`;
-	return `${prefixe}-${sousCent(r)}`;
+	const centaines = Math.floor(n / 100);
+	const reste = n % 100;
+
+	// Jamais « un cent », et même règle de pluriel : deux-cents, mais deux-cent-cinq.
+	const prefixe = centaines === 1 ? 'cent' : `${SOUS_SEIZE[centaines]}-cent`;
+	if (reste === 0) return centaines === 1 ? 'cent' : `${prefixe}s`;
+	return `${prefixe}-${sousCent(reste)}`;
 }
 
 /** Forme contractuelle usuelle : « trente (30) ». */

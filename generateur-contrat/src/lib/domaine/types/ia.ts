@@ -19,9 +19,8 @@ export interface PropositionClause {
 	brouillon: string;
 }
 
-/** Clause déjà présente en bibliothèque que l'IA propose de retenir pour ce mandat, plutôt que d'en
- * rédiger une variante. Sans ce registre, chaque relecture réécrivait sa propre version d'une
- * protection déjà retenue ailleurs, et la bibliothèque se peuplait de doublons approximatifs. */
+/** Clause déjà en bibliothèque que l'IA propose de retenir, plutôt que d'en rédiger une variante.
+ * Sans ça, chaque relecture repeuplait la bibliothèque de doublons approximatifs. */
 export interface SuggestionBibliotheque {
 	id: string;
 	raison: string;
@@ -37,33 +36,24 @@ export interface AuditClauses {
 	modele: string;
 }
 
-/** Rédaction produite par l'IA, stockée à côté du brouillon et jamais à sa place. Permet de conserver les modifications apportées par l'IA sans altérer le brouillon original. */
+/** Prose produite par l'IA, stockée à côté du brouillon et jamais à sa place : la saisie reste
+ * intacte et la rédaction est rejouable. */
 export interface RedactionIA {
 	preambule: string;
 	objet: string;
 	/** Descriptions réécrites, indexées par `LigneService.id`. */
 	lignes: Record<string, string>;
-	/** Passages rejetés par l'utilisateur, par champ (`preambule`, `objet`, ou un `LigneService.id`) :
-	 * les index des passages du diff qu'il a refusés.
+	/** Index des passages refusés, par champ (`preambule`, `objet`, ou un `LigneService.id`).
 	 *
-	 * On stocke la décision, pas son résultat : le texte affiché est recomposé à la lecture par
-	 * `texteEffectif`. Fusionner en dur aurait obligé à écraser soit la saisie, soit la prose de
-	 * l'IA, et un refus serait devenu irréversible. Le PDF passant par le même `construireDocument`,
-	 * il suit les refus sans avoir à les connaître.
+	 * On stocke la décision, pas son résultat : `texteEffectif` recompose le texte à la lecture, donc
+	 * un refus se défait et le PDF le suit sans rien connaître.
 	 *
-	 * Optionnel, et pas par commodité : les rédactions enregistrées avant l'arrivée de la revue
-	 * passage par passage n'ont pas la clé, et la colonne `jsonb` ne les a pas migrées. Le type dit
-	 * donc la vérité de ce qui sort de la base, ce qui force le `??` là où on le lit. */
+	 * Optionnel : les rédactions enregistrées avant la revue passage par passage n'ont pas la clé, et
+	 * la colonne `jsonb` ne les a pas migrées. */
 	refuses?: Record<string, number[]>;
-	/** Empreinte de la saisie dont cette prose est dérivée, via `empreinteProse`.
-	 *
-	 * Sans elle, une rédaction survivait à la saisie qui l'a produite sans que rien ne le signale :
-	 * on modifiait le mandat, on relançait « Générer », et le document continuait d'afficher la prose
-	 * de la version précédente. Les refus enregistrés étaient caducs eux aussi, leurs index ayant
-	 * glissé sous le nouveau découpage.
-	 *
-	 * Optionnelle, comme `refuses` : les rédactions antérieures n'en ont pas, et on ne peut alors rien
-	 * affirmer sur leur fraîcheur. */
+	/** Empreinte de la saisie dont cette prose est dérivée (`empreinteProse`). Sans elle, une
+	 * rédaction survit à la saisie qui l'a produite sans que rien ne le signale. Optionnelle pour la
+	 * même raison que `refuses`. */
 	empreinte?: string;
 	genereLe: string;
 	modele: string;

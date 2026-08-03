@@ -1,6 +1,5 @@
 <script lang="ts">
-	// `SvelteSet` et non `Set` : un `Set` nu muté par `add()` ne déclenche aucun `$derived`, et les
-	// cartes refusées restaient affichées jusqu'à la prochaine frappe dans le formulaire.
+	// `SvelteSet` et non `Set` : un `Set` nu muté par `add()` ne déclenche aucun `$derived`.
 	import { SvelteSet } from 'svelte/reactivity';
 	import type {
 		AuditClauses,
@@ -31,16 +30,14 @@
 	/** Clause en cours d'enregistrement en bibliothèque, pour n'immobiliser que son bouton. */
 	let retenueEnCours = $state<string | null>(null);
 
-	/** Suggestions écartées d'un geste. Purement local à la relecture en cours : l'audit n'est
-	 * persisté nulle part, donc un refus n'a rien à survivre. Relancer la relecture repart d'une page
-	 * blanche, ce qui est le comportement attendu quand on veut un second avis. */
+	/** Suggestions écartées d'un geste, local à la relecture en cours : l'audit n'est persisté nulle
+	 * part, et relancer une relecture doit repartir d'une page blanche. */
 	let refusees = $state(new SvelteSet<string>());
 
 	const retenus = $derived(titresRetenus(conditions));
 
-	/** Les suggestions déjà appliquées disparaissent d'elles-mêmes : la liste est filtrée sur
-	 * l'état réel des cases, pas sur ce que l'IA a répondu. Un audit qui recommande d'activer ce
-	 * qui est déjà coché se discrédite en trois secondes. */
+	/** Filtré sur l'état réel des cases, pas sur ce que l'IA a répondu : un audit qui recommande
+	 * d'activer ce qui est déjà coché se discrédite en trois secondes. */
 	const suggestions = $derived(
 		audit?.suggestions.filter(
 			(s) => !conditions.clauses[s.cle] && !refusees.has(`clause:${s.cle}`)
@@ -93,8 +90,8 @@
 		refusees.add(cle);
 	}
 
-	/** Accepte une clause proposée par la relecture : elle entre d'abord dans la bibliothèque, puis
-	 * dans le mandat. L'ordre compte, l'identifiant venant de la bibliothèque. */
+	/** La clause entre d'abord dans la bibliothèque, puis dans le mandat : l'ordre compte, c'est la
+	 * bibliothèque qui attribue l'identifiant. */
 	async function accepterProposition(proposition: PropositionClause) {
 		if (!onRetenirProposition) return;
 		retenueEnCours = proposition.titre;
@@ -177,9 +174,8 @@
 
 	{#if manquesChiffres.length > 0}
 		<div class="mt-3 space-y-2">
-			<!-- Aucune valeur n'est proposée : l'IA n'a pas à décider d'une durée de garantie
-				ni d'un taux horaire. Elle signale le champ, l'utilisateur met le chiffre. C'est
-				pourquoi il n'y a rien à « accepter » ici, seulement à écarter. -->
+			<!-- Aucune valeur proposée : l'IA n'a pas à décider d'une durée de garantie. Elle signale
+				le champ, l'utilisateur met le chiffre — d'où l'absence de bouton « accepter ». -->
 			<p class="text-xs font-medium text-ink-muted">
 				Conditions laissées à zéro (l’article correspondant est absent du contrat)
 			</p>
@@ -205,8 +201,7 @@
 
 	{#if suggestionsBibliotheque.length > 0}
 		<div class="mt-3 space-y-2">
-			<!-- Réutiliser plutôt que réécrire : c'est tout l'intérêt d'avoir transmis la
-				bibliothèque au modèle. -->
+			<!-- Réutiliser plutôt que réécrire : l'intérêt d'avoir transmis la bibliothèque au modèle. -->
 			<p class="text-xs font-medium text-ink-muted">Clauses de votre bibliothèque à retenir</p>
 			{#each suggestionsBibliotheque as s (s.id)}
 				<div

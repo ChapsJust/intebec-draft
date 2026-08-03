@@ -4,8 +4,8 @@ import { clauseBibliotheque } from './schema';
 import type { ClauseBibliotheque } from '$domaine/types';
 import { estUuid } from '$serveur/formulaire';
 
-/** Champs qu'une requête entrante a le droit d'écrire sur une clause. Même raison que pour les fiches
- * clients : sans liste explicite, un `set({ ...data })` laisserait écrire `id` ou `creeLe`. */
+/** Même raison que pour les fiches clients : sans liste explicite, un `set({ ...data })` laisserait
+ * écrire `id` ou `creeLe`. */
 const CHAMPS_MODIFIABLES = ['titre', 'corps'] as const;
 
 type ChampModifiable = (typeof CHAMPS_MODIFIABLES)[number];
@@ -32,8 +32,8 @@ function versEnregistrement(row: typeof clauseBibliotheque.$inferSelect): Clause
 	};
 }
 
-/** `archives` bascule la liste sur les clauses archivées. Le tri est alphabétique : la bibliothèque
- * est consultée par titre, jamais par date d'ajout. */
+/** `archives` bascule la liste sur les clauses archivées. Tri par titre : c'est ainsi qu'on cherche
+ * dans une bibliothèque, jamais par date d'ajout. */
 export async function listerClausesBibliotheque(options?: {
 	archives?: boolean;
 }): Promise<ClauseBibliotheque[]> {
@@ -55,9 +55,8 @@ export async function obtenirClauseBibliotheque(id: string): Promise<ClauseBibli
 	return row ? versEnregistrement(row) : null;
 }
 
-/** Ajoute une clause à la bibliothèque. `origine` distingue ce qui vient d'une relecture de ce qui a
- * été saisi à la main : c'est la seule trace qu'un texte a d'abord été rédigé par le modèle, et donc
- * qu'il mérite une relecture juridique avant d'être envoyé à un client. */
+/** `origine` est la seule trace qu'un texte vient du modèle, et mérite donc une relecture juridique
+ * avant d'être envoyé à un client. */
 export async function creerClauseBibliotheque(data: {
 	titre: string;
 	corps: string;
@@ -74,9 +73,8 @@ export async function creerClauseBibliotheque(data: {
 	return versEnregistrement(row);
 }
 
-/** Met à jour une clause. Renvoie `null` si elle n'existe plus, ou si la requête ne portait aucun
- * champ modifiable : il n'y aurait rien à écrire, et toucher `majLe` quand même ferait passer pour
- * modifiée une clause restée identique. */
+/** Renvoie `null` si la clause n'existe plus, ou si la requête ne portait aucun champ modifiable :
+ * toucher `majLe` ferait alors passer pour modifiée une clause identique. */
 export async function modifierClauseBibliotheque(
 	id: string,
 	data: unknown
@@ -94,8 +92,8 @@ export async function modifierClauseBibliotheque(
 	return row ? versEnregistrement(row) : null;
 }
 
-/** Sort une clause de la bibliothèque sans la détruire : les mandats qui la citent gardent leur copie
- * figée, et la relecture cesse de la proposer. */
+/** Sort une clause de la bibliothèque sans la détruire : les mandats qui la citent gardent leur
+ * copie figée. */
 export async function archiverClauseBibliotheque(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	const lignes = await db

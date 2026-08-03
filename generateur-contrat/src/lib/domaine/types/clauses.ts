@@ -20,9 +20,8 @@ export interface ConditionsParticulieres {
 	notesAdditionnelles: string;
 }
 
-/** Champs chiffrés des conditions particulières qui font naître un article lorsqu'ils sont
- * renseignés. Laissés à zéro, l'article correspondant disparaît du contrat : c'est exactement le
- * genre d'oubli que l'audit doit rattraper. (IA) */
+/** Champs chiffrés qui font naître un article quand ils sont renseignés. Laissés à zéro, l'article
+ * disparaît du contrat : le genre d'oubli que l'audit doit rattraper. (IA) */
 export type ChampCondition =
 	| 'heuresFormationIncluses'
 	| 'dureeGarantieJours'
@@ -30,9 +29,8 @@ export type ChampCondition =
 	| 'tauxHoraireHorsPerimetre'
 	| 'preavisResiliationJours';
 
-/** Clause rédigée hors catalogue, réutilisable d'un mandat à l'autre. Le catalogue des cinq clauses
- * standards est du code : il porte du texte qui consomme les valeurs du mandat. La bibliothèque, à
- * l'inverse, ne porte que de la prose figée, ce qui est exactement ce qu'une relecture produit. */
+/** Clause hors catalogue, réutilisable d'un mandat à l'autre. Le catalogue est du code, qui consomme
+ * les valeurs du mandat ; la bibliothèque ne porte que de la prose figée. */
 export interface ClauseBibliotheque {
 	id: string;
 	titre: string;
@@ -45,11 +43,9 @@ export interface ClauseBibliotheque {
 	majLe: string;
 }
 
-/** Clause retenue pour CE mandat, texte figé au moment où elle a été retenue.
- *
- * Même raison que `clientId` vs `brouillon.client` : la bibliothèque évolue, un contrat déjà rédigé
- * ne doit pas changer dans son dos. L'identifiant ne sert donc qu'à la traçabilité et au
- * dédoublonnage de la relecture, jamais à retrouver le texte à afficher. */
+/** Clause retenue pour CE mandat, texte figé au moment où elle a été retenue : la bibliothèque
+ * évolue, un contrat déjà rédigé ne doit pas changer dans son dos. L'identifiant ne sert qu'à la
+ * traçabilité, jamais à retrouver le texte à afficher. */
 export interface ClauseRetenue {
 	/** Origine dans la bibliothèque. Vide si la clause y a été supprimée depuis. */
 	idBibliotheque: string;

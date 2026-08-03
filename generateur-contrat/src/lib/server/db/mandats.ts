@@ -20,14 +20,9 @@ function versEnregistrement(row: typeof mandat.$inferSelect): MandatEnregistre {
 		titre: row.titre,
 		clientNom: row.clientNom,
 		totalNet: Number(row.totalNet),
-		// Normalisé à la lecture, et pas seulement à l'écriture : la colonne est un `jsonb` que rien ne
-		// contraint, donc une ligne enregistrée avant l'ajout d'un champ ne l'a pas. Sans ce passage,
-		// `conditions.clausesRetenues` arrivait à `undefined` sur tous les mandats existants et la page
-		// d'édition tombait en 500 : le brouillon était intact, mais devenu illisible.
-		//
-		// Idempotent pour tout ce que l'application a écrit, puisque `enregistrerMandat` applique déjà
-		// la même normalisation. Le faire ici évite d'avoir à protéger chaque lecture une par une, et
-		// couvre d'avance le prochain champ ajouté au brouillon.
+		// Normalisé à la lecture aussi : la colonne est un `jsonb` sans contrainte, donc une ligne
+		// écrite avant l'ajout d'un champ ne l'a pas, et la page d'édition tombait en 500. Idempotent,
+		// puisque l'écriture applique déjà la même normalisation.
 		brouillon: normaliserMandat(row.brouillon),
 		redaction: row.redaction ?? null,
 		archiveLe: row.archiveLe ? row.archiveLe.toISOString() : null,
@@ -59,8 +54,7 @@ export async function listerMandats(options?: {
 		.where(and(...filtres))
 		.orderBy(desc(mandat.majLe));
 
-	// La limite est appliquée par la requête, pas après coup : l'accueil n'affiche que huit lignes
-	// et n'a aucune raison de faire remonter toute la table pour en jeter le reste.
+	// Limite appliquée par la requête : inutile de remonter toute la table pour en jeter le reste.
 	const rows = options?.limite ? await requete.limit(options.limite) : await requete;
 	return rows.map(versEnregistrement);
 }
@@ -71,11 +65,8 @@ export async function obtenirMandat(id: string): Promise<MandatEnregistre | null
 	return row ? versEnregistrement(row) : null;
 }
 
-/** Crée un mandat, ou met à jour celui désigné par `options.id`.
- *
- * Renvoie `null` quand la mise à jour ne touche aucune ligne, c'est-à-dire quand le mandat a été
- * supprimé entre-temps. Le cas se produit pour de vrai : deux onglets ouverts, suppression dans
- * l'un, « Enregistrer » dans l'autre. */
+/** Crée un mandat, ou met à jour celui désigné par `options.id`. Renvoie `null` quand aucune ligne
+ * n'est touchée : le mandat a été supprimé entre-temps, depuis un autre onglet. */
 export async function enregistrerMandat(
 	brouillon: BrouillonMandat,
 	options?: { id?: string; clientId?: string | null; statut?: StatutDocument }
@@ -101,9 +92,8 @@ export async function enregistrerMandat(
 	return versEnregistrement(row);
 }
 
-/** Enregistre (ou efface, avec `null`) la rédaction générée par l'IA. Volontairement séparé de
- * `enregistrerMandat` : sauvegarder le brouillon ne doit jamais toucher à la rédaction, et relancer la
- * rédaction ne doit jamais toucher à la saisie. */
+/** Enregistre (ou efface, avec `null`) la rédaction de l'IA. Séparé de `enregistrerMandat` : les deux
+ * colonnes ne doivent jamais se toucher l'une l'autre. */
 export async function enregistrerRedaction(
 	id: string,
 	redaction: RedactionIA | null
@@ -117,8 +107,8 @@ export async function enregistrerRedaction(
 	return row ? versEnregistrement(row) : null;
 }
 
-/** Fait avancer un mandat dans son cycle de vie (brouillon, généré, envoyé) sans toucher au
- * brouillon lui-même : marquer un document comme envoyé ne doit pas réécrire sa saisie. */
+/** Fait avancer un mandat dans son cycle de vie (brouillon, généré, envoyé) sans toucher à sa
+ * saisie. */
 export async function changerStatutMandat(id: string, statut: StatutDocument): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	const lignes = await db
@@ -129,10 +119,9 @@ export async function changerStatutMandat(id: string, statut: StatutDocument): P
 	return lignes.length > 0;
 }
 
-/** Les trois opérations ci-dessous renvoient `true` seulement si elles ont réellement touché une
- * ligne. Auparavant elles ne renvoyaient rien, et l'interface annonçait « Mandat supprimé. » même
- * quand l'identifiant ne correspondait à aucun mandat : une confirmation fausse est pire qu'une
- * erreur, puisqu'elle dispense de vérifier. IA */
+/** Les trois opérations ci-dessous renvoient `true` seulement si elles ont touché une ligne : sinon
+ * l'interface annonce « Mandat supprimé » pour un identifiant qui n'existe pas, et une confirmation
+ * fausse dispense de vérifier. (IA) */
 export async function archiverMandat(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	const lignes = await db

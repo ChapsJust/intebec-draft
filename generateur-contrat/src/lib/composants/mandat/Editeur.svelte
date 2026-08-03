@@ -62,8 +62,7 @@
 		body.set('id', clientId);
 		body.set('payload', JSON.stringify(brouillon.client));
 
-		// `finally` plutôt qu'une remise à zéro après l'attente : si la requête échoue (réseau
-		// coupé, réponse illisible), le bouton restait désactivé jusqu'au rechargement de la page.
+		// `finally` : sans lui, une requête échouée laisse le bouton désactivé jusqu'au rechargement.
 		try {
 			const result = await posterAction('?/modifierClient', body);
 			if (result.type === 'success') {
@@ -82,9 +81,8 @@
 
 	const proposerTexte = (champ: string): Promise<string> => ia.proposerTexte(brouillon, champ);
 
-	/** Retient une clause proposée par la relecture. La bibliothèque locale est complétée au
-	 * passage : sans cela, la clause n'apparaîtrait dans « Ajouter depuis la bibliothèque » qu'après
-	 * un rechargement, et paraîtrait n'avoir été enregistrée nulle part. */
+	/** La bibliothèque locale est complétée au passage : sans ça, la clause n'apparaîtrait dans
+	 * « Ajouter depuis la bibliothèque » qu'après un rechargement. */
 	async function retenirProposition(proposition: PropositionClause): Promise<ClauseBibliotheque> {
 		const clause = await ia.enregistrerClause(proposition);
 		clausesBibliotheque = [...clausesBibliotheque, clause];
@@ -96,8 +94,8 @@
 	method="POST"
 	action="?/enregistrer"
 	use:enhance={({ action }) => {
-		// La génération embarque la passe de rédaction IA : plusieurs dizaines de secondes pendant
-		// lesquelles rien ne bouge à l'écran si on ne le dit pas. L'enregistrement, lui, est immédiat.
+		// La génération enchaîne sur la rédaction IA : plusieurs dizaines de secondes sans rien à
+		// l'écran si on ne le dit pas. L'enregistrement, lui, est immédiat.
 		generationEnCours = action.search === '?/generer';
 		return async ({ update }) => {
 			await update();

@@ -4,11 +4,9 @@ import { client, mandat } from './schema';
 import type { CoordonneesClient, FicheClient, FicheClientListee } from '$domaine/types';
 import { estUuid } from '$serveur/formulaire';
 
-/** Champs qu'une requête entrante a le droit d'écrire sur une fiche client.
- *
- * La liste est explicite parce que le contraire l'était trop : le JSON reçu du navigateur partait
- * directement dans `set({ ...data })`, et une requête bricolée pouvait donc écrire n'importe quelle
- * colonne de la table, `id` comprise, ce qui aurait détaché la fiche de tous ses mandats. */
+/** Champs qu'une requête entrante a le droit d'écrire. Sans liste explicite, le JSON reçu partirait
+ * dans `set({ ...data })` et pourrait écrire n'importe quelle colonne, `id` comprise, ce qui
+ * détacherait la fiche de tous ses mandats. */
 const CHAMPS_MODIFIABLES = [
 	'nom',
 	'typeClient',
@@ -24,8 +22,8 @@ const CHAMPS_MODIFIABLES = [
 
 type ChampModifiable = (typeof CHAMPS_MODIFIABLES)[number];
 
-/** Ne retient d'un objet arbitraire que les champs modifiables, et seulement s'ils sont des
- * chaînes. Tout le reste est ignoré silencieusement : c'est du bruit, pas une erreur à signaler. */
+/** Ne retient que les champs modifiables, et seulement s'ils sont des chaînes. Le reste est du bruit,
+ * pas une erreur à signaler. */
 function champsAutorises(data: unknown): Partial<Record<ChampModifiable, string>> {
 	const source = (data ?? {}) as Record<string, unknown>;
 	const retenus: Partial<Record<ChampModifiable, string>> = {};
@@ -55,8 +53,8 @@ function versEnregistrement(row: typeof client.$inferSelect): FicheClient {
 	};
 }
 
-/** `archives` bascule la liste sur les clients archivés. Le décompte des mandats accompagne chaque
- * fiche : c'est ce qui permet d'annoncer les conséquences exactes avant d'archiver ou de supprimer. */
+/** `archives` bascule la liste sur les clients archivés. Le décompte des mandats permet d'annoncer
+ * les conséquences exactes avant d'archiver ou de supprimer. */
 export async function listerClients(options?: {
 	archives?: boolean;
 }): Promise<FicheClientListee[]> {
@@ -97,9 +95,8 @@ export async function creerClient(
 	return versEnregistrement(row);
 }
 
-/** Met à jour une fiche client. Renvoie `null` si la fiche n'existe plus, ou si la requête ne
- * portait aucun champ modifiable — dans ce dernier cas il n'y a rien à écrire, et toucher quand
- * même `majLe` ferait passer pour modifiée une fiche restée identique. */
+/** Renvoie `null` si la fiche n'existe plus, ou si la requête ne portait aucun champ modifiable :
+ * toucher `majLe` ferait alors passer pour modifiée une fiche identique. */
 export async function modifierClient(
 	id: string,
 	data: Partial<CoordonneesClient> & { notes?: string }
@@ -117,8 +114,8 @@ export async function modifierClient(
 	return row ? versEnregistrement(row) : null;
 }
 
-/** Archive le client **et** ses mandats encore actifs, avec le même horodatage de part et d'autre.
- * Cet horodatage partagé est la trace qui rend l'opération réversible : voir `desarchiverClient`. */
+/** Archive le client et ses mandats actifs avec le même horodatage : c'est cette trace partagée qui
+ * rend l'opération réversible (voir `desarchiverClient`). */
 export async function archiverClient(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	const archiveLe = new Date();
@@ -137,8 +134,8 @@ export async function archiverClient(id: string): Promise<boolean> {
 	});
 }
 
-/** Sort le client de l'archive et ne relève que les mandats tombés avec lui, reconnus à leur
- * horodatage identique au sien. Un mandat archivé séparément avant, ou après, reste archivé. */
+/** Ne relève que les mandats tombés avec le client, reconnus à leur horodatage identique au sien. Un
+ * mandat archivé séparément reste archivé. */
 export async function desarchiverClient(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	return db.transaction(async (tx) => {
@@ -155,8 +152,8 @@ export async function desarchiverClient(id: string): Promise<boolean> {
 	});
 }
 
-/** Suppression définitive : la fiche et tous ses mandats, brouillons comme documents générés.
- * Irréversible, d'où la confirmation par saisie du nom côté interface. */
+/** Suppression définitive : la fiche et tous ses mandats. Irréversible, d'où la confirmation par
+ * saisie du nom côté interface. */
 export async function supprimerClient(id: string): Promise<boolean> {
 	if (!estUuid(id)) return false;
 	return db.transaction(async (tx) => {

@@ -4,9 +4,8 @@ import Rendu from './Rendu.svelte';
 import { nouveauMandat, nouvelleLigne } from '$domaine/fabriques';
 import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 
-/** Filet de sécurité du rendu du document. Le composant ne calcule rien lui-même (tout vient de
- * `construireDocument`, couvert par sections.spec.ts) : ce qui est vérifié ici, c'est que chaque partie
- * du modèle atterrit bien à l'écran, et que la mise en forme du CSS s'applique toujours. */
+/** Le composant ne calcule rien (tout vient de `construireDocument`, couvert par sections.spec.ts) :
+ * on vérifie ici que chaque partie du modèle atterrit à l'écran, et que le CSS s'applique. */
 function mandatComplet(): BrouillonMandat {
 	const brouillon = nouveauMandat('contrat');
 	brouillon.titre = 'Refonte du site web';
@@ -114,8 +113,8 @@ describe('Rendu', () => {
 	});
 
 	it('applique le style du document, donc la feuille de styles est bien chargée', async () => {
-		// Garde-fou du découpage : si le CSS cessait de s'appliquer, le document resterait lisible
-		// mais perdrait toute sa mise en page, et aucune assertion de contenu ne le verrait.
+		// Si le CSS cessait de s'appliquer, le document resterait lisible mais perdrait sa mise en
+		// page, et aucune assertion de contenu ne le verrait.
 		const page = render(Rendu, { brouillon: mandatComplet() });
 
 		const article = page.getByRole('article');

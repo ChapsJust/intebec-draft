@@ -1,7 +1,5 @@
-/** Actions qui font appel à l'IA locale, ou qui arbitrent ce qu'elle a produit.
- *
- * Toutes traduisent `OllamaIndisponibleError` en 503 : c'est le seul code qui dit à l'interface
- * « réessayez », par opposition à un 400 qui dit « corrigez votre saisie ».
+/** Actions qui font appel à l'IA locale, ou qui arbitrent ce qu'elle a produit. Toutes traduisent
+ * `OllamaIndisponibleError` en 503, le code qui dit « réessayez » là où un 400 dit « corrigez ».
  */
 import { fail, type Action, type Actions } from '@sveltejs/kit';
 import { creerClauseBibliotheque, listerClausesBibliotheque } from '$serveur/db/clauses';
@@ -20,14 +18,11 @@ import { ID_MANQUANT, INTROUVABLE, REQUETE_INVALIDE } from './messages';
 /** Même plafond que celui appliqué au brouillon : le titre d'une clause devient un titre d'article. */
 const MAX_TITRE_CLAUSE = 200;
 
-/** Actions déclenchées depuis l'éditeur, pendant la saisie. Aucune ne persiste le mandat : elles
+/** Actions déclenchées depuis l'éditeur pendant la saisie. Aucune ne persiste le mandat : elles
  * renvoient une proposition que l'utilisateur applique ou non. */
 export const actionsIaEditeur: Actions = {
-	/** Relit le volet contractuel et renvoie ce qui semble manquer. Ne persiste rien : aucune
-	 * clause n'est activée sans un geste de l'utilisateur.
-	 *
-	 * La bibliothèque est transmise au modèle pour qu'il propose d'y puiser plutôt que de rédiger une
-	 * variante de plus d'une protection déjà retenue ailleurs. */
+	/** Relit le volet contractuel et renvoie ce qui semble manquer. La bibliothèque est transmise au
+	 * modèle pour qu'il y puise plutôt que de rédiger une variante de plus. */
 	auditerClauses: async ({ request }) => {
 		const data = await request.formData();
 
@@ -53,8 +48,7 @@ export const actionsIaEditeur: Actions = {
 	},
 
 	/** Retient une clause proposée par une relecture : elle entre dans la bibliothèque, et l'éditeur
-	 * en pousse ensuite une copie figée dans le mandat. Aucun appel à l'IA ici, donc pas de 503 : le
-	 * texte a déjà été rédigé, il ne s'agit que de le conserver. */
+	 * en pousse ensuite une copie figée dans le mandat. Aucun appel à l'IA ici, donc pas de 503. */
 	retenirProposition: async ({ request }) => {
 		const data = await request.formData();
 		const titre = data.get('titre');
@@ -75,8 +69,7 @@ export const actionsIaEditeur: Actions = {
 		return { ok: true, clause, message: 'Clause ajoutée à votre bibliothèque.' };
 	},
 
-	/** Aide ponctuelle pendant la saisie : renvoie une proposition pour un seul champ, sans rien
-	 * persister. C'est l'utilisateur qui décide de l'appliquer ou non. */
+	/** Aide ponctuelle : une proposition pour un seul champ, sans rien persister. */
 	redigerChamp: async ({ request }) => {
 		const data = await request.formData();
 		const champ = data.get('champ');
@@ -108,9 +101,8 @@ export const actionsIaEditeur: Actions = {
 	}
 };
 
-/** Passe de rédaction sur un mandat déjà enregistré. C'est le seul chemin qui appelle l'IA pour le
- * document entier : déclenché par l'aperçu, il a sa propre requête et son propre état d'attente.
- * La prose va dans la colonne `redaction`, à côté du brouillon, donc l'opération est rejouable. */
+/** Passe de rédaction sur un mandat enregistré : le seul chemin qui appelle l'IA pour le document
+ * entier. La prose va dans la colonne `redaction`, donc l'opération est rejouable. */
 export const redigerDocumentAction: Action = async ({ params }) => {
 	const id = params.id;
 	if (!id) return fail(400, { ok: false, message: ID_MANQUANT });
@@ -132,12 +124,9 @@ export const redigerDocumentAction: Action = async ({ params }) => {
 	}
 };
 
-/** Garde ou rejette un passage réécrit par l'IA.
- *
- * On enregistre la décision, pas son résultat : le texte affiché est recomposé à la lecture par
- * `texteEffectif`, donc la saisie et la prose du modèle restent l'une et l'autre intactes, et un
- * refus se défait. C'est aussi ce qui fait suivre le PDF sans qu'il ait à connaître les refus, la
- * génération passant par le même `construireDocument`. */
+/** Garde ou rejette un passage réécrit par l'IA. On enregistre la décision, pas son résultat :
+ * `texteEffectif` recompose le texte à la lecture, donc un refus se défait et le PDF le suit sans
+ * rien connaître. */
 export const basculerPassageAction: Action = async ({ request, params }) => {
 	const id = params.id;
 	if (!id) return fail(400, { ok: false, message: ID_MANQUANT });
@@ -165,8 +154,8 @@ export const basculerPassageAction: Action = async ({ request, params }) => {
 	if (refuse) actuels.add(index);
 	else actuels.delete(index);
 
-	// Un champ sans refus perd sa clé plutôt que de garder un tableau vide : `refuses` reste ainsi la
-	// liste de ce qui a été écarté, lisible telle quelle en base.
+	// Un champ sans refus perd sa clé : `refuses` reste la liste de ce qui a été écarté, lisible
+	// telle quelle en base.
 	if (actuels.size > 0) refuses[champ] = [...actuels].sort((a, b) => a - b);
 	else delete refuses[champ];
 

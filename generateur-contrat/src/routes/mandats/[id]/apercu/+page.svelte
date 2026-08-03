@@ -18,9 +18,8 @@
 	const mandat = $derived(data.mandat);
 	const redaction = $derived(mandat.redaction);
 
-	/** Déclenche la passe de rédaction dès l'arrivée quand « Générer » vient de nous envoyer ici.
-	 * L'appel dure jusqu'à quelques minutes : il a désormais sa propre requête, avec un état
-	 * d'attente visible, plutôt que d'être adossé à l'enregistrement du mandat. */
+	/** Déclenche la rédaction dès l'arrivée quand « Générer » vient de nous envoyer ici. L'appel dure
+	 * jusqu'à quelques minutes, d'où sa propre requête plutôt que l'enregistrement du mandat. */
 	let redactionLancee = false;
 	$effect(() => {
 		if (!data.redactionAFaire || redactionLancee || !formulaireRediger) return;
@@ -84,8 +83,8 @@
 				</form>
 			{/if}
 
-			<!-- Statut purement déclaratif : l'application n'envoie rien elle-même, elle note que
-				vous l'avez fait. C'est ce qui distingue un document en attente d'un dossier clos. -->
+			<!-- Statut déclaratif : l'application n'envoie rien elle-même, elle note que vous l'avez
+				fait. -->
 			<form method="POST" action="?/changerStatut" use:enhance>
 				<input
 					type="hidden"
@@ -101,8 +100,8 @@
 				</button>
 			</form>
 
-			<!-- Le PDF est produit côté serveur : c'est la seule voie qui permet une numérotation
-				« Page X sur Y », le nombre total de pages n'étant pas accessible au CSS. -->
+			<!-- PDF produit côté serveur : seule voie pour « Page X sur Y », le nombre total de pages
+				n'étant pas accessible au CSS. -->
 			<a
 				href="/mandats/{mandat.id}/pdf"
 				class="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600"
@@ -147,9 +146,8 @@
 		</div>
 	{/if}
 
-	<!-- Une rédaction caduque décrit une version antérieure du mandat : le dire est plus utile que
-		d'afficher un diff calculé entre la saisie d'aujourd'hui et la prose d'hier, qui se lirait
-		comme une série de modifications que l'IA n'a jamais faites. -->
+	<!-- Le dire vaut mieux qu'afficher un diff entre la saisie d'aujourd'hui et la prose d'hier, qui
+		se lirait comme des modifications que l'IA n'a jamais faites. -->
 	{#if data.redactionCaduque}
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"

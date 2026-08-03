@@ -74,8 +74,7 @@
 
 /* ---------- Parties ---------- */
 
-/* auto-fit plutôt que deux colonnes fixes : si une seule partie est renseignée, elle occupe
-		toute la largeur au lieu de laisser une colonne vide. */
+/* auto-fit plutôt que deux colonnes fixes : une seule partie renseignée occupe toute la largeur. */
 .document .parties {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -156,8 +155,7 @@
 	break-after: avoid;
 }
 
-/* Le numéro est porté par une pastille pleine : il donne le repère de lecture sans que le
-		titre ait besoin d'être plus gros. */
+/* Pastille pleine : le repère de lecture sans avoir à grossir le titre. */
 .document .section-numero {
 	flex-shrink: 0;
 	display: inline-flex;
@@ -174,8 +172,7 @@
 	letter-spacing: 0;
 }
 
-/* Seul titre sans numéro : un filet vertical lui rend le poids visuel que la pastille donne
-		aux autres, pour qu'il ne paraisse pas dégradé en fin de document. */
+/* Seul titre sans numéro : un filet vertical lui rend le poids que la pastille donne aux autres. */
 .document .section-titre-nonnumerote {
 	border-left: 3px solid var(--doc-marine);
 	padding-left: 0.7rem;
@@ -198,12 +195,10 @@
 
 /* ---------- Prose ---------- */
 .document .para {
-	/* Alignement à gauche volontaire : sans césure française, le texte justifié creusait
-			des « rivières » entre les mots dans les articles de conditions. */
+	/* Aligné à gauche : sans césure française, le justifié creuse des « rivières » entre les mots. */
 	text-align: left;
 	margin-bottom: calc(0.65rem * var(--ec));
-	/* Empêche qu'une seule ligne d'un paragraphe soit reléguée seule en haut ou en bas
-			d'une page à l'impression. */
+	/* Jamais une ligne seule en haut ou en bas d'une page, à l'impression. */
 	orphans: 2;
 	widows: 2;
 }
@@ -248,8 +243,7 @@
 	padding: 0.1rem 0.5rem;
 }
 
-/* Même logique que le bloc des parties : une seule liste occupe toute la largeur plutôt que
-		de laisser un vide à droite. */
+/* Même logique que le bloc des parties : une seule liste occupe toute la largeur. */
 .document .portee-listes {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
@@ -371,8 +365,8 @@
 	color: var(--doc-second);
 }
 
-/* Pas de `display` ici : cette classe est portée par un `<td>`, et le passer en block le
-		sortirait de l'algorithme de colonnes du tableau (le libellé se cassait alors en trois). */
+/* Pas de `display` ici : porté par un `<td>`, le passer en block le sortirait de l'algorithme de
+		colonnes du tableau et casserait le libellé en trois. */
 .document .cellule-forte {
 	font-weight: 500;
 	color: var(--doc-encre);
@@ -383,8 +377,7 @@
 	color: var(--doc-encre);
 }
 
-/* Chaque élément facturé sur sa propre ligne : la concaténation « A ; B ; C » forçait des
-		retours de ligne arbitraires au milieu des montants. */
+/* Un élément facturé par ligne : « A ; B ; C » cassait au milieu des montants. */
 .document .cellule-detail {
 	display: table-cell;
 	color: var(--doc-second);
@@ -488,8 +481,7 @@
 /* ---------- Impression ---------- */
 @media print {
 	.document {
-		/* Les marges viennent de `@page` : le padding de l'écran ferait une double marge et
-				étranglerait la colonne de texte. */
+		/* Les marges viennent de `@page` : le padding de l'écran ferait une double marge. */
 		max-width: none;
 		margin: 0;
 		padding: 0;
@@ -497,8 +489,7 @@
 		line-height: 1.5;
 	}
 
-	/* Le corps de texte suit aussi la densité : un demi-point gagné sur un contrat de dix
-			pages économise souvent une page entière. */
+	/* Le corps suit la densité : un demi-point gagné sur dix pages en économise souvent une. */
 	.document.densite-aere {
 		font-size: 11pt;
 		line-height: 1.65;
@@ -514,8 +505,8 @@
 		font-size: 13pt;
 	}
 
-	/* Un titre ne reste jamais seul en bas de page, mais le corps de l'article peut couler
-			d'une page à l'autre : le rendre insécable laissait de grands vides en fin de page. */
+	/* Un titre ne reste jamais seul en bas de page. Le corps, lui, peut couler d'une page à
+			l'autre : le rendre insécable laissait de grands vides en fin de page. */
 	.document .section-titre,
 	.document .sous-titre {
 		break-after: avoid;

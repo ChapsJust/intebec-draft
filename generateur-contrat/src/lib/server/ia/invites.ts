@@ -1,8 +1,5 @@
-/** Ce qu'on demande au modèle.
- *
- * Les consignes système, le résumé du mandat qu'on lui donne à lire, et les trois invites. Rien
- * ici ne fait d'appel réseau : ce module ne produit que des chaînes, ce qui le rend lisible d'un
- * bout à l'autre — c'est la seule façon de relire un prompt.
+/** Ce qu'on demande au modèle : les consignes système, le résumé du mandat, et les trois invites.
+ * Aucun appel réseau ici, uniquement des chaînes — c'est la seule façon de relire un prompt.
  */
 import type { BrouillonMandat, ClauseBibliotheque } from '$domaine/types';
 import { libelleLigne } from '$document/format';
@@ -14,8 +11,8 @@ import {
 } from '$document/catalogue';
 import { titreNormalise } from './normalisation';
 
-/** Contraintes communes aux deux modes de rédaction. L'IA ne produit que de la prose : tout ce
- * qui a une valeur juridique ou monétaire est rendu par le template, jamais par le modèle. */
+/** L'IA ne produit que de la prose : tout ce qui a une valeur juridique ou monétaire est rendu par le
+ * gabarit, jamais par le modèle. */
 export const CONSIGNES = `Tu es un rédacteur professionnel qui prépare des documents d'affaires pour une firme de services numériques québécoise.
 
 Règles strictes :
@@ -33,9 +30,9 @@ Style, à respecter absolument :
 - Pas d'emphase en gras, pas de listes à puces, pas d'émojis.
 - Des phrases courtes, à la voix active. Écris comme un professionnel qui rédige, pas comme un texte de présentation.`;
 
-/** L'audit est le seul mode où le modèle a le droit d'esquisser une clause, parce que ce texte
- * n'atteint aucun document : il part en révision. Les consignes restent donc serrées sur ce qui
- * trompe le plus, la référence légale inventée, qui a l'air d'autant plus crédible qu'elle est précise. */
+/** Le seul mode où le modèle a le droit d'esquisser une clause, parce que ce texte part en révision
+ * plutôt qu'au document. D'où la consigne serrée sur ce qui trompe le plus : la référence légale
+ * inventée, d'autant plus crédible qu'elle est précise. */
 export const CONSIGNES_AUDIT = `Tu es un conseiller qui relit des mandats de services numériques au Québec et signale ce qui manque.
 
 Règles strictes :
@@ -47,8 +44,8 @@ Règles strictes :
 - Réponds uniquement avec du JSON valide, sans texte autour.
 - Pas de tiret cadratin, pas de gras, pas d'émojis, pas de tournures d'assistant.`;
 
-/** Résumé factuel du mandat envoyé au modèle. Les montants sont volontairement omis : le modèle
- * n'a pas à les connaître puisqu'il n'a pas le droit de les écrire. */
+/** Résumé factuel du mandat. Les montants sont omis : le modèle n'a pas à les connaître puisqu'il n'a
+ * pas le droit de les écrire. */
 function contexte(brouillon: BrouillonMandat): string {
 	const label = libelleLigne(brouillon.structureProjet);
 	const lignes = brouillon.lignes
@@ -78,12 +75,11 @@ Lignes de service:
 ${lignes}`;
 }
 
-/** État du volet contractuel : ce qui est déjà couvert, et ce qui ne l'est pas. Les valeurs
- * chiffrées sont montrées telles quelles, ce sont des faits saisis, pas des chiffres à inventer.
+/** État du volet contractuel : ce qui est couvert, et ce qui ne l'est pas. Les chiffres saisis sont
+ * montrés tels quels, ce sont des faits.
  *
- * La bibliothèque y figure avec ses identifiants parce que c'est ce que le modèle doit renvoyer pour
- * désigner une clause existante : sans elle, il rédigeait une variante de plus à chaque relecture
- * d'une protection déjà retenue sur un autre mandat. */
+ * La bibliothèque y figure avec ses identifiants : c'est ce que le modèle doit renvoyer pour désigner
+ * une clause existante au lieu d'en rédiger une variante de plus. */
 function contexteClauses(brouillon: BrouillonMandat, bibliotheque: ClauseBibliotheque[]): string {
 	const actives = CLES_CLAUSES.filter((c) => brouillon.conditions.clauses[c]);
 	const inactives = CLES_CLAUSES.filter((c) => !brouillon.conditions.clauses[c]);
@@ -152,7 +148,7 @@ Ne signale que ce qui est réellement justifié par ce mandat.`;
 
 export type CibleChamp = { kind: 'objet' } | { kind: 'ligne'; id: string };
 
-/** Aide ponctuelle : un seul champ étoffé pendant la saisie, sans rien persister. */
+/** Aide ponctuelle : un seul champ étoffé pendant la saisie. */
 export function invitePourChamp(brouillon: BrouillonMandat, cible: CibleChamp): string {
 	const consigne =
 		cible.kind === 'objet'

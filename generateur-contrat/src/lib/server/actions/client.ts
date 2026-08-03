@@ -1,13 +1,7 @@
-/** Actions sur les fiches clients.
+/** Actions sur les fiches clients, partagées par /clients et /clients/[id].
  *
- * Elles vivaient écrites à la main dans `routes/clients/+page.server.ts` et
- * `routes/clients/[id]/+page.server.ts`, où `archiver`, `desarchiver` et `supprimer` existaient en
- * double avec des corps différents : la liste lisait l'identifiant posté, la fiche lisait
- * `params.id`. Deux implémentations d'une même intention, donc deux occasions de diverger.
- *
- * La version unifiée lit l'identifiant posté et retombe sur `params.id` : la liste continue de
- * désigner explicitement la ligne visée, la fiche continue de parler d'elle-même, et il n'y a plus
- * qu'un seul comportement à corriger le jour où il change.
+ * Chacune lit l'identifiant posté et retombe sur `params.id` : la liste désigne explicitement la
+ * ligne visée, la fiche parle d'elle-même, et il n'y a qu'un comportement à maintenir.
  */
 import { fail, redirect, type Action, type Actions } from '@sveltejs/kit';
 import {
@@ -26,8 +20,8 @@ async function clientVise(request: Request, params: Partial<Record<string, strin
 	return (await idPoste(request)) ?? params.id ?? null;
 }
 
-/** Création depuis le formulaire de la liste des clients. Les champs arrivent à plat, pas en JSON :
- * c'est un formulaire HTML ordinaire, qui fonctionne sans JavaScript. */
+/** Création depuis la liste des clients. Champs à plat, pas en JSON : formulaire HTML ordinaire, qui
+ * fonctionne sans JavaScript. */
 export const creerClientAction: Action = async ({ request }) => {
 	const data = await request.formData();
 	const nom = (data.get('nom') as string)?.trim();
@@ -68,14 +62,13 @@ export const supprimerClientAction: Action = async ({ request, params }) => {
 	const id = await clientVise(request, params);
 	if (!id) return fail(400, { notice: ID_MANQUANT });
 	if (!(await supprimerClient(id))) return fail(404, { notice: CLIENT_INTROUVABLE });
-	// La fiche affichée disparaît : on ne peut pas rester dessus. Depuis la liste, en revanche, on y
-	// reste — c'est la même distinction que pour la suppression d'un mandat.
+	// La fiche affichée disparaît : on ne peut pas rester dessus. Depuis la liste, on y reste.
 	if (params.id === id) throw redirect(303, '/clients');
 	return { notice: 'Client et mandats supprimés définitivement.' };
 };
 
-/** Mise à jour de la fiche depuis l'éditeur de mandat : les coordonnées y sont modifiables sans
- * quitter le document en cours. Le corps arrive en JSON, contrairement à la création. */
+/** Mise à jour depuis l'éditeur de mandat, sans quitter le document en cours. Corps en JSON, cette
+ * fois. */
 export const modifierClientAction: Action = async ({ request }) => {
 	const data = await request.formData();
 	const id = data.get('id');
@@ -96,7 +89,7 @@ export const modifierClientAction: Action = async ({ request }) => {
 	return { message: 'Fiche client mise à jour.' };
 };
 
-/** Le jeu complet exposé par /clients et /clients/[id], sous les mêmes noms qu'avant. */
+/** Le jeu complet exposé par /clients et /clients/[id]. */
 export const actionsClient: Actions = {
 	creer: creerClientAction,
 	archiver: archiverClientAction,
