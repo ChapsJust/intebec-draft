@@ -112,6 +112,25 @@ describe('Rendu', () => {
 		await expect.element(page.getByText(/7\s?200,00/).first()).toBeInTheDocument();
 	});
 
+	it('marque le type de contenu de chaque article, dont dépendent les coupures de page', async () => {
+		// `data-contenu` n'est là que pour le CSS d'impression : un article de clause ne se coupe pas
+		// entre deux pages, un tableau si. Le perdre ne casserait rien à l'écran et ne se verrait
+		// qu'au PDF, une fois le document envoyé.
+		const page = render(Rendu, { brouillon: mandatComplet() });
+		const article = page.getByRole('article').element();
+
+		const kinds = [...article.querySelectorAll('.section')].map((s) =>
+			s.getAttribute('data-contenu')
+		);
+
+		expect(kinds).toContain('paragraphes');
+		expect(kinds).toContain('portee');
+		expect(kinds).toContain('honoraires');
+		expect(kinds).toContain('echeancier');
+		expect(kinds).toContain('blocs');
+		expect(kinds.every(Boolean)).toBe(true);
+	});
+
 	it('applique le style du document, donc la feuille de styles est bien chargée', async () => {
 		// Si le CSS cessait de s'appliquer, le document resterait lisible mais perdrait sa mise en
 		// page, et aucune assertion de contenu ne le verrait.

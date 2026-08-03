@@ -505,18 +505,38 @@
 		font-size: 13pt;
 	}
 
-	/* Un titre ne reste jamais seul en bas de page. Le corps, lui, peut couler d'une page à
-			l'autre : le rendre insécable laissait de grands vides en fin de page. */
+	/* Un titre ne reste jamais seul en bas de page. */
 	.document .section-titre,
 	.document .sous-titre {
 		break-after: avoid;
 		break-inside: avoid;
 	}
-	.document .section {
-		break-inside: auto;
+
+	/* Un article de clause ne se coupe pas : le lire à cheval sur deux pages fait perdre le fil
+			d'un texte qu'on doit pouvoir opposer. Ils tiennent presque toujours sur une page, et
+			Chromium se rabat sur une coupure quand l'article dépasse la page entière : rien ne peut
+			se perdre, au pire on retombe sur l'ancien comportement. */
+	.document .section[data-contenu='paragraphes'],
+	.document .section[data-contenu='blocs'] {
+		break-inside: avoid;
 	}
+
+	/* La portée et les tableaux coulent, eux. Les rendre insécables pousserait un tableau de dix
+			lignes sur une page neuve en laissant un grand vide derrière ; chaque entrée de portée et
+			chaque rangée de tableau restent entières de leur côté, ce qui suffit. */
+	.document .section[data-contenu='portee'],
+	.document .section[data-contenu='honoraires'],
+	.document .section[data-contenu='echeancier'],
 	.document .tableau {
 		break-inside: auto;
+	}
+
+	/* Le bloc-marque ne commence jamais une page à lui seul. Sans cette règle il se retrouvait
+			orphelin sur une dernière page vide deux fois sur cinq, ce qui donnait l'impression que la
+			fin du document était coupée en deux. Il suit donc les signatures, qui sont elles-mêmes
+			insécables. */
+	.document .pied {
+		break-before: avoid;
 	}
 	.document .tableau thead {
 		display: table-header-group;

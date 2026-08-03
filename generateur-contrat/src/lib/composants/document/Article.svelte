@@ -8,8 +8,12 @@
 </script>
 
 <!-- Un article numéroté du document. Le type de contenu est porté par `section.contenu.kind` :
-	l'union discriminée construite dans sections.ts évite d'avoir à deviner ici ce qu'on rend. -->
-<section class="section">
+	l'union discriminée construite dans sections.ts évite d'avoir à deviner ici ce qu'on rend.
+
+	`data-contenu` le rend aussi lisible au CSS, qui n'applique pas la même règle de coupure à un
+	article de clause qu'à un tableau. Un attribut plutôt qu'une classe : `.section-portee` se
+	confondrait à la lecture avec `.section-titre`, qui désigne tout autre chose. -->
+<section class="section" data-contenu={section.contenu.kind}>
 	<h2 class="section-titre">
 		<span class="section-numero">{section.numero}</span>
 		{section.titre}
