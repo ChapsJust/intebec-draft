@@ -3,7 +3,8 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-/* Design tokens : direction "corporate sobre & pro" */
+/* Les jetons de l'interface. Le document généré a les siens, dans `document.css` : sa mise en page
+	doit pouvoir bouger sans que l'application change d'allure, et l'inverse. */
 @theme {
 	--font-sans:
 		'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

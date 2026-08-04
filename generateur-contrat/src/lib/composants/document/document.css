@@ -12,7 +12,7 @@
 	--doc-filet: #d8dfe8;
 	--doc-filet-fort: #9fb0c4;
 
-	/* Échelle d'espacement qui contrôle l'espacement vertical du document */
+	/* Multiplie toutes les marges verticales du document, d'où les classes de densité ci-dessous. */
 	--ec: 1;
 
 	background: #fff;

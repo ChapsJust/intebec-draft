@@ -140,7 +140,7 @@ function decouperPhrasesMarquees(texte: string): string[] {
 	return phrases;
 }
 
-/** Découpe la prose en phrases. */
+/** Même découpage, marques retirées : la version que le reste du code consomme. */
 export function decouperPhrases(texte: string): string[] {
 	return decouperPhrasesMarquees(texte).map(sansMarque);
 }
