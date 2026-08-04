@@ -1,5 +1,8 @@
-/** Ce qu'on garde de la réponse du modèle : la frontière entre « le modèle a dit » et « l'application
- * accepte ». Tout ce qui sort d'ici a été confronté à la structure attendue et au mandat réel.
+/** Le filtre entre ce que le modèle répond et ce que l'application accepte.
+ *
+ * Rien ne sort d'ici sans avoir été vérifié contre la structure attendue et contre le mandat réel.
+ * Les modèles locaux se trompent souvent de la même manière, et chaque fonction ci-dessous corrige
+ * une erreur que j'ai vue passer en test.
  */
 import type {
 	AlerteMandat,
@@ -24,9 +27,10 @@ import { modeleActif } from './transport';
 // partagée avec l'éditeur.
 export { titreNormalise };
 
-/** Le tiret cadratin trahit un texte généré, et les modèles en produisent malgré la consigne. On le
- * remplace : en incise par des virgules, en apposition finale par un deux-points. Nettoie au passage
- * les puces et le gras Markdown. */
+/** Le tiret cadratin (—) est le marqueur le plus reconnaissable d'un texte généré, et les modèles en
+ * mettent partout même quand la consigne l'interdit. On le remplace donc après coup : par des
+ * virgules quand il encadre une incise, par un deux-points en fin de phrase. On en profite pour
+ * enlever les puces et le gras Markdown, qui n'ont rien à faire dans un contrat. */
 export function nettoyerProse(brut: string): string {
 	return (
 		brut
@@ -73,9 +77,10 @@ export function normaliser(brut: unknown, idsConnus: Set<string>, empreinte = ''
 	};
 }
 
-/** Le modèle recommande volontiers d'activer ce qui l'est déjà, invente des clés, ou renvoie un objet
- * là où un tableau est attendu. On ne garde que ce qui désigne une case réellement décochée : une
- * suggestion sans effet décrédibilise l'audit entier. */
+/** Trois erreurs que j'ai vues en test : le modèle propose d'activer une clause déjà cochée, il
+ * invente des clés qui n'existent pas, ou il renvoie un objet là où j'attends un tableau. On ne
+ * garde donc que ce qui désigne vraiment une case décochée. Une suggestion qui ne sert à rien donne
+ * l'impression que l'audit au complet est du bruit. */
 export function normaliserAudit(
 	brut: unknown,
 	brouillon: BrouillonMandat,
@@ -156,16 +161,18 @@ const GRAVITES: GraviteAlerte[] = ['incoherence', 'manque', 'imprecision'];
 /** Les cibles qui ne désignent pas une ligne. Le reste doit être un identifiant réel. */
 const CIBLES_GLOBALES = ['objet', 'portee', 'general'];
 
-/** Une revue trop longue ne se lit pas, et un modèle qui trouve dix problèmes en invente huit. */
+/** Une revue trop longue ne se lit pas, et quand le modèle trouve dix problèmes il en invente la
+ * moitié. */
 const MAX_ALERTES = 6;
 
 /** Ce qu'on garde de la revue du fond.
  *
- * Deux filtres. Le modèle désigne volontiers une ligne qui n'existe pas : la cible doit être connue.
- * Et il répète le même constat sous deux formulations : on dédoublonne sur le couple cible + constat.
+ * Deux filtres. Le modèle désigne souvent une ligne qui n'existe pas, donc la cible doit faire
+ * partie de celles qu'on lui a montrées. Et il répète le même constat sous deux formulations
+ * différentes, donc on dédoublonne sur le couple cible + constat.
  *
- * Les alertes sortent triées par gravité, pas dans l'ordre du modèle : une incohérence enterrée sous
- * trois imprécisions passe inaperçue. */
+ * On trie par gravité au lieu de garder l'ordre du modèle : une vraie incohérence coincée sous trois
+ * imprécisions passe inaperçue. */
 export function normaliserRevue(brut: unknown, brouillon: BrouillonMandat): RevueMandat {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const brutes = Array.isArray(source.alertes) ? source.alertes : [];
@@ -203,8 +210,8 @@ export function normaliserRevue(brut: unknown, brouillon: BrouillonMandat): Revu
 	};
 }
 
-/** Un titre ne dépasse pas une poignée de mots. On plafonne en **mots** et non en caractères : une
- * coupe à la longueur tombe au milieu d'un mot et produit une bouillie du genre « …Inc., pour ». */
+/** Un titre ne dépasse pas quelques mots. Je plafonne en nombre de mots et non en caractères : une
+ * coupe à la longueur tombe au milieu d'un mot et donne des titres du genre « …Inc., pour ». */
 const MAX_MOTS_TITRE = 10;
 
 /** Amorces d'une phrase qui présente le document au lieu de le nommer. Le modèle y retombe quand il

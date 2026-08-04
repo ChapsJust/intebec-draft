@@ -1,23 +1,30 @@
 import { chromium, type Browser } from 'playwright';
 import { env } from '$env/dynamic/private';
 
-/** Chromium met une à deux secondes à démarrer. On garde une instance vivante entre les requêtes
- * et on n'ouvre qu'un onglet par génération, ce qui ramène le coût à quelques centaines de ms. */
+/** Chromium met une à deux secondes à démarrer, ce qui est beaucoup pour un clic sur « Télécharger ».
+ * On garde donc une instance vivante entre les requêtes et on ouvre seulement un nouvel onglet à
+ * chaque génération.
+ *
+ * Deux requêtes en même temps partagent le navigateur mais ont chacune leur onglet, qui est fermé
+ * dans le `finally` de `genererPdf`. Si le processus est mort entre-temps, `isConnected()` est faux
+ * et on en relance un. */
 let navigateur: Browser | null = null;
 
 async function obtenirNavigateur(): Promise<Browser> {
 	if (navigateur?.isConnected()) return navigateur;
 
-	// `CHROMIUM_PATH` n'est renseignée qu'en conteneur : elle sert donc aussi d'indice de contexte.
+	// `CHROMIUM_PATH` n'est remplie qu'en conteneur, ce qui en fait aussi une façon de savoir où on
+	// tourne sans ajouter une deuxième variable.
 	const enConteneur = Boolean(env.CHROMIUM_PATH);
 
 	navigateur = await chromium.launch({
-		// En conteneur Alpine, Chromium vient du gestionnaire de paquets : les binaires de Playwright
-		// sont liés à la glibc et ne démarrent pas sur musl.
+		// En conteneur Alpine, Chromium vient du gestionnaire de paquets et pas de Playwright : les
+		// binaires que Playwright télécharge sont liés à la glibc et refusent de démarrer sur musl.
 		executablePath: env.CHROMIUM_PATH || undefined,
-		// Le bac à sable a besoin de capacités que le conteneur n'accorde pas, et `/dev/shm` y est
-		// trop petit pour les documents longs. Ailleurs on le garde actif : c'est lui qui contient
-		// Chromium si la page imprimée déclenche une faille du moteur de rendu.
+		// Compromis assumé. Le bac à sable réclame des capacités que le conteneur ne donne pas, et
+		// `/dev/shm` y est trop petit pour les documents longs. Hors conteneur je le laisse actif :
+		// c'est lui qui contiendrait Chromium si la page imprimée déclenchait une faille du moteur
+		// de rendu. Le risque reste faible ici, le HTML imprimé est le nôtre, pas celui d'un tiers.
 		args: enConteneur ? ['--no-sandbox', '--disable-dev-shm-usage'] : []
 	});
 	return navigateur;
@@ -25,9 +32,11 @@ async function obtenirNavigateur(): Promise<Browser> {
 
 const gabaritVide = '<span></span>';
 
-/** Pied de page rendu par Chromium dans la marge de la page, hors du flux du document.
- * C'est la seule façon fiable d'obtenir « Page X sur Y » : le nombre total de pages n'est pas
- * exposé au CSS des navigateurs, un pied en HTML ne pourrait donc jamais l'afficher. */
+/** Pied de page dessiné par Chromium dans la marge, en dehors du flux du document.
+ *
+ * C'est la seule façon d'obtenir « Page X sur Y ». Le nombre total de pages n'est exposé nulle part
+ * au CSS : un pied de page écrit en HTML ne peut donc pas le connaître. Les classes `pageNumber` et
+ * `totalPages` ci-dessous sont spéciales, Chromium les remplit lui-même à l'impression. */
 function gabaritPied(mention: string): string {
 	return `
 		<div style="
@@ -65,7 +74,8 @@ export async function genererPdf({ url, mention }: OptionsPdf): Promise<Uint8Arr
 			displayHeaderFooter: true,
 			headerTemplate: gabaritVide,
 			footerTemplate: gabaritPied(mention),
-			// La marge basse doit dépasser la hauteur du pied, sinon Chromium le superpose au texte.
+			// La marge du bas doit être plus haute que le pied de page, sinon Chromium l'écrit
+			// par-dessus le texte du document.
 			margin: { top: '18mm', bottom: '24mm', left: '18mm', right: '18mm' }
 		});
 	} finally {
@@ -73,16 +83,19 @@ export async function genererPdf({ url, mention }: OptionsPdf): Promise<Uint8Arr
 	}
 }
 
-/** Origine que Chromium visite pour imprimer. `PDF_ORIGIN` cesse d'être facultative dès qu'un proxy
- * est devant l'application : l'origine entrante serait le nom public `.ts.net`, que Chromium devrait
- * résoudre depuis Docker pour ressortir par le proxy et revenir au même conteneur. */
+/** L'adresse que Chromium visite pour imprimer. Elle devient obligatoire dès qu'il y a un proxy
+ * devant l'application, et c'est le piège le moins évident du fichier.
+ *
+ * Sans `PDF_ORIGIN`, on utilise l'origine de la requête entrante, donc le nom public `.ts.net`.
+ * Sauf que Chromium tourne à l'intérieur du conteneur : il devrait résoudre ce nom, sortir du
+ * conteneur, traverser le proxy, et revenir au même conteneur. Souvent ça ne résout même pas. */
 export function origineInterne(fallback: string): string {
 	return env.PDF_ORIGIN || fallback;
 }
 
 /** Nom de fichier sûr : sans accents, sans ponctuation, en minuscules. La date passe par le même
- * nettoyage que le titre — elle vient de la saisie, et un guillemet y casserait l'en-tête
- * `Content-Disposition` dans lequel ce nom est inséré. */
+ * nettoyage que le titre, même si elle a l'air inoffensive : elle vient de la saisie, et un
+ * guillemet dedans casserait l'en-tête `Content-Disposition` où ce nom est inséré. */
 export function nomFichier(type: string, titre: string, date: string): string {
 	const nettoyer = (valeur: string) =>
 		valeur

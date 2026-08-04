@@ -18,8 +18,14 @@
 	const mandat = $derived(data.mandat);
 	const redaction = $derived(mandat.redaction);
 
-	/** Déclenche la rédaction dès l'arrivée quand « Générer » vient de nous envoyer ici. L'appel dure
-	 * jusqu'à quelques minutes, d'où sa propre requête plutôt que l'enregistrement du mandat. */
+	/** Lance la rédaction tout de suite en arrivant, quand c'est le bouton « Générer » qui nous a
+	 * envoyés ici. On la fait dans sa propre requête plutôt que pendant l'enregistrement du mandat,
+	 * parce qu'elle peut prendre plusieurs minutes : dans le `load`, la navigation resterait bloquée
+	 * sur un écran vide tout ce temps-là.
+	 *
+	 * `redactionLancee` est un `let` ordinaire et pas un `$state`, volontairement. Un `$state`
+	 * relancerait l'effet en changeant de valeur, ce qui est exactement ce qu'on veut éviter pour un
+	 * verrou « une seule fois ». */
 	let redactionLancee = false;
 	$effect(() => {
 		if (!data.redactionAFaire || redactionLancee || !formulaireRediger) return;
@@ -100,8 +106,9 @@
 				</button>
 			</form>
 
-			<!-- PDF produit côté serveur : seule voie pour « Page X sur Y », le nombre total de pages
-				n'étant pas accessible au CSS. -->
+			<!-- Le PDF est produit côté serveur et non par l'impression du navigateur : c'est la seule
+				façon d'obtenir « Page X sur Y », le nombre total de pages n'étant accessible nulle
+				part en CSS. -->
 			<a
 				href="/mandats/{mandat.id}/pdf"
 				class="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-600"
@@ -146,8 +153,8 @@
 		</div>
 	{/if}
 
-	<!-- Le dire vaut mieux qu'afficher un diff entre la saisie d'aujourd'hui et la prose d'hier, qui
-		se lirait comme des modifications que l'IA n'a jamais faites. -->
+	<!-- On préfère avertir plutôt que d'afficher le diff. Comparer la saisie d'aujourd'hui avec la
+		prose d'hier ferait apparaître des « modifications » que l'IA n'a jamais faites. -->
 	{#if data.redactionCaduque}
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-warning print:hidden"

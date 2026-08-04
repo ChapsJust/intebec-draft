@@ -1,37 +1,47 @@
-/** Empreinte de la saisie dont une rédaction est dérivée. Séparé de `sections.ts`, qui demande « à
- * quoi ressemble le document » là où ce module demande « la prose décrit-elle encore ce mandat-là ».
+/** Sert à savoir si la prose écrite par l'IA correspond encore à la saisie actuelle.
+ *
+ * Séparé de `sections.ts` : là-bas on construit le document, ici on vérifie seulement si la
+ * rédaction enregistrée est encore à jour.
  */
 import type { BrouillonMandat, RedactionIA } from '$domaine/types';
 import { nettoyerListe } from './format';
 
-/** Hachage court et non cryptographique (FNV-1a 32 bits) : on détecte un changement de saisie, on ne
- * résiste pas à une collision provoquée. Évite de stocker une seconde copie de la prose. */
+/** FNV-1a sur 32 bits, un algorithme de hachage publié que j'ai repris tel quel (les deux constantes
+ * viennent de la spec). Il n'est pas cryptographique, et c'est correct ici : je veux repérer un
+ * changement de saisie, pas résister à quelqu'un qui chercherait une collision exprès.
+ *
+ * L'intérêt par rapport à garder le texte : 6 caractères en base au lieu d'une deuxième copie
+ * complète de la prose. */
 function hacher(texte: string): string {
 	let empreinte = 2166136261;
 
 	for (let i = 0; i < texte.length; i++) {
 		empreinte ^= texte.charCodeAt(i);
-		// `Math.imul` et non `*` : les nombres JavaScript sont des flottants, une multiplication
-		// ordinaire perdrait les bits de poids faible.
+		// Math.imul et pas `*` : en JS tous les nombres sont des flottants, et une multiplication
+		// normale de deux entiers 32 bits dépasse la mantisse et perd les bits de poids faible.
 		empreinte = Math.imul(empreinte, 16777619);
 	}
 
-	// `>>> 0` relit l'entier 32 bits comme un positif ; la base 36 le raccourcit.
+	// Les opérateurs bit à bit de JS donnent un entier signé, `>>> 0` le repasse en positif.
+	// La base 36 (chiffres + lettres) raccourcit le résultat.
 	return (empreinte >>> 0).toString(36);
 }
 
-/** Le « unit separator » ASCII, que la saisie ne contient jamais. Avec une simple espace, un objet
- * « A » suivi d'une ligne « B » donnerait la même empreinte qu'un objet « A B » sans ligne. Construit
- * par `fromCharCode` : un octet de contrôle écrit tel quel rendrait le fichier binaire. */
+/** Séparateur entre les champs avant le hachage : le caractère de contrôle ASCII 31 (« unit
+ * separator »), qu'on ne peut pas taper dans un formulaire. Avec une simple espace, un objet « A »
+ * suivi d'une ligne « B » donnerait la même empreinte qu'un objet « A B » sans ligne.
+ *
+ * Passé par `fromCharCode` parce qu'écrire l'octet directement dans le fichier le ferait passer pour
+ * un binaire auprès de git et de l'éditeur. */
 const SEPARATEUR_EMPREINTE = String.fromCharCode(31);
 
-/** Empreinte de la saisie dont une rédaction est dérivée.
+/** Reprend exactement les champs que le prompt envoie au modèle.
  *
- * Reprend ce que le prompt transmet au modèle. Le critère est « ce que l'IA a lu », pas « ce qu'elle
- * réécrit » : un nom de ligne oriente la prose sans être réécrit, donc le changer la périme.
+ * Le critère est « ce que l'IA a lu », pas « ce qu'elle a réécrit ». Un nom de ligne influence la
+ * prose sans être réécrit : le changer doit donc périmer la rédaction.
  *
- * Les montants en sont absents, comme du prompt : ajuster un prix ne redemande pas la prose à l'IA et
- * ne fait pas perdre les passages déjà arbitrés. */
+ * Les montants n'y sont pas, parce qu'ils ne sont pas dans le prompt non plus. Ajuster un prix ne
+ * doit pas obliger à relancer l'IA ni faire perdre les passages déjà acceptés ou refusés. */
 export function empreinteProse(brouillon: BrouillonMandat): string {
 	const parties = [
 		brouillon.type,
@@ -56,9 +66,11 @@ export function empreinteProse(brouillon: BrouillonMandat): string {
 	return hacher(parties.join(SEPARATEUR_EMPREINTE));
 }
 
-/** Vrai quand la saisie a changé depuis que cette prose a été produite : la rédaction décrit alors un
- * mandat qui n'existe plus, et ses refus pointent des passages qui ont glissé. Les rédactions
- * antérieures à l'empreinte n'en ont pas — on se tait plutôt que d'alerter sur tout l'existant. */
+/** Vrai quand la saisie a changé depuis que l'IA a écrit. La prose affichée décrit alors une version
+ * du mandat qui n'existe plus, et les passages refusés ne pointent plus au bon endroit.
+ *
+ * Les rédactions faites avant que j'ajoute l'empreinte n'en ont pas. Dans ce cas je ne dis rien,
+ * plutôt que d'afficher un avertissement sur tout ce qui existait déjà. */
 export function redactionCaduque(
 	brouillon: BrouillonMandat,
 	redaction: RedactionIA | null | undefined

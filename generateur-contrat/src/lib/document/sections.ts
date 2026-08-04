@@ -1,5 +1,8 @@
-/** Assemble le modèle de vue d'un document : le seul endroit qui décide de ce qui figure au contrat
- * et dans quel ordre. Types du résultat dans `modele.ts`, empreinte de fraîcheur dans `empreinte.ts`.
+/** Assemble le modèle de vue d'un document. C'est le seul endroit qui décide de ce qui figure au
+ * contrat et dans quel ordre : si une section manque ou tombe au mauvais endroit, c'est ici.
+ *
+ * Les types du résultat sont dans `modele.ts`, et `empreinte.ts` s'occupe de savoir si la prose de
+ * l'IA est encore à jour.
  */
 import type { BrouillonMandat, RedactionIA, LigneService } from '$domaine/types';
 import { totalLigne, sousTotal, montantRabais, totalNet, formatCad } from '$domaine/montants';
@@ -103,8 +106,9 @@ function construireEcheancier(brouillon: BrouillonMandat): ContenuSection {
 	const { acomptePct, soldePct, delaiJoursSolde } = brouillon.modalitesPaiement;
 	const versements: Versement[] = [];
 
-	// Un seul versement quand l'acompte est nul ou couvre tout : « Solde (100 %) » supposerait qu'un
-	// acompte l'a précédé. Espace insécable avant le %, typographie française.
+	// Un seul versement quand l'acompte est à zéro ou couvre déjà tout. Écrire « Solde (100 %) »
+	// laisserait entendre qu'un acompte est venu avant, ce qui serait faux.
+	// (Note : l'espace avant le % est une espace insécable, c'est la règle en typographie française.)
 	if (acomptePct <= 0) {
 		versements.push({
 			libelle: `Paiement intégral (100 %)`,
@@ -193,8 +197,9 @@ function construireParties(brouillon: BrouillonMandat): Partie[] {
 	];
 }
 
-/** Phrase liminaire produite par le gabarit, sans l'IA. Exportée parce qu'elle est le côté « avant »
- * du diff, que le panneau de revue compare à ce que le modèle a écrit. */
+/** La phrase d'introduction, écrite par le gabarit et non par l'IA. Elle est exportée parce que le
+ * panneau de revue en a besoin : c'est le côté « avant » du diff, celui auquel on compare ce que le
+ * modèle a écrit. */
 export function preambuleParDefaut(brouillon: BrouillonMandat): string {
 	const designation = designationClient(brouillon.client.typeClient);
 	const nomClient = brouillon.client.nom.trim() || 'le Client';
@@ -203,8 +208,8 @@ export function preambuleParDefaut(brouillon: BrouillonMandat): string {
 		: `La présente soumission présente à ${designation} ${nomClient} la portée, les honoraires et les conditions proposés par ${PRESTATAIRE.nom} pour la réalisation du mandat décrit aux présentes.`;
 }
 
-/** Passages refusés pour un champ. Tolère l'absence de `refuses`, que les rédactions antérieures à la
- * revue passage par passage n'ont pas. */
+/** Les passages refusés pour un champ donné. On tolère l'absence de `refuses` : les rédactions
+ * faites avant que j'ajoute la revue passage par passage n'ont pas ce champ. */
 function refusesDuChamp(redaction: RedactionIA | null | undefined, champ: string): number[] {
 	return redaction?.refuses?.[champ] ?? [];
 }
@@ -229,8 +234,9 @@ function construirePreambule(brouillon: BrouillonMandat, redaction?: RedactionIA
 	return textes;
 }
 
-/** Estime la place qu'une section occupera. Les tableaux pèsent plus que leur texte : chaque rangée
- * est une ligne à part. */
+/** Estime grossièrement la place qu'une section va prendre. Ce n'est pas une mesure, juste un
+ * comptage de caractères pondéré. Les tableaux comptent plus que leur texte seul, parce que chaque
+ * rangée occupe une ligne complète peu importe ce qu'elle contient. */
 function poidsSection(section: SectionDocument): number {
 	const c = section.contenu;
 	switch (c.kind) {
@@ -258,8 +264,13 @@ function poidsSection(section: SectionDocument): number {
 	}
 }
 
-/** Espacement choisi selon le volume réel : une valeur fixe qui va à un contrat de dix pages laisse
- * une soumission d'une page à moitié vide. Les seuils valent grossièrement une et trois pages. */
+/** Choisit l'espacement selon le volume du document. Avec une valeur fixe, on ne peut pas gagner :
+ * un espacement qui rend bien sur un contrat de dix pages laisse une soumission d'une page à moitié
+ * vide, et l'inverse est aussi vrai.
+ *
+ * Les deux seuils ci-dessous ont été trouvés à l'essai, en regardant l'aperçu. Ils correspondent
+ * grossièrement à une page et à trois pages. Il n'y a rien de scientifique là-dedans : si un
+ * document rend mal, c'est ici qu'on ajuste. */
 export function calculerDensite(sections: SectionDocument[]): Densite {
 	const poids = sections.reduce((n, s) => n + poidsSection(s), 0);
 	if (poids < 2200) return 'aere';
@@ -267,8 +278,11 @@ export function calculerDensite(sections: SectionDocument[]): Densite {
 	return 'compact';
 }
 
-/** Transforme un mandat en modèle prêt à rendre. Fonction pure : aucun montant n'est recalculé ici,
- * tout passe par `montants.ts`, la même source que l'éditeur. */
+/** Transforme un mandat en modèle prêt à afficher. Fonction pure, donc facile à tester.
+ *
+ * Règle que je me suis fixée : aucun montant n'est recalculé ici. Tout passe par `montants.ts`,
+ * exactement comme l'éditeur, sinon on finirait par afficher un total à l'écran et un autre au
+ * contrat. */
 export function construireDocument(
 	brouillon: BrouillonMandat,
 	redaction?: RedactionIA | null
@@ -290,10 +304,10 @@ export function construireDocument(
 	pousser('Honoraires', construireHonoraires(brouillon));
 	pousser('Modalités de paiement', construireEcheancier(brouillon));
 
-	// Chaque clause est un article de premier niveau, numéroté comme les autres sections, plutôt
-	// qu'une sous-section d'un bloc « Conditions générales ». Regroupées, les dix clauses
-	// formaient trois pages d'un seul tenant sans repère de lecture ; à plat, chacune reçoit son
-	// numéro et son filet, ce qui est aussi la structure des contrats Intébec existants.
+	// Chaque clause devient un article de premier niveau, numéroté comme les autres sections, au
+	// lieu d'être une sous-section d'un gros bloc « Conditions générales ». Quand je les regroupais,
+	// les dix clauses formaient trois pages d'affilée sans aucun repère de lecture. À plat, chacune
+	// a son numéro et son filet. C'est aussi la structure des contrats Intébec existants.
 	for (const article of clausesActives(brouillon)) {
 		pousser(article.titre, { kind: 'blocs', blocs: article.corps });
 	}

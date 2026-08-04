@@ -1,5 +1,6 @@
 <script lang="ts">
-	// `SvelteSet` et non `Set` : un `Set` nu muté par `add()` ne déclenche aucun `$derived`.
+	// `SvelteSet` et non le `Set` natif : quand on mute un `Set` normal avec `add()`, Svelte ne
+	// s'aperçoit de rien et les `$derived` plus bas ne se recalculent pas.
 	import { SvelteSet } from 'svelte/reactivity';
 	import type {
 		AuditClauses,
@@ -30,14 +31,14 @@
 	/** Clause en cours d'enregistrement en bibliothèque, pour n'immobiliser que son bouton. */
 	let retenueEnCours = $state<string | null>(null);
 
-	/** Suggestions écartées d'un geste, local à la relecture en cours : l'audit n'est persisté nulle
-	 * part, et relancer une relecture doit repartir d'une page blanche. */
+	/** Les suggestions que l'utilisateur a refusées. Volontairement local et non enregistré : l'audit
+	 * lui-même n'est stocké nulle part, et relancer une relecture doit repartir de zéro. */
 	let refusees = $state(new SvelteSet<string>());
 
 	const retenus = $derived(titresRetenus(conditions));
 
-	/** Filtré sur l'état réel des cases, pas sur ce que l'IA a répondu : un audit qui recommande
-	 * d'activer ce qui est déjà coché se discrédite en trois secondes. */
+	/** On filtre sur l'état réel des cases, pas sur ce que l'IA a répondu. Si l'audit propose
+	 * d'activer une clause qui est déjà cochée, l'utilisateur arrête de lui faire confiance. */
 	const suggestions = $derived(
 		audit?.suggestions.filter(
 			(s) => !conditions.clauses[s.cle] && !refusees.has(`clause:${s.cle}`)
@@ -90,8 +91,8 @@
 		refusees.add(cle);
 	}
 
-	/** La clause entre d'abord dans la bibliothèque, puis dans le mandat : l'ordre compte, c'est la
-	 * bibliothèque qui attribue l'identifiant. */
+	/** L'ordre compte : la clause entre d'abord dans la bibliothèque, puis dans le mandat. C'est
+	 * l'insertion en base qui attribue l'identifiant, et le mandat en a besoin. */
 	async function accepterProposition(proposition: PropositionClause) {
 		if (!onRetenirProposition) return;
 		retenueEnCours = proposition.titre;
@@ -174,8 +175,9 @@
 
 	{#if manquesChiffres.length > 0}
 		<div class="mt-3 space-y-2">
-			<!-- Aucune valeur proposée : l'IA n'a pas à décider d'une durée de garantie. Elle signale
-				le champ, l'utilisateur met le chiffre — d'où l'absence de bouton « accepter ». -->
+			<!-- Pas de valeur proposée ici, et pas de bouton « accepter » non plus : ce n'est pas à
+				l'IA de décider d'une durée de garantie. Elle signale le champ, l'utilisateur met le
+				chiffre. -->
 			<p class="text-xs font-medium text-ink-muted">
 				Conditions laissées à zéro (l’article correspondant est absent du contrat)
 			</p>
@@ -201,7 +203,8 @@
 
 	{#if suggestionsBibliotheque.length > 0}
 		<div class="mt-3 space-y-2">
-			<!-- Réutiliser plutôt que réécrire : l'intérêt d'avoir transmis la bibliothèque au modèle. -->
+			<!-- Tout l'intérêt d'avoir envoyé la bibliothèque au modèle : qu'il réutilise une clause
+				existante au lieu d'en réécrire une variante de plus. -->
 			<p class="text-xs font-medium text-ink-muted">Clauses de votre bibliothèque à retenir</p>
 			{#each suggestionsBibliotheque as s (s.id)}
 				<div

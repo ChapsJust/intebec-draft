@@ -6,8 +6,9 @@
 	import { libelleLigne } from '$document/format';
 	import Icone from '$composants/ui/Icone.svelte';
 
-	// Ce que l'IA a changé, et ce qu'on en garde. Sans ce panneau, la prose était échangée en silence
-	// et rien ne disait où. Le diff est mot par mot pour la lecture, la décision se prend par passage.
+	// Ce que l'IA a changé, et ce qu'on en garde. Avant ce panneau, la prose était remplacée en
+	// silence et rien n'indiquait où. Le surlignage est mot par mot parce que c'est plus lisible,
+	// mais la décision d'accepter ou de refuser se prend par passage.
 	let { brouillon, redaction }: { brouillon: BrouillonMandat; redaction: RedactionIA } = $props();
 
 	interface ChampRevu {
@@ -111,8 +112,8 @@
 									{/each}
 								</p>
 
-								<!-- Un formulaire par bouton : la décision est persistée, donc elle survit au
-									rechargement et le PDF la suit. -->
+								<!-- Un vrai formulaire par bouton, et pas un simple état local : la décision est
+									enregistrée en base, donc elle survit au rechargement et le PDF la reprend. -->
 								<form
 									method="POST"
 									action="?/basculerPassage"

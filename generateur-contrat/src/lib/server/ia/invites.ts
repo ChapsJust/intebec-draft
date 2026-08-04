@@ -1,5 +1,7 @@
-/** Ce qu'on demande au modèle : les consignes système, le résumé du mandat, et les trois invites.
- * Aucun appel réseau ici, uniquement des chaînes — c'est la seule façon de relire un prompt.
+/** Tout ce qu'on demande au modèle : les consignes système, le résumé du mandat, et les invites.
+ *
+ * Il n'y a aucun appel réseau ici, uniquement des chaînes de caractères. C'est volontaire : un
+ * prompt, ça se relit, et c'est impossible s'il est éparpillé au milieu de la logique d'appel.
  */
 import type { BrouillonMandat, ClauseBibliotheque } from '$domaine/types';
 import { libelleLigne } from '$document/format';
@@ -11,8 +13,10 @@ import {
 } from '$document/catalogue';
 import { titreNormalise } from './normalisation';
 
-/** L'IA ne produit que de la prose : tout ce qui a une valeur juridique ou monétaire est rendu par le
- * gabarit, jamais par le modèle. */
+/** Règle de base du projet : l'IA n'écrit que de la prose. Tout ce qui a une valeur juridique ou
+ * monétaire (montants, dates, durées, clauses) est produit par le gabarit, jamais par le modèle.
+ * C'est ce qui fait qu'une hallucination reste une phrase maladroite et ne devient pas une erreur
+ * dans un contrat. */
 export const CONSIGNES = `Tu es un rédacteur professionnel qui prépare des documents d'affaires pour une firme de services numériques québécoise.
 
 Règles strictes :
@@ -30,12 +34,15 @@ Style, à respecter absolument :
 - Pas d'emphase en gras, pas de listes à puces, pas d'émojis.
 - Des phrases courtes, à la voix active. Écris comme un professionnel qui rédige, pas comme un texte de présentation.`;
 
-/** Consignes pour ce qui n'est **pas** de la prose : un titre, un élément de liste. `CONSIGNES` ne
- * peut pas servir ici, elle ordonne « produis uniquement des paragraphes de texte courant » — et un
- * modèle à qui on demande un titre sous cette consigne renvoie un début de préambule.
+/** Consignes pour ce qui n'est pas de la prose : un titre, un élément de liste.
  *
- * Les exemples comptent plus que les interdits : un petit modèle local suit mal une consigne
- * négative, mais imite bien un échantillon. */
+ * Je ne peux pas réutiliser `CONSIGNES` ici, parce qu'elle dit « produis uniquement des paragraphes
+ * de texte courant ». Si on demande un titre sous cette consigne, le modèle renvoie un début de
+ * préambule.
+ *
+ * Remarque de terrain : les exemples marchent mieux que les interdits. Un petit modèle local suit
+ * mal une consigne négative (« n'écris pas de phrase »), mais il imite très bien un échantillon.
+ * D'où les deux listes « Attendu » / « Refusé » à la fin. */
 export const CONSIGNES_LIBELLE = `Tu nommes des choses pour une firme de services numériques québécoise. Tu ne rédiges pas de texte : tu étiquettes.
 
 Règles strictes :
@@ -48,9 +55,11 @@ Règles strictes :
 Attendu : « Refonte du site vitrine », « Plateforme de réservation en ligne », « Migration infonuagique », « Sauvegarde automatisée ».
 Refusé : « Ce contrat concerne la refonte du site », « Projet de refonte pour ABC inc. », « Une plateforme moderne et performante ».`;
 
-/** Le seul mode où le modèle a le droit d'esquisser une clause, parce que ce texte part en révision
- * plutôt qu'au document. D'où la consigne serrée sur ce qui trompe le plus : la référence légale
- * inventée, d'autant plus crédible qu'elle est précise. */
+/** Le seul mode où le modèle a le droit d'esquisser une clause. C'est permis ici parce que ce texte
+ * part en révision chez l'utilisateur, il ne va pas directement au document.
+ *
+ * D'où la consigne très serrée sur le piège principal : la référence légale inventée. C'est ce qui
+ * trompe le plus, justement parce qu'un faux numéro d'article a l'air crédible. */
 export const CONSIGNES_AUDIT = `Tu es un conseiller qui relit des mandats de services numériques au Québec et signale ce qui manque.
 
 Règles strictes :
@@ -62,8 +71,9 @@ Règles strictes :
 - Réponds uniquement avec du JSON valide, sans texte autour.
 - Pas de tiret cadratin, pas de gras, pas d'émojis, pas de tournures d'assistant.`;
 
-/** Résumé factuel du mandat. Les montants sont omis : le modèle n'a pas à les connaître puisqu'il n'a
- * pas le droit de les écrire. */
+/** Résumé factuel du mandat, réutilisé par toutes les invites. Les montants n'y sont pas : le modèle
+ * n'a pas à les connaître puisqu'il n'a pas le droit de les écrire. Moins il en sait, moins il peut
+ * en inventer. */
 function contexte(brouillon: BrouillonMandat): string {
 	const label = libelleLigne(brouillon.structureProjet);
 	const lignes = brouillon.lignes
@@ -93,11 +103,11 @@ Lignes de service:
 ${lignes}`;
 }
 
-/** État du volet contractuel : ce qui est couvert, et ce qui ne l'est pas. Les chiffres saisis sont
- * montrés tels quels, ce sont des faits.
+/** L'état du volet contractuel : ce qui est déjà couvert et ce qui ne l'est pas. Les chiffres déjà
+ * saisis sont montrés tels quels, ce sont des faits que le modèle peut lire sans risque.
  *
- * La bibliothèque y figure avec ses identifiants : c'est ce que le modèle doit renvoyer pour désigner
- * une clause existante au lieu d'en rédiger une variante de plus. */
+ * La bibliothèque est listée avec les identifiants des clauses. C'est ce que le modèle doit renvoyer
+ * pour désigner une clause qui existe déjà, au lieu d'en réécrire une variante. */
 function contexteClauses(brouillon: BrouillonMandat, bibliotheque: ClauseBibliotheque[]): string {
 	const actives = CLES_CLAUSES.filter((c) => brouillon.conditions.clauses[c]);
 	const inactives = CLES_CLAUSES.filter((c) => !brouillon.conditions.clauses[c]);
@@ -133,10 +143,11 @@ Notes additionnelles saisies : ${brouillon.conditions.notesAdditionnelles.trim()
 Abonnement récurrent : ${brouillon.abonnement.actif ? `oui, ${brouillon.abonnement.frequence}, couvre : ${brouillon.abonnement.couverture.trim() || '(non précisé)'}` : 'non'}`;
 }
 
-/** Passe complète : toute la prose du document d'un coup, pour qu'elle soit cohérente.
+/** Passe complète : toute la prose du document en un seul appel, pour qu'elle se tienne d'un bout à
+ * l'autre. Champ par champ, on obtient des paragraphes qui se répètent ou se contredisent.
  *
- * Le volet contractuel est transmis lui aussi, comme aux invites de champ : une description de ligne
- * gagne à savoir qu'une garantie de 90 jours court derrière elle. */
+ * On envoie aussi le volet contractuel, comme pour les invites de champ : une description de ligne
+ * est mieux écrite si le modèle sait qu'une garantie court derrière. */
 export function invitePourDocument(brouillon: BrouillonMandat): string {
 	return `Voici les données d'un mandat.
 
@@ -154,9 +165,9 @@ Développe, ne reformule pas. Une description de trois mots doit devenir un para
 Mais n'ajoute AUCUN fait absent des données : pas de livrable, pas d'outil, pas de technologie, pas d'étape, pas de contrainte dont rien ne parle ci-dessus. Si une ligne est trop vague pour être développée honnêtement, écris un paragraphe court plutôt que de la remplir d'inventions.`;
 }
 
-/** La revue du fond, par opposition à l'audit du volet contractuel. Le modèle n'écrit rien au
- * document ici : il lit et signale. D'où des consignes tournées vers le doute plutôt que vers le
- * style. */
+/** La revue du fond, à ne pas confondre avec l'audit du volet contractuel plus haut. Ici le modèle
+ * n'écrit rien dans le document : il lit et il signale. Les consignes sont donc tournées vers le
+ * doute plutôt que vers le style. */
 export const CONSIGNES_REVUE = `Tu relis le fond d'un mandat de services numériques avant qu'il ne parte chez un client. Ton rôle est de repérer ce qui coince, pas de réécrire.
 
 Règles strictes :
@@ -246,9 +257,10 @@ function consignePourChamp(cible: CibleChamp): string {
 	}
 }
 
-/** Aide ponctuelle : un seul champ étoffé pendant la saisie. Le mandat entier est transmis à chaque
- * fois, y compris le volet contractuel : c'est ce qui permet à une description de ligne de tenir
- * compte du reste du projet au lieu d'être rédigée dans le vide. */
+/** Aide ponctuelle : un seul champ étoffé pendant la saisie. On renvoie le mandat au complet à
+ * chaque fois, volet contractuel inclus, même si ça fait un gros prompt pour un petit champ. C'est
+ * ce qui permet à une description de ligne de tenir compte du reste du projet au lieu d'être
+ * rédigée dans le vide. */
 export function invitePourChamp(brouillon: BrouillonMandat, cible: CibleChamp): string {
 	return `Voici les données d'un mandat.
 

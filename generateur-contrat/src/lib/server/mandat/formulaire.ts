@@ -17,11 +17,13 @@ export interface SoumissionMandat {
 	enregistrerNouveauClient: boolean;
 }
 
-/** Contenu reçu inexploitable. Distincte d'une erreur inattendue, pour répondre 400 plutôt que 500. */
+/** Le contenu reçu est inutilisable. Une classe à part plutôt qu'une `Error` générique, pour que les
+ * actions puissent répondre 400 (« corrigez ») au lieu de 500 (« c'est nous »). */
 export class SoumissionInvalideError extends Error {}
 
-/** Plafonds sur les collections : pas pour brider l'utilisateur, mais pour qu'une requête forgée ne
- * fasse pas enregistrer un document de plusieurs mégaoctets. */
+/** Plafonds sur les collections. Ils ne sont pas là pour brider l'utilisateur (personne n'écrit
+ * soixante phases), mais pour qu'une requête fabriquée à la main ne puisse pas faire enregistrer un
+ * document de plusieurs mégaoctets. */
 const MAX_LIGNES = 60;
 const MAX_ITEMS = 60;
 const MAX_PUCES = 40;
@@ -35,9 +37,11 @@ function texte(valeur: unknown, defaut = ''): string {
 	return valeur.slice(0, MAX_TEXTE);
 }
 
-/** Nombre fini borné. Hors bornes, la valeur est ramenée dans l'intervalle : un rabais à 300 % doit
- * devenir 100 %, pas casser l'enregistrement. `NaN` et `Infinity` retombent sur le défaut, sinon ils
- * se propagent dans tous les calculs de montants. */
+/** Un nombre fini, ramené dans l'intervalle. Un rabais à 300 % devient 100 %, il ne fait pas échouer
+ * l'enregistrement.
+ *
+ * Le cas `NaN` / `Infinity` mérite son test à part : sans lui ils passeraient les comparaisons et se
+ * propageraient dans tous les calculs de montants, jusqu'à afficher « $NaN » au contrat. */
 function nombre(valeur: unknown, defaut: number, min = 0, max = Number.MAX_SAFE_INTEGER): number {
 	const n = typeof valeur === 'number' ? valeur : Number(valeur);
 	if (!Number.isFinite(n)) return defaut;
@@ -54,8 +58,9 @@ function parmi<T extends string>(valeur: unknown, permises: readonly T[], defaut
 		: defaut;
 }
 
-/** Liste de puces. Les entrées vides sont gardées : l'éditeur s'en sert comme champ en attente, et
- * c'est le rendu du document qui les élimine (`nettoyerListe`). */
+/** Liste de puces. On garde les entrées vides, contrairement aux clauses plus bas : dans l'éditeur,
+ * une puce vide est un champ que l'utilisateur vient d'ajouter et qu'il n'a pas encore rempli. C'est
+ * le rendu du document qui les enlève, via `nettoyerListe`. */
 function liste(valeur: unknown): string[] {
 	if (!Array.isArray(valeur)) return [];
 	return valeur.slice(0, MAX_PUCES).map((v) => texte(v));
@@ -114,8 +119,8 @@ function normaliserClient(brut: unknown, defaut: CoordonneesClient): Coordonnees
 	};
 }
 
-/** Seul l'acompte est lu, le solde en est déduit. Accepter un solde posté séparément permettrait un
- * échéancier de 50 % + 90 %, que le document afficherait tel quel. */
+/** On ne lit que l'acompte et on déduit le solde. Si on acceptait les deux valeurs séparément, une
+ * requête pourrait poster un échéancier de 50 % + 90 %, et le document l'afficherait tel quel. */
 function normaliserPaiement(brut: unknown, defaut: ModalitesPaiement): ModalitesPaiement {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const acomptePct = nombre(source.acomptePct, defaut.acomptePct, 0, 100);
@@ -137,9 +142,9 @@ function normaliserAbonnement(brut: unknown, defaut: AbonnementRecurrent): Abonn
 	};
 }
 
-/** Clauses hors catalogue. Contrairement aux puces, les entrées vides sont écartées : un titre sans
- * corps ne produit aucun article, et le garder ferait réapparaître une ligne fantôme à chaque
- * rechargement. */
+/** Clauses hors catalogue. Ici, au contraire des puces, on jette les entrées incomplètes : un titre
+ * sans corps ne produit aucun article au document, et le garder ferait réapparaître une ligne
+ * fantôme dans l'éditeur à chaque rechargement. */
 function normaliserClausesRetenues(brut: unknown): ClauseRetenue[] {
 	if (!Array.isArray(brut)) return [];
 
@@ -149,8 +154,8 @@ function normaliserClausesRetenues(brut: unknown): ClauseRetenue[] {
 		const titre = texte(source.titre).slice(0, MAX_TITRE).trim();
 		const corps = texte(source.corps).trim();
 		if (!titre || !corps) continue;
-		// L'identifiant ne sert qu'à la traçabilité : ce qui n'est pas un UUID est ramené à vide, sans
-		// quoi il irait se comparer aux ids de la bibliothèque.
+		// Cet identifiant ne sert qu'à savoir de quelle clause de bibliothèque vient la copie. Tout ce
+		// qui n'est pas un UUID est ramené à vide, sinon il irait se comparer aux vrais ids.
 		const idBibliotheque = texte(source.idBibliotheque);
 		retenues.push({
 			idBibliotheque: estUuid(idBibliotheque) ? idBibliotheque : '',
@@ -195,13 +200,16 @@ function normaliserConditions(
 	};
 }
 
-/** Reconstruit un mandat sûr à partir de données arbitraires : on part d'un brouillon vide et on n'y
- * recopie que ce qui a la forme attendue, plutôt que de faire confiance à l'objet reçu. La colonne
- * `jsonb` ne contraint rien, donc un `lignes` qui n'est pas un tableau s'enregistre sans broncher et
- * casse l'affichage à chaque visite suivante.
+/** Reconstruit un mandat sûr à partir de données dont on ne sait rien.
  *
- * On normalise au lieu de refuser : l'écart vient presque toujours d'un champ vide, et perdre une
- * saisie complète pour un nombre mal formé serait pire que de le ramener à zéro. */
+ * Le principe : on part d'un brouillon vide et on y recopie seulement ce qui a la bonne forme, au
+ * lieu de faire confiance à l'objet reçu. C'est important parce que la colonne `jsonb` de Postgres
+ * n'impose aucune structure : un `lignes` qui ne serait pas un tableau s'enregistrerait sans erreur,
+ * et casserait l'affichage à toutes les visites suivantes.
+ *
+ * Deuxième choix : on corrige au lieu de refuser. Dans les faits l'écart vient presque toujours d'un
+ * champ laissé vide, et faire perdre une saisie complète à cause d'un nombre mal formé serait bien
+ * pire que de le ramener à zéro. */
 export function normaliserMandat(brut: unknown): BrouillonMandat {
 	const source = (brut ?? {}) as Record<string, unknown>;
 	const defaut = nouveauMandat();
@@ -231,7 +239,8 @@ export function normaliserMandat(brut: unknown): BrouillonMandat {
 	};
 }
 
-/** Lit un brouillon depuis une chaîne JSON. Sans le `try`, un corps tronqué donne une page 500. */
+/** Lit un brouillon depuis la chaîne JSON postée. Sans le `try`, un corps de requête tronqué fait
+ * planter `JSON.parse` et l'utilisateur tombe sur une page 500. */
 export function lireMandat(payload: unknown): BrouillonMandat {
 	if (typeof payload !== 'string') {
 		throw new SoumissionInvalideError('Le contenu du formulaire est absent.');

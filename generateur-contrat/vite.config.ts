@@ -12,8 +12,8 @@ export default defineConfig({
 		// nom `.ts.net` et la réponse serait « Blocked request » plutôt que l'application.
 		allowedHosts: ['.ts.net'],
 		// Le polling fait marcher le hot reload à travers le bind mount Docker sous Windows : inotify
-		// ne traverse pas la frontière hôte/conteneur. L'intervalle est explicite parce que le défaut
-		// de 100 ms consommait 19 % de CPU en continu, machine au repos.
+		// ne traverse pas la frontière entre l'hôte et le conteneur. Je fixe l'intervalle à la main
+		// parce qu'avec le défaut (100 ms) le conteneur mangeait du CPU en continu, même au repos.
 		watch: process.env.VITE_USE_POLLING
 			? {
 					usePolling: true,

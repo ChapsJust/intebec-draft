@@ -1,5 +1,7 @@
-/** Les trois demandes que l'éditeur adresse à l'IA locale pendant la saisie. Aucune ne persiste le
- * mandat : elles renvoient une proposition que l'utilisateur applique ou ignore.
+/** Les demandes que l'éditeur adresse à l'IA locale pendant la saisie.
+ *
+ * Aucune n'enregistre le mandat. Elles renvoient une proposition, et c'est l'utilisateur qui décide
+ * de l'appliquer ou de l'ignorer. Rien ne se retrouve dans le document sans un clic de sa part.
  */
 import type {
 	AuditClauses,

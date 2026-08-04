@@ -64,7 +64,8 @@
 		body.set('id', clientId);
 		body.set('payload', JSON.stringify(brouillon.client));
 
-		// `finally` : sans lui, une requête échouée laisse le bouton désactivé jusqu'au rechargement.
+		// Le `finally` n'est pas décoratif : sans lui, si la requête échoue, le bouton reste désactivé
+		// jusqu'à ce que l'utilisateur recharge la page.
 		try {
 			const result = await posterAction('?/modifierClient', body);
 			if (result.type === 'success') {
@@ -88,8 +89,9 @@
 	const proposerElements = (ligneId: string, liste: 'inclus' | 'nonInclus'): Promise<string[]> =>
 		ia.proposerElements(brouillon, ligneId, liste);
 
-	/** La bibliothèque locale est complétée au passage : sans ça, la clause n'apparaîtrait dans
-	 * « Ajouter depuis la bibliothèque » qu'après un rechargement. */
+	/** On ajoute aussi la clause à la copie locale de la bibliothèque. Sans ça, elle est bien
+	 * enregistrée en base, mais elle n'apparaît dans « Ajouter depuis la bibliothèque » qu'après un
+	 * rechargement de la page. */
 	async function retenirProposition(proposition: PropositionClause): Promise<ClauseBibliotheque> {
 		const clause = await ia.enregistrerClause(proposition);
 		clausesBibliotheque = [...clausesBibliotheque, clause];
@@ -101,8 +103,9 @@
 	method="POST"
 	action="?/enregistrer"
 	use:enhance={({ action }) => {
-		// La génération enchaîne sur la rédaction IA : plusieurs dizaines de secondes sans rien à
-		// l'écran si on ne le dit pas. L'enregistrement, lui, est immédiat.
+		// Seul « Générer » enchaîne sur la rédaction par l'IA, qui prend de longues secondes. Sans
+		// ce drapeau, l'utilisateur reste devant un écran figé sans savoir si son clic a marché.
+		// « Enregistrer » est immédiat, donc pas besoin.
 		generationEnCours = action.search === '?/generer';
 		return async ({ update }) => {
 			await update();
@@ -182,8 +185,8 @@
 		bind:representantIntebecTitre={brouillon.representantIntebecTitre}
 	/>
 
-	<!-- En dernier, juste avant « Générer » : la revue porte sur le mandat entier, elle n'a de sens
-		qu'une fois le formulaire rempli. -->
+	<!-- Placé en dernier, juste avant « Générer », parce que la revue porte sur le mandat au complet :
+		elle n'a aucun intérêt tant que le formulaire n'est pas rempli. -->
 	<RevueMandatPanneau {brouillon} onRevoir={revoirMandat} />
 
 	{#if generationTentee && erreurs.length > 0}

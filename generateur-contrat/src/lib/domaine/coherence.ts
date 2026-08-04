@@ -1,13 +1,12 @@
-/** Les incohérences qu'on peut **prouver**, sans modèle.
+/** Les incohérences qu'on peut détecter sans l'IA, juste en comparant des chaînes de caractères.
  *
- * Complément de `validation.ts`, qui dit ce qui empêche de générer. Ici rien ne bloque : on signale
- * ce qui produira un document bancal sans être faux au sens strict.
+ * Complément de `validation.ts` : là-bas ce sont les erreurs qui empêchent de générer le document,
+ * ici ce sont des avertissements. Rien ne bloque.
  *
- * La raison d'être de ce module tient en une mesure : sur un mandat où « Migration des données »
- * était promis à un endroit et exclu à un autre, la relecture par l'IA repérait la contradiction une
- * fois sur deux. La même comparaison, faite ici sur des chaînes normalisées, la trouve à tous les
- * coups, instantanément et hors ligne. Ce qui se compte se compte ; l'IA garde ce qui demande du
- * jugement.
+ * Pourquoi je ne laisse pas l'IA faire ce travail : je lui ai fait relire un mandat où « Migration
+ * des données » était promis dans une phase et exclu dans une autre, et elle ne le voyait pas à tous
+ * les coups. La comparaison de chaînes le trouve à chaque fois, tout de suite, et sans réseau. Je
+ * garde l'IA pour ce qui demande du jugement.
  */
 import type { BrouillonMandat } from './types';
 import { titreNormalise } from './titres';
@@ -25,11 +24,10 @@ function entrees(valeurs: string[]): string[] {
 	return valeurs.map((v) => v.trim()).filter(Boolean);
 }
 
-/** Incohérences décelables par comparaison, dans l'ordre où elles comptent : ce qui se contredit
- * d'abord, ce qui manque ensuite.
+/** Les avertissements, dans l'ordre d'importance : les contradictions d'abord, les oublis ensuite.
  *
- * `libelle` vient de l'appelant (« Phase », « Bloc », « Service ») : le domaine ne dépend pas de la
- * couche document, où vit `libelleLigne`. */
+ * `libelle` est passé par l'appelant (« Phase », « Bloc », « Service ») au lieu d'être calculé ici.
+ * `libelleLigne` vit dans la couche document, et je ne veux pas que le domaine en dépende. */
 export function verifierCoherence(
 	brouillon: BrouillonMandat,
 	libelle = 'Ligne'
@@ -37,8 +35,9 @@ export function verifierCoherence(
 	const avertissements: AvertissementCoherence[] = [];
 	const rang = (i: number) => `${libelle.toLowerCase()} ${i + 1}`;
 
-	// Où chaque élément apparaît, indexé par sa forme normalisée : « Migration des données » et
-	// « migration des donnees » doivent se reconnaître.
+	// Deux index : pour chaque élément, les numéros de lignes où il est inclus, et ceux où il est
+	// exclu. La clé est la forme normalisée, sinon « Migration des données » et « migration des
+	// donnees » compteraient pour deux choses différentes.
 	const inclusPar = new Map<string, number[]>();
 	const exclusPar = new Map<string, number[]>();
 	const libelleDe = new Map<string, string>();
@@ -54,7 +53,8 @@ export function verifierCoherence(
 		for (const item of entrees(ligne.nonInclus)) noter(exclusPar, item);
 	});
 
-	// La contradiction la plus coûteuse : la même chose promise ici, exclue là.
+	// Le cas qui coûte le plus cher en cas de chicane : la même chose promise à un endroit du
+	// mandat et exclue à un autre.
 	for (const [cle, lignesInclus] of inclusPar) {
 		const lignesExclus = exclusPar.get(cle);
 		if (!lignesExclus) continue;
@@ -96,7 +96,7 @@ export function verifierCoherence(
 		}
 	});
 
-	// Deux lignes homonymes deviennent deux articles que rien ne distingue à la lecture.
+	// Deux lignes qui portent le même nom donnent deux articles qu'on ne peut plus distinguer.
 	const nomsVus = new Map<string, number>();
 	brouillon.lignes.forEach((ligne, i) => {
 		const cle = titreNormalise(ligne.nom);

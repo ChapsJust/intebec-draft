@@ -1,5 +1,5 @@
-/** Helpers de mise en forme propres au document généré : style contractuel québécois.
- * Fonctions pures, testables, sans dépendance au DOM. */
+/** Petites fonctions de mise en forme propres au document généré, dans le style des contrats
+ * québécois. Toutes pures et sans dépendance au DOM, donc faciles à tester. */
 
 const SOUS_SEIZE = [
 	'zéro',
@@ -35,7 +35,8 @@ function sousVingt(n: number): string {
 	return `dix-${SOUS_SEIZE[n - 10]}`;
 }
 
-/** 0 à 99, en trois régimes parce que le français en a trois. */
+/** 0 à 99. Trois cas séparés, parce que le français compte de trois façons différentes selon la
+ * tranche. C'est fastidieux mais il n'y a pas de règle unique à appliquer. */
 function sousCent(n: number): string {
 	if (n < 20) return sousVingt(n);
 
@@ -96,8 +97,10 @@ const MOIS = [
 ];
 
 /** Formate une date ISO `YYYY-MM-DD` en « 27 juillet 2026 ».
- * Découpe la chaîne au lieu de passer par `new Date()`, qui interpréterait la date en UTC
- * et reculerait d'un jour dans les fuseaux négatifs (dont le Québec). */
+ *
+ * Je découpe la chaîne à la main au lieu d'utiliser `new Date()`, et c'est important : `new
+ * Date('2026-07-27')` est interprété en UTC, donc affiché dans un fuseau négatif comme le Québec il
+ * recule d'un jour. Une date de signature qui change toute seule dans un contrat, c'est non. */
 export function formatDateLongue(iso: string): string {
 	const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
 	if (!match) return iso;

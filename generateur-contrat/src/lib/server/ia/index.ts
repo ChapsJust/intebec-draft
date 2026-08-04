@@ -1,6 +1,9 @@
-/** Les trois choses que l'application demande à l'IA locale. Chacune suit la même chaîne : une invite
- * (`invites.ts`), un aller-retour (`transport.ts`), une normalisation (`normalisation.ts`). Rien
- * d'autre du dossier `ia/` n'a vocation à être importé d'ailleurs.
+/** Tout ce que l'application demande à l'IA locale. Chaque fonction suit la même chaîne : construire
+ * l'invite (`invites.ts`), faire l'aller-retour (`transport.ts`), filtrer la réponse
+ * (`normalisation.ts`).
+ *
+ * C'est le seul fichier du dossier `ia/` qu'on importe depuis l'extérieur. Le reste est du détail
+ * d'implémentation.
  */
 import type {
 	AuditClauses,
@@ -61,10 +64,11 @@ export async function auditerClauses(
 	return normaliserAudit(brut, brouillon, bibliotheque);
 }
 
-/** Aide ponctuelle : étoffe un seul champ pendant la saisie, sans rien persister.
+/** Aide ponctuelle : étoffe un seul champ pendant la saisie, sans rien enregistrer.
  *
- * Le titre suit un chemin à part de bout en bout : ce n'est pas de la prose, donc ni les mêmes
- * consignes système, ni le même nettoyage. */
+ * Le titre suit un chemin complètement à part, du prompt jusqu'au nettoyage. C'est normal : un titre
+ * n'est pas de la prose, c'est une étiquette. Les consignes qui produisent de bons paragraphes
+ * produisent de mauvais titres. */
 export async function redigerChamp(brouillon: BrouillonMandat, cible: CibleChamp): Promise<string> {
 	const titre = cible.kind === 'titre';
 	const brut = (await appeler(

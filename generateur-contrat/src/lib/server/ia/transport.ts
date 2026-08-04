@@ -1,5 +1,7 @@
-/** Comment on joint le modèle, et comment on ramène sa réponse. Ce module ne sait rien du contenu :
- * deux endpoints, un format de flux, et la liste des façons dont un appel peut échouer.
+/** Comment on joint le modèle et comment on ramène sa réponse.
+ *
+ * Ce module ne sait rien du contenu : il connaît deux endpoints, un format de flux, et la liste des
+ * façons dont un appel peut échouer. Ce qu'on demande au modèle est dans `invites.ts`.
  */
 import { env } from '$env/dynamic/private';
 
@@ -7,14 +9,16 @@ const URL_PAR_DEFAUT = 'http://localhost:11434';
 const MODELE_PAR_DEFAUT = 'llama3.1:8b';
 const MODELE_PASSERELLE_PAR_DEFAUT = 'gemma4:latest';
 const TIMEOUT_MS = 120_000;
-/** En mode passerelle, le heartbeat SSE tient la connexion pendant le chargement du modèle : le
- * plafond utile n'est plus le réseau mais la patience de l'utilisateur. */
+/** En mode passerelle, le heartbeat SSE garde la connexion ouverte pendant que le modèle se charge.
+ * Ce n'est donc plus le réseau qui limite, mais la patience de l'utilisateur. D'où un timeout plus
+ * généreux qu'en direct. */
 const TIMEOUT_PASSERELLE_MS = 240_000;
 
 export class OllamaIndisponibleError extends Error {}
 
-/** La passerelle authentifiée dès que `AI_API_URL` et `AI_API_KEY` sont fournies, sinon Ollama en
- * direct, qui reste le mode pratique en développement local. */
+/** Deux modes. Si `AI_API_URL` et `AI_API_KEY` sont remplies, on passe par la passerelle
+ * authentifiée. Sinon on tape Ollama directement, ce qui reste le plus pratique quand je développe
+ * sur ma machine. */
 type ModeIa = { kind: 'passerelle'; base: string; cle: string } | { kind: 'ollama'; base: string };
 
 function modeIa(): ModeIa {
@@ -24,8 +28,9 @@ function modeIa(): ModeIa {
 	return { kind: 'ollama', base: (env.OLLAMA_URL || URL_PAR_DEFAUT).replace(/\/$/, '') };
 }
 
-/** Le modèle est toujours envoyé explicitement : son nom est horodaté dans le document, il doit donc
- * correspondre à celui qui a réellement répondu. */
+/** On envoie toujours le nom du modèle explicitement, même quand le serveur en a un par défaut : ce
+ * nom est enregistré avec la rédaction et affiché à l'utilisateur, il doit donc correspondre à celui
+ * qui a vraiment répondu. */
 export function modeleActif(): string {
 	if (modeIa().kind === 'passerelle') return env.AI_MODEL || MODELE_PASSERELLE_PAR_DEFAUT;
 	return env.OLLAMA_MODEL || MODELE_PAR_DEFAUT;
@@ -35,8 +40,9 @@ interface ReponseOllama {
 	message?: { content?: string };
 }
 
-/** Envoie une invite et rend l'objet JSON obtenu. Les consignes viennent de l'appelant : elles
- * relèvent de ce qu'on demande, pas de la façon de le demander. */
+/** Envoie une invite et renvoie l'objet JSON obtenu. Les consignes système sont passées par
+ * l'appelant plutôt que fixées ici : elles font partie de ce qu'on demande, pas de la façon de le
+ * demander. */
 export async function appeler(prompt: string, consignes: string): Promise<unknown> {
 	const mode = modeIa();
 	const contenu =
@@ -56,8 +62,10 @@ export async function appeler(prompt: string, consignes: string): Promise<unknow
 	}
 }
 
-/** Appel direct au démon Ollama. `format: 'json'` contraint la sortie côté serveur, le mode le plus
- * fiable, mais suppose un accès sans authentification au port 11434. */
+/** Appel direct au démon Ollama. Avec `format: 'json'` c'est Ollama lui-même qui force la sortie à
+ * être du JSON valide, ce qui est bien plus fiable que de le demander gentiment dans le prompt.
+ * En contrepartie ça suppose un accès sans authentification au port 11434, donc c'est le mode local
+ * seulement. */
 async function appelerOllama(base: string, prompt: string, consignes: string): Promise<string> {
 	let reponse: Response;
 	try {
@@ -93,9 +101,10 @@ async function appelerOllama(base: string, prompt: string, consignes: string): P
 	return donnees.message?.content ?? '';
 }
 
-/** Appel à la passerelle authentifiée. On streame systématiquement : elle plafonne le mode
- * non-streamé à 90 s, qu'une passe de rédaction dépasse dès que le modèle doit être rechargé. Le
- * flux n'est pas affiché au fil de l'eau, seulement réassemblé. */
+/** Appel à la passerelle authentifiée. On streame tout le temps, même si on n'affiche rien au fil de
+ * l'eau : la passerelle coupe les requêtes non streamées au bout d'un délai assez court, et une
+ * passe de rédaction complète le dépasse dès que le modèle doit être rechargé en mémoire. Le flux
+ * est donc juste réassemblé en un bloc avant d'être rendu. */
 async function appelerPasserelle(
 	mode: { base: string; cle: string },
 	prompt: string,
@@ -129,11 +138,15 @@ async function appelerPasserelle(
 	return lireFluxSse(reponse.body);
 }
 
-/** Réassemble le texte d'un flux SSE. Les morceaux réseau ne tombent pas sur les frontières des
- * événements, d'où le tampon qui garde ce qui est incomplet jusqu'à la suite. */
+/** Réassemble le texte d'un flux SSE.
+ *
+ * Le point important : les paquets réseau ne tombent pas sur les frontières des événements. On peut
+ * très bien recevoir `data: {"cont` dans un paquet et le reste dans le suivant. D'où le tampon, qui
+ * garde le morceau incomplet jusqu'à ce que la suite arrive. */
 async function lireFluxSse(corps: ReadableStream<Uint8Array>): Promise<string> {
 	const lecteur = corps.getReader();
-	// `stream: true` met en réserve un caractère UTF-8 coupé entre deux morceaux.
+	// Même problème un cran plus bas : un caractère accentué fait deux octets en UTF-8 et peut être
+	// coupé en deux entre deux paquets. `stream: true` met l'octet orphelin en réserve.
 	const decodeur = new TextDecoder();
 
 	let tampon = '';
@@ -145,8 +158,8 @@ async function lireFluxSse(corps: ReadableStream<Uint8Array>): Promise<string> {
 
 		tampon += decodeur.decode(value, { stream: true });
 
-		// Une ligne vide sépare les événements. Le dernier morceau est presque toujours incomplet :
-		// il repart dans le tampon.
+		// Une ligne vide sépare deux événements SSE. Après le split, le dernier morceau est presque
+		// toujours incomplet, donc on le remet dans le tampon au lieu de le traiter.
 		const blocs = tampon.split('\n\n');
 		tampon = blocs.pop() ?? '';
 
@@ -165,8 +178,9 @@ async function lireFluxSse(corps: ReadableStream<Uint8Array>): Promise<string> {
 	return contenu;
 }
 
-/** Traduit un refus de la passerelle en message actionnable. Le `request_id` est repris tel quel :
- * c'est la clé pour retrouver la trace côté Mac. */
+/** Traduit un code d'erreur de la passerelle en message que l'utilisateur peut agir dessus. On
+ * recopie le `request_id` tel quel : c'est ce qui permet de retrouver la trace dans les logs du
+ * Mac. */
 async function messagePasserelle(reponse: Response): Promise<string> {
 	let detail = '';
 	let requete = '';
@@ -198,8 +212,9 @@ interface EvenementSse {
 	error?: string;
 }
 
-/** Isole l'événement d'un bloc SSE. `null` pour ce qui ne porte pas de donnée : heartbeat, marqueur
- * de fin, et tout bloc illisible — mieux vaut l'ignorer que casser une génération à moitié reçue. */
+/** Isole l'événement contenu dans un bloc SSE. Renvoie `null` pour tout ce qui ne porte pas de
+ * donnée : les heartbeats, le marqueur de fin, et les blocs illisibles. Pour ces derniers, mieux
+ * vaut ignorer et continuer que de faire échouer une génération déjà à moitié reçue. */
 export function analyserBlocSse(bloc: string): EvenementSse | null {
 	const ligne = bloc.split('\n').find((l) => l.startsWith('data:'));
 	if (!ligne) return null;
@@ -215,8 +230,10 @@ export function analyserBlocSse(bloc: string): EvenementSse | null {
 	}
 }
 
-/** La passerelle n'expose pas le mode JSON natif d'Ollama, et le modèle encadre volontiers son objet
- * d'un bloc de code ou d'une phrase d'introduction. On l'isole avant de parser. */
+/** La passerelle n'expose pas le mode JSON natif d'Ollama, donc on n'a aucune garantie sur la forme
+ * de la réponse. Le modèle entoure souvent son objet d'un bloc de code Markdown ou d'une phrase du
+ * genre « Voici le JSON demandé ». On repère donc la première accolade ouvrante et la dernière
+ * fermante, et on ne parse que ce qu'il y a entre les deux. */
 export function extraireJson(brut: string): unknown {
 	const sansBlocs = brut.replace(/```(?:json)?/gi, '').trim();
 	const debut = sansBlocs.indexOf('{');

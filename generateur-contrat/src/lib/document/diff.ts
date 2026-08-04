@@ -1,9 +1,14 @@
-/** Compare la saisie et la prose de l'IA : qu'est-ce qui a changé, et qu'est-ce qu'on en garde ?
+/** Compare la saisie de l'utilisateur et la prose de l'IA : ce qui a changé, et ce qu'on en garde.
  *
- * Deux échelles : la phrase est l'unité qu'on garde ou qu'on rejette, le mot ne sert qu'au
- * surlignage. Un LCS suffit, le projet n'embarque aucune librairie de diff.
- * (Fait grandement grâce à l'aide de l'IA pour cette feature)
+ * Deux échelles. La phrase est l'unité qu'on accepte ou qu'on refuse ; le mot ne sert qu'à surligner
+ * ce qui a bougé à l'intérieur. J'utilise un LCS (plus longue sous-séquence commune) plutôt qu'une
+ * librairie de diff, pour ne pas ajouter de dépendance au projet.
+ *
+ * Note d'honnêteté : l'algorithme LCS lui-même (`tableDesLongueurs` et `sousSequenceCommune`) a été
+ * écrit avec l'aide de l'IA. Le découpage en phrases, le regroupement en passages et la
+ * recomposition de `texteEffectif` sont de moi.
  */
+import { titreNormalise } from '$domaine/titres';
 
 export type MotDiff = { kind: 'egal' | 'ajout' | 'suppression'; texte: string };
 
@@ -146,9 +151,14 @@ function decouperMots(texte: string): string[] {
 	return texte.split(/(\s+)/).filter((jeton) => jeton !== '');
 }
 
-/** `longueurs[i][j]` = nombre d'éléments communs entre `gauche` à partir de `i` et `droite` à partir
- * de `j`. Rempli à rebours, chaque case se déduisant de ses voisines, qui portent sur des restes plus
- * courts. `[0][0]` donne la réponse pour les listes entières. */
+/** Table de programmation dynamique du LCS. `longueurs[i][j]` = combien d'éléments les deux listes
+ * ont en commun si on ne regarde que `gauche` à partir de `i` et `droite` à partir de `j`.
+ *
+ * On la remplit de la fin vers le début, parce que chaque case se calcule à partir de ses voisines
+ * de droite et du bas, qui portent sur des restes de listes plus courts. Quand on a fini, `[0][0]`
+ * contient la réponse pour les deux listes entières.
+ *
+ * Coût : O(n × m) en temps et en mémoire. Acceptable ici, on compare quelques centaines de mots. */
 function tableDesLongueurs<T>(
 	gauche: T[],
 	droite: T[],
@@ -171,9 +181,12 @@ function tableDesLongueurs<T>(
 	return longueurs;
 }
 
-/** Plus longue sous-séquence commune, rendue comme les paires d'index conservées : entre « A B C D »
- * et « A X C », la suite commune est « A C », donc `[[0, 0], [2, 2]]`. Le reste a été ajouté ou
- * supprimé. Table pleine plutôt que Myers : quelques centaines de jetons, la version lisible suffit. */
+/** Renvoie la plus longue sous-séquence commune sous forme de paires d'index. Exemple : entre
+ * « A B C D » et « A X C », la suite commune est « A C », donc `[[0, 0], [2, 2]]`. Tout ce qui n'est
+ * pas dans ces paires a été ajouté ou supprimé.
+ *
+ * J'utilise la table complète plutôt que l'algorithme de Myers, qui est plus rapide mais nettement
+ * moins lisible. Sur des textes de cette taille, la différence ne se voit pas. */
 function sousSequenceCommune<T>(
 	gauche: T[],
 	droite: T[],
@@ -193,7 +206,9 @@ function sousSequenceCommune<T>(
 			indexGauche++;
 			indexDroite++;
 		} else if (longueurs[indexGauche + 1][indexDroite] >= longueurs[indexGauche][indexDroite + 1]) {
-			// Sauter à gauche promet au moins autant : cet élément n'a pas de correspondant.
+			// Avancer à gauche donne au moins autant d'éléments communs qu'avancer à droite : cet
+			// élément-là n'a pas de correspondant. Le `>=` (plutôt que `>`) départage les égalités, et
+			// décide donc si une suppression s'affiche avant ou après l'ajout qui la remplace.
 			indexGauche++;
 		} else {
 			indexDroite++;
@@ -203,18 +218,13 @@ function sousSequenceCommune<T>(
 	return paires;
 }
 
-/** Les accents, une fois détachés de leur lettre par `normalize('NFD')`. */
-const ACCENTS_DETACHES = /[̀-ͯ]/g;
-
 /** Clé de comparaison : casse, accents et espaces ignorés. Sans ça, une phrase réespacée par le
- * modèle passait pour réécrite et le diff signalait des changements invisibles à l'œil. */
+ * modèle passait pour réécrite et le diff signalait des changements invisibles à l'œil.
+ *
+ * Même normalisation que pour les titres de clause, d'où l'import : deux copies auraient fini par
+ * diverger. La marque de paragraphe saute au passage, elle n'appartient pas au texte comparé. */
 function clePhrase(phrase: string): string {
-	return sansMarque(phrase)
-		.normalize('NFD')
-		.replace(ACCENTS_DETACHES, '')
-		.toLowerCase()
-		.replace(/\s+/g, ' ')
-		.trim();
+	return titreNormalise(sansMarque(phrase));
 }
 
 /** Aligne les phrases des deux textes en segments communs et modifiés. */
@@ -316,11 +326,17 @@ export function comparerMots(avant: string, apres: string): MotDiff[] {
 	return segments;
 }
 
-/** Texte réellement affiché, compte tenu des passages refusés.
+/** Le texte réellement affiché, une fois les passages refusés retirés.
  *
- * On recompose au lieu de choisir entre les deux versions : refuser un passage rend la saisie à cet
- * endroit-là sans faire perdre les autres réécritures du champ. Un index hors bornes est ignoré — le
- * brouillon a changé depuis le refus, et mieux vaut la prose de l'IA qu'une page en erreur. */
+ * On recompose phrase par phrase au lieu de choisir entre les deux versions du champ : refuser un
+ * passage rétablit la saisie à cet endroit précis, sans annuler les autres réécritures.
+ *
+ * C'est ici que se joue l'invariante du module : cette fonction parcourt le même `aligner()` que
+ * `comparerPassages` et ne compte que les segments `change`. C'est ce qui garantit que le passage
+ * n° 3 affiché à l'écran est bien le passage n° 3 enregistré en base.
+ *
+ * Un index hors bornes est ignoré : ça veut dire que le brouillon a changé depuis le refus, et mieux
+ * vaut afficher la prose de l'IA qu'une page en erreur. */
 export function texteEffectif(
 	avant: string,
 	apres: string | undefined,

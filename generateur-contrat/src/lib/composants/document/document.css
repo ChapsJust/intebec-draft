@@ -1,4 +1,6 @@
-/* Mise en page du document généré : soumission ou contrat. Générer en grande partie avec l'IA*/
+/* Mise en page du document généré, soumission comme contrat.
+	 Note d'honnêteté : cette feuille de style a été produite en grande partie avec l'aide de l'IA.
+	 Les règles d'impression du bas du fichier, elles, viennent de mes essais d'impression. */
 
 .document {
 	/* Le document a sa propre identité typographique */
@@ -531,8 +533,8 @@
 		break-inside: auto;
 	}
 
-	/* Le bloc-marque ne commence jamais une page à lui seul. Sans cette règle il se retrouvait
-			orphelin sur une dernière page vide deux fois sur cinq, ce qui donnait l'impression que la
+	/* Le bloc-marque ne doit jamais commencer une page à lui tout seul. Sans cette règle il se
+			retrouvait souvent orphelin sur une dernière page vide, ce qui donnait l'impression que la
 			fin du document était coupée en deux. Il suit donc les signatures, qui sont elles-mêmes
 			insécables. */
 	.document .pied {

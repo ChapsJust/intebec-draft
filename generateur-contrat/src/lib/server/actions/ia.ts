@@ -1,5 +1,8 @@
-/** Actions qui font appel à l'IA locale, ou qui arbitrent ce qu'elle a produit. Toutes traduisent
- * `OllamaIndisponibleError` en 503, le code qui dit « réessayez » là où un 400 dit « corrigez ».
+/** Les actions qui appellent l'IA locale, ou qui gèrent ce qu'elle a produit.
+ *
+ * Elles traduisent toutes `OllamaIndisponibleError` en 503 plutôt qu'en 500. La nuance compte pour
+ * l'utilisateur : 503 veut dire « réessayez », alors qu'un 400 voudrait dire « corrigez votre
+ * saisie » et qu'un 500 voudrait dire « c'est un bogue chez nous ».
  */
 import { fail, type Action, type Actions } from '@sveltejs/kit';
 import { creerClauseBibliotheque, listerClausesBibliotheque } from '$serveur/db/clauses';
@@ -20,8 +23,9 @@ import { ID_MANQUANT, INTROUVABLE, REQUETE_INVALIDE } from './messages';
 /** Même plafond que celui appliqué au brouillon : le titre d'une clause devient un titre d'article. */
 const MAX_TITRE_CLAUSE = 200;
 
-/** Les champs de prose se désignent par un mot-clé, les lignes par leur identifiant. Aucun conflit
- * possible : un identifiant de ligne est un UUID. */
+/** Les champs de prose sont désignés par un mot-clé, les lignes par leur identifiant. Il ne peut pas
+ * y avoir de collision entre les deux : un identifiant de ligne est toujours un UUID, donc jamais
+ * « titre » ou « objet ». */
 function cibleDuChamp(champ: string): CibleChamp {
 	if (champ === 'titre') return { kind: 'titre' };
 	if (champ === 'objet') return { kind: 'objet' };
@@ -171,8 +175,12 @@ export const actionsIaEditeur: Actions = {
 	}
 };
 
-/** Passe de rédaction sur un mandat enregistré : le seul chemin qui appelle l'IA pour le document
- * entier. La prose va dans la colonne `redaction`, donc l'opération est rejouable. */
+/** Passe de rédaction sur un mandat déjà enregistré. C'est le seul endroit qui demande à l'IA de
+ * rédiger le document au complet.
+ *
+ * La prose va dans sa propre colonne `redaction`, à côté de la saisie et jamais par-dessus. On peut
+ * donc relancer autant de fois qu'on veut, ou tout effacer, sans jamais perdre ce que
+ * l'utilisateur a écrit. */
 export const redigerDocumentAction: Action = async ({ params }) => {
 	const id = params.id;
 	if (!id) return fail(400, { ok: false, message: ID_MANQUANT });
@@ -194,9 +202,11 @@ export const redigerDocumentAction: Action = async ({ params }) => {
 	}
 };
 
-/** Garde ou rejette un passage réécrit par l'IA. On enregistre la décision, pas son résultat :
- * `texteEffectif` recompose le texte à la lecture, donc un refus se défait et le PDF le suit sans
- * rien connaître. */
+/** Garde ou rejette un passage réécrit par l'IA.
+ *
+ * Le point important : on enregistre la décision, pas le texte qui en résulte. C'est
+ * `texteEffectif` qui recompose le texte au moment de l'afficher. Conséquence, un refus se défait
+ * d'un clic, et le PDF suit automatiquement sans rien connaître de tout ça. */
 export const basculerPassageAction: Action = async ({ request, params }) => {
 	const id = params.id;
 	if (!id) return fail(400, { ok: false, message: ID_MANQUANT });
@@ -224,8 +234,8 @@ export const basculerPassageAction: Action = async ({ request, params }) => {
 	if (refuse) actuels.add(index);
 	else actuels.delete(index);
 
-	// Un champ sans refus perd sa clé : `refuses` reste la liste de ce qui a été écarté, lisible
-	// telle quelle en base.
+	// Quand un champ n'a plus aucun refus, on enlève sa clé au lieu de laisser un tableau vide.
+	// `refuses` reste ainsi la liste de ce qui a été écarté, lisible telle quelle en base.
 	if (actuels.size > 0) refuses[champ] = [...actuels].sort((a, b) => a - b);
 	else delete refuses[champ];
 
