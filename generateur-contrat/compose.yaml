@@ -59,15 +59,11 @@ services:
       # entrante — donc le nom public `.ts.net` — et ressortirait par le proxy pour revenir au même
       # conteneur, après avoir dû résoudre un nom MagicDNS depuis Docker. Le raccourci direct.
       PDF_ORIGIN: http://127.0.0.1:5173
-      # IA, passerelle authentifiée du Mac Studio. Renseignée dans le .env local, elle prend le
-      # pas sur OLLAMA_URL. Si le nom Tailscale ne se résout pas depuis le conteneur, voir la
-      # section « IA » du README : un extra_hosts suffit, et préserve le certificat TLS.
+      # Obligatoire derrière un proxy : SvelteKit compare l'en-tête `Origin` de chaque POST à sa
+      # propre origine, et refuse la requête en cas d'écart
       AI_API_URL: ${AI_API_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-}
-      # IA en direct, mode de repli. `host.docker.internal` pointe vers la machine hôte : c'est
-      # elle qui porte la connexion Tailscale. Remplacer par l'adresse Tailscale directe
-      # (http://<nom-machine>:11434) pour joindre le serveur sans passer par l'hôte.
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
     extra_hosts:
