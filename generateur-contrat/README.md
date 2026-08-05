@@ -490,3 +490,4 @@ autrement.
   encore d'écran « tous les mandats ».
 
 README Générer par l'ia en grande partie
+(Claude Code, Claude, ChatGPT, Copilot)

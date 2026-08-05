@@ -3,9 +3,6 @@ services:
     image: postgres:16-alpine
     container_name: generateur-contrat-db
     restart: always
-    # Lié à la boucle locale seulement : l'app joint la base par le réseau Compose (`db:5432`),
-    # la publication ne sert qu'aux outils locaux (`npm run db:studio`). Sans le `127.0.0.1`,
-    # le port serait ouvert à tout le réseau, avec le mot de passe de développement ci-dessous.
     ports:
       - 127.0.0.1:5432:5432
     environment:
@@ -43,19 +40,11 @@ services:
       dockerfile: Dockerfile.dev
     image: generateur-contrat-app
     container_name: generateur-contrat-app
-    # Lié à la boucle locale seulement, comme la base ci-dessus, mais pour une raison plus forte :
-    # c'est ici que vit toute la protection de l'application. Il n'y a pas d'écran de connexion ;
-    # ce qui empêche le voisin de réseau d'ouvrir le site, c'est que le port n'existe pas pour lui.
-    # Seul `tailscale serve`, qui tourne sur l'hôte, atteint ce port et n'y laisse passer que les
-    # membres du tailnet. Repasser à `5173:5173` publierait l'application sans aucune garde.
     ports:
       - 127.0.0.1:5173:5173
     environment:
       DATABASE_URL: postgres://root:mysecretpassword@db:5432/local
       VITE_USE_POLLING: 'true'
-      # Origine que Chromium visite pour imprimer. Sans elle, il reprendrait l'origine de la requête
-      # entrante — donc le nom public `.ts.net` — et ressortirait par le proxy pour revenir au même
-      # conteneur, après avoir dû résoudre un nom MagicDNS depuis Docker. Le raccourci direct.
       PDF_ORIGIN: http://127.0.0.1:5173
       AI_API_URL: ${AI_API_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
@@ -67,45 +56,6 @@ services:
     volumes:
       - .:/app
       - node_modules:/app/node_modules
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-
-  # Build de production. Sous un profil, donc jamais démarré par un `docker compose up` ordinaire :
-  # le quotidien reste `npm run dev`. Écrit maintenant plutôt que le jour de la mise en ligne, parce
-  # que c'est là que se cachent les deux réglages qui ne se devinent pas (ORIGIN et PDF_ORIGIN).
-  #
-  #   docker compose --profile prod up app-prod
-  #
-  # Réutilise l'image de développement : elle porte déjà Chromium, ses polices et CHROMIUM_PATH.
-  app-prod:
-    profiles: ['prod']
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    image: generateur-contrat-app
-    container_name: generateur-contrat-app-prod
-    command: sh -c "npm run build && node build"
-    # Même règle que le service de développement : la boucle locale est la garde.
-    ports:
-      - 127.0.0.1:3000:3000
-    environment:
-      DATABASE_URL: postgres://root:mysecretpassword@db:5432/local
-      PORT: 3000
-      # Obligatoire derrière un proxy : SvelteKit compare l'en-tête `Origin` de chaque POST à sa
-      # propre origine, et refuse la requête en cas d'écart. Le serveur voit `127.0.0.1:3000`, le
-      # navigateur annonce l'adresse publique : sans ORIGIN exact, tout enregistrement répond 403.
-      ORIGIN: ${ORIGIN:-}
-      PDF_ORIGIN: http://127.0.0.1:3000
-      AI_API_URL: ${AI_API_URL:-}
-      AI_API_KEY: ${AI_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-}
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
     depends_on:
       db:
         condition: service_healthy

@@ -2,10 +2,6 @@
 FROM node:22-alpine
 
 WORKDIR /app
-
-# Chromium vient du gestionnaire de paquets d'Alpine et pas de Playwright : les binaires que
-# Playwright télécharge sont liés à la glibc et refusent de démarrer sur musl. `CHROMIUM_PATH` dit
-# à `pdf.ts` où le trouver, et lui sert du même coup à savoir qu'il tourne en conteneur.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 
@@ -17,9 +13,8 @@ RUN apk add --no-cache \
 	ca-certificates \
 	ttf-freefont \
 	font-noto
-
-# Copiés seuls, avant le reste : la couche est réutilisée telle quelle tant que package*.json ne
-# change pas, donc `npm ci` ne tourne pas à chaque rebuild.
+	
+# Installation de Playwright pour Chromium
 COPY package.json package-lock.json ./
 RUN npm ci
 
